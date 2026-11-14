@@ -614,20 +614,20 @@
       };
     } },
 
-    // ⑥ 數值型：同底相乘後算出值
-    { level: 'basic', rule: '算出數值', make() {
-      const a = pickOf([2, 2, 3, 5]);
-      const m = R(1, 3), n = R(1, 3);
-      const right = Math.pow(a, m + n);
-      let wrong = Math.pow(a, m * n);
-      if (wrong === right || wrong > 99999) wrong = Math.pow(a, m + n + 1);
+    // ⑥ 「指數相乘」和「指數相加」兩條律不要混用
+    { level: 'basic', rule: '兩條律不要混用', make() {
+      const a = coin() ? letter() : numBase();
+      let m, n;
+      do { m = R(2, 5); n = R(2, 5); } while (m === n || m + n === m * n);
       const ok = coin();
       return {
-        html: `${p(a, m)} ${TIMES} ${p(a, n)} = ${ok ? right : wrong}`,
+        html: ok
+          ? `${p(par(p(a, m)), n)} = ${p(par(p(a, n)), m)}`
+          : `${p(par(p(a, m)), n)} = ${p(a, m)} ${TIMES} ${p(a, n)}`,
         ok,
         why: ok
-          ? `${p(a, m)}${TIMES}${p(a, n)}＝${p(a, m + n)}＝${right}。`
-          : `${p(a, m)}${TIMES}${p(a, n)}＝${p(a, `${m}+${n}`)}＝${p(a, m + n)}＝<em>${right}</em>，不是 ${wrong}。`
+          ? `兩邊都是乘方的乘方，指數<em>相乘</em>；${m}${TIMES}${n} 和 ${n}${TIMES}${m} 一樣，所以兩邊都等於 ${p(a, m * n)}。`
+          : `兩條律混在一起了。左邊是乘方的乘方，指數<em>相乘</em>＝${p(a, m * n)}；右邊是同底相乘，指數<em>相加</em>＝${p(a, m + n)}。`
       };
     } },
 
@@ -636,12 +636,14 @@
       const a = coin() ? letter() : numBase();
       const k = R(3, 7);
       const ok = coin();
+      // 字母底數寫 2a⁵，數字底數要補乘號，否則 2 和 8³ 會黏成「28³」
+      const twice = typeof a === 'number' ? `2 ${TIMES} ${p(a, k)}` : `2${p(a, k)}`;
       return {
-        html: `${p(a, k)} + ${p(a, k)} = ${ok ? `2${p(a, k)}` : p(a, 2 * k)}`,
+        html: `${p(a, k)} + ${p(a, k)} = ${ok ? twice : p(a, 2 * k)}`,
         ok,
         why: ok
-          ? `兩個一樣的東西相加是<em>兩倍</em>：${p(a, k)}＋${p(a, k)}＝2${p(a, k)}。指數律是給<em>相乘</em>用的。`
-          : `指數相加只能用在<em>相乘</em>。這裡是相加，答案是 <em>2${p(a, k)}</em>；${p(a, 2 * k)} 要由 ${p(a, k)}${TIMES}${p(a, k)} 才得到。`
+          ? `兩個一樣的東西相加是<em>兩倍</em>：${p(a, k)}＋${p(a, k)}＝${twice}。指數律是給<em>相乘</em>用的。`
+          : `指數相加只能用在<em>相乘</em>。這裡是相加，答案是 <em>${twice}</em>；${p(a, 2 * k)} 要由 ${p(a, k)}${TIMES}${p(a, k)} 才得到。`
       };
     } },
 
@@ -658,58 +660,65 @@
         html: `${lhs} = ${rhs}`,
         ok,
         why: ok
-          ? `括號裡是<em>相乘</em>才可以各自次方：兩邊都等於 ${lv}。`
+          ? `括號裡是<em>相乘</em>，才可以把每個因數各自次方。`
           : `括號裡是<em>相加</em>就不能各自次方。左邊＝${p(a + b, m)}＝<em>${lv}</em>，右邊＝${rv}，${lv} ${NEQ} ${rv}。`
       };
     } },
 
-    // ⑨ 負數的乘方
-    { level: 'adv', rule: '負數的乘方', make() {
-      const a = R(2, 5), n = R(2, 4);
-      const right = Math.pow(-a, n);
-      const ok = coin();
+    // ⑨ 負數乘方的正負：(−a)ⁿ 等於 aⁿ 還是 −aⁿ
+    { level: 'adv', rule: '負數乘方的正負', make() {
+      const a = coin() ? letter() : R(2, 9);
+      const n = R(2, 7);
+      const even = n % 2 === 0;
+      const showNeg = coin();                      // 右邊寫 −aⁿ 還是 aⁿ
+      const ok = showNeg ? !even : even;
       return {
-        html: `${p(par(neg(a)), n)} = ${(ok ? right : -right).toString().replace('-', MINUS)}`,
+        html: `${p(par(neg(a)), n)} = ${showNeg ? neg(p(a, n)) : p(a, n)}`,
         ok,
-        why: ok
-          ? `${n} 個負數相乘，負號有 ${n} 個，${n % 2 === 0 ? '偶數個負號相乘得<em>正</em>' : '奇數個負號相乘得<em>負</em>'}，所以是 ${String(right).replace('-', MINUS)}。`
-          : `${n} 個 ${par(neg(a))} 相乘，${n % 2 === 0 ? '負號有偶數個，結果是<em>正</em>的' : '負號有奇數個，結果是<em>負</em>的'}，正確是 <em>${String(right).replace('-', MINUS)}</em>。`
+        why: even
+          ? `指數 ${n} 是<em>偶數</em>，${n} 個負號兩兩抵消，結果是<em>正</em>的，所以 ${p(par(neg(a)), n)}＝${p(a, n)}。`
+          : `指數 ${n} 是<em>奇數</em>，負號抵消不完會剩下一個，結果是<em>負</em>的，所以 ${p(par(neg(a)), n)}＝${neg(p(a, n))}。`
       };
     } },
 
-    // ⑩ −aⁿ 和 (−a)ⁿ 不一樣
-    { level: 'adv', rule: `${MINUS}a${'<sup>n</sup>'} 與 (${MINUS}a)${'<sup>n</sup>'}`, make() {
-      const a = R(2, 5), n = pickOf([2, 2, 4]);   // 偶次方才看得出差別
-      const inside = coin();                       // true: (−a)ⁿ，false: −aⁿ
-      const right = inside ? Math.pow(-a, n) : -Math.pow(a, n);
+    // ⑩ 負底數（含負分數）一樣適用指數律：課本例 5、例 6 的形式
+    { level: 'adv', rule: '負底數也適用指數律', make() {
+      let base;
+      if (coin()) {
+        const [n, d] = fracPair(false);
+        base = parFr(`${MINUS}${fr(n, d)}`);
+      } else {
+        base = par(neg(R(2, 9)));
+      }
+      const mul = coin();
+      let m, k;
+      if (mul) { do { m = R(2, 6); k = R(2, 6); } while (m + k === m * k); }
+      else { k = R(2, 4); m = k + R(2, 5); }
+      const right = mul ? m + k : m - k;
+      const wrong = mul ? m * k : m + k;
       const ok = coin();
-      const lhs = inside ? p(par(neg(a)), n) : neg(p(a, n));
       return {
-        html: `${lhs} = ${(ok ? right : -right).toString().replace('-', MINUS)}`,
+        html: `${p(base, m)} ${mul ? TIMES : DIV} ${p(base, k)} = ${p(base, ok ? right : wrong)}`,
         ok,
         why: ok
-          ? (inside
-            ? `括號包住負號，<em>連負號一起</em>乘 ${n} 次，偶次方得正：${right}。`
-            : `負號<em>沒有</em>被括號包住，只有 ${a} 自乘 ${n} 次，算完才加負號：${MINUS}${Math.pow(a, n)}。`)
-          : (inside
-            ? `${par(neg(a))} 的 ${n} 次方是把<em>整個 ${par(neg(a))}</em> 乘 ${n} 次，偶次方得正，應該是 <em>${right}</em>。`
-            : `${neg(p(a, n))} 的負號<em>不在</em>括號裡，只有 ${a} 自乘 ${n} 次，再加負號，應該是 <em>${MINUS}${Math.pow(a, n)}</em>。`)
+          ? `底數是負數也一樣用指數律：底數照抄，指數<em>${mul ? '相加' : '相減'}</em>，${m}${mul ? '＋' : MINUS}${k}＝${right}。`
+          : `底數照抄沒錯，但指數要<em>${mul ? '相加' : '相減'}</em>：${m}${mul ? '＋' : MINUS}${k}＝<em>${right}</em>。`
       };
     } },
 
     // ⑪ 分數的乘方
     { level: 'adv', rule: '分數的乘方', make() {
       const [n, d] = fracPair(false);
-      const e = R(2, 3);
-      const rn = Math.pow(n, e), rd = Math.pow(d, e);
+      const e = R(2, 4);
       const ok = coin();
-      const shown = ok ? fr(rn, rd) : (coin() ? fr(n, rd) : fr(rn, d));
+      const right = fr(p(n, e), p(d, e));
+      const wrong = coin() ? fr(n, p(d, e)) : fr(p(n, e), d);
       return {
-        html: `${p(parFr(fr(n, d)), e)} = ${shown}`,
+        html: `${p(parFr(fr(n, d)), e)} = ${ok ? right : wrong}`,
         ok,
         why: ok
-          ? `分數的乘方，<em>分子分母都要次方</em>：${fr(`${n}<sup>${e}</sup>`, `${d}<sup>${e}</sup>`)}＝${fr(rn, rd)}。`
-          : `分子和分母<em>都要</em>次方。正確是 ${fr(`${n}<sup>${e}</sup>`, `${d}<sup>${e}</sup>`)}＝<em>${fr(rn, rd)}</em>。`
+          ? `分數的乘方，<em>分子分母都要</em>次方：${right}。`
+          : `分子和分母<em>都要</em>次方，只做一邊是錯的。正確是 ${right}。`
       };
     } },
 
