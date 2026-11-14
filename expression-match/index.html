@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>列式選選看 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="螢幕出一句生活敘述，限時內從四個式子裡挑出正確的代數式或方程式。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 36ch;
+      line-height: 1.7;
+    }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 2.1em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys {
+      color: var(--muted);
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer {
+      flex: 0 0 auto;
+      height: 10px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(10px, 2.4vh, 26px);
+      padding: 14px 16px 18px;
+      min-height: 0;
+    }
+
+    .rule-tag {
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+      background: var(--panel);
+      text-align: center;
+    }
+    .rule-tag .src { color: var(--accent-2); }
+
+    .quest {
+      font-size: clamp(1.1rem, 3.1vw, 2.15rem);
+      font-weight: 600;
+      line-height: 1.6;
+      text-align: center;
+      max-width: 30ch;
+      padding: 0 6px;
+      text-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    }
+    .quest b { color: var(--accent-2); font-weight: 800; }
+
+    .count {
+      position: absolute;
+      top: 54px;
+      right: 18px;
+      font-size: clamp(2.2rem, 6vw, 4rem);
+      font-weight: 800;
+      color: var(--accent-2);
+      opacity: 0.85;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    .opts {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(10px, 1.8vw, 20px);
+      width: min(1000px, 100%);
+    }
+
+    .opt {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: clamp(12px, 2.6vh, 24px) clamp(12px, 2vw, 20px);
+      border: 2px solid var(--line);
+      border-radius: 18px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s, background 0.15s;
+    }
+    .opt .key {
+      flex: 0 0 auto;
+      width: 1.9em;
+      height: 1.9em;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      color: var(--cyan);
+      font-size: clamp(0.95rem, 2.1vw, 1.3rem);
+      font-weight: 800;
+    }
+    .opt .txt {
+      flex: 1 1 auto;
+      font-size: clamp(1.05rem, 2.7vw, 1.9rem);
+      font-weight: 700;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .opt:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--accent); }
+    .opt:disabled { cursor: default; }
+    .opt.is-right { border-color: var(--win); background: rgba(34, 197, 94, 0.16); }
+    .opt.is-right .key { color: var(--win); border-color: var(--win); }
+    .opt.is-wrong { border-color: var(--lose); background: rgba(239, 68, 68, 0.14); }
+    .opt.is-wrong .key { color: var(--lose); border-color: var(--lose); }
+    .opt.is-dim { opacity: 0.35; }
+
+    /* ── 結果 ───────────────────────────────── */
+    .verdict {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 24px 16px;
+      background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.76), rgba(2, 6, 23, 0.94));
+      backdrop-filter: blur(3px);
+      overflow-y: auto;
+    }
+    body[data-view="result"] .verdict { display: flex; }
+
+    .verdict h2 {
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 4.6rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .solution {
+      width: min(820px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: clamp(14px, 3vw, 24px);
+      text-align: center;
+    }
+    .solution .tag {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 2px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--cyan);
+      font-size: 0.9rem;
+    }
+    .solution .ask {
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.2rem);
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+    .solution .right {
+      font-size: clamp(1.3rem, 4.4vw, 2.4rem);
+      font-weight: 800;
+      line-height: 1.4;
+      color: var(--win);
+      margin-bottom: 8px;
+    }
+    .solution .picked {
+      font-size: clamp(0.95rem, 2.3vw, 1.25rem);
+      color: var(--lose);
+      margin-bottom: 10px;
+    }
+    .solution .picked[hidden] { display: none; }
+    .solution .why {
+      color: var(--text);
+      font-size: clamp(1rem, 2.5vw, 1.3rem);
+      line-height: 1.8;
+      opacity: 0.95;
+    }
+    .solution .why em {
+      font-style: normal;
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── 堆疊分數 ───────────────────────────── */
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.74em;
+      margin: 0 0.06em;
+    }
+    .fr i { font-style: normal; padding: 0 0.24em; }
+    .fr i:first-child { border-bottom: 0.09em solid currentColor; }
+
+    @media (max-width: 620px) {
+      .opts { grid-template-columns: 1fr; gap: 9px; }
+      .opt { padding: 11px 12px; }
+      .quest { max-width: none; }
+    }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 64px; right: 12px; font-size: 2rem; }
+    }
+
+    @media (max-height: 560px) {
+      .quest { font-size: clamp(1rem, 2.6vw, 1.5rem); }
+      .opt { padding: 9px 12px; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">列式選選看</h1>
+      <p class="hint">螢幕出一句生活敘述，<span class="limit-val">15</span> 秒內從四個式子裡挑出<strong>正確的那一個</strong>。答錯會立刻告訴你錯在哪。</p>
+
+      <div class="ctl-row">
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-5" aria-label="減少 5 秒">−</button>
+          <b class="limit-val">15</b>秒
+          <button type="button" data-step="5" aria-label="增加 5 秒">＋</button>
+        </div>
+        <div class="seg" id="level" role="group" aria-label="題組難度">
+          <button type="button" data-level="basic" aria-pressed="false">列代數式</button>
+          <button type="button" data-level="adv" aria-pressed="false">列方程式</button>
+          <button type="button" data-level="all" aria-pressed="true">混合</button>
+        </div>
+      </div>
+
+      <button type="button" class="big-btn" id="start">🎲 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看列式小抄</a>
+      <p class="keys">鍵盤：<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 或 <kbd>A</kbd>～<kbd>D</kbd> 作答　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <!-- ── 作答 ───────────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="count" id="count">15</div>
+
+    <div class="play-body">
+      <div class="rule-tag" id="rule">以文字符號列式</div>
+      <div class="quest" id="quest"></div>
+      <div class="opts" id="opts">
+        <button type="button" class="opt" data-i="0"><span class="key">A</span><span class="txt"></span></button>
+        <button type="button" class="opt" data-i="1"><span class="key">B</span><span class="txt"></span></button>
+        <button type="button" class="opt" data-i="2"><span class="key">C</span><span class="txt"></span></button>
+        <button type="button" class="opt" data-i="3"><span class="key">D</span><span class="txt"></span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 判定 ───────────────────────────── -->
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="tag" id="sol-tag">以文字符號列式</div>
+      <div class="ask" id="sol-ask"></div>
+      <div class="right" id="sol-right"></div>
+      <div class="picked" id="sol-picked" hidden></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器）────────────── */
+  const LIMIT_MIN = 5, LIMIT_MAX = 60, LIMIT_DEF = 15;
+  let limit = clampLimit(parseInt(localStorage.getItem('em-limit'), 10) || LIMIT_DEF);
+  let level = ['basic', 'adv', 'all'].includes(localStorage.getItem('em-level'))
+    ? localStorage.getItem('em-level') : 'all';
+  let muted = localStorage.getItem('em-muted') === '1';
+
+  function clampLimit(v) {
+    const n = Math.round(v / 5) * 5;
+    return Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, n));
+  }
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const F = (n, d) => `<span class="fr"><i>${n}</i><i>${d}</i></span>`;
+  const LBL = ['A', 'B', 'C', 'D'];
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = R(0, i);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  /* ── 題庫 ───────────────────────────────
+     level  basic＝3-1 以文字符號列式／求值／化簡
+            adv  ＝3-2 列方程式、3-3 應用問題
+     opts[0] 永遠是正解，顯示時才洗牌。
+     題幹與誘答選項取自康軒 115 版 1 上第 3 章課本
+     （隨堂練習、自我檢核、挑錯題）與歷屆基測會考。
+  ───────────────────────────────────── */
+  const QUESTIONS = [
+    /* ── 3-1 以文字符號列式 ───────────── */
+    { level: 'basic', tag: '以文字符號列式',
+      q: '比 x 大 5 的數，可以寫成什麼？',
+      opts: ['x + 5', '5x', 'x − 5', '5 − x'],
+      why: '「比 x 大 5」是在 x 上面<em>加 5</em>，寫成 x＋5；5x 是「x 的 5 倍」，意思完全不同。' },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '比 y 小 3 的數，可以寫成什麼？',
+      opts: ['y − 3', '3 − y', 'y + 3', 'y ÷ 3'],
+      why: '「比 y 小 3」是從 y <em>減掉 3</em>，寫成 y－3；3－y 問的是「3 比 y 多多少」。' },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: () => `x 的 ${F(2, 3)} 倍，可以寫成什麼？`,
+      opts: () => [`${F(2, 3)}x`, `x + ${F(2, 3)}`, `${F(3, 2)}x`, `x − ${F(2, 3)}`],
+      why: () => `「○ 的 ${F(2, 3)} 倍」就是<em>乘上</em> ${F(2, 3)}，寫成 ${F(2, 3)}x；倍數千萬不要寫成加減。` },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '把 a 平分成 3 等分，每一份是多少？',
+      opts: () => [F('a', 3), '3a', 'a − 3', F(3, 'a')],
+      why: () => `平分成 3 等分就是<em>除以 3</em>，a÷3 記成 ${F('a', 3)}；3a 是 a 的 3 倍，剛好相反。` },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '比 c 的 2 倍多 10 的數，可以寫成什麼？',
+      opts: ['2c + 10', '2(c + 10)', '10c + 2', '2c − 10'],
+      why: '先算「c 的 2 倍」得 2c，再「多 10」就是＋10。2(c＋10) 是<em>先加 10 再乘 2</em>，順序不一樣。' },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: () => `比 x 的 ${F(2, 3)} 倍小 4 的數，可以寫成什麼？`,
+      opts: () => [`${F(2, 3)}x − 4`, `${F(2, 3)}(x − 4)`, `4 − ${F(2, 3)}x`, `${F(3, 2)}x − 4`],
+      why: () => `先算 ${F(2, 3)} 倍得 ${F(2, 3)}x，再「小 4」就是<em>減 4</em>，不要把 4 包進括號裡一起乘。` },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '一杯奶茶 b 元，奶茶比紅茶<b>貴</b> 15 元。一杯紅茶多少元？',
+      opts: ['b − 15', 'b + 15', '15 − b', '15b'],
+      why: '奶茶比紅茶貴，表示紅茶<em>比較便宜</em>，要用 b－15。看到「貴」就加，是最常見的陷阱。' },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '簽字筆每枝 60 元，花了 y 元買簽字筆，總共買了幾枝？',
+      opts: ['y ÷ 60', '60y', '60 ÷ y', 'y − 60'],
+      why: '總錢數÷單價＝枝數，所以是 y÷60。60y 問的是「買 y 枝要多少錢」。' },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '小翊體重 x 公斤，爸爸的體重是小翊的 3 倍多 2 公斤。爸爸體重多少公斤？',
+      opts: ['3x + 2', '3(x + 2)', '2x + 3', '3x − 2'],
+      why: '「3 倍多 2」是<em>先乘 3 再加 2</em>：3x＋2。3(x＋2) 是先加 2 再乘 3，算出來不一樣。' },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '一枝鉛筆 y 元，一枝原子筆比鉛筆貴 25 元。買 3 枝原子筆要多少元？',
+      opts: ['3(y + 25)', '3y + 25', 'y + 75', '3y − 25'],
+      why: '一枝原子筆是 (y＋25) 元，<em>3 枝都要加 25</em>，所以是 3(y＋25)＝3y＋75。寫成 3y＋25 只加了一枝的差價。' },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '地虎身高 y 公分，天龍的身高是地虎的 2 倍還少 23 公分。天龍身高多少公分？',
+      opts: ['2y − 23', '2(y − 23)', '23 − 2y', '2y + 23'],
+      why: '「2 倍還少 23」是<em>先乘 2 再減 23</em>：2y－23。' },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '一杯美式咖啡 c 元，自備環保杯可折 5 元。7 個人各點一杯且都自備杯，合計應付多少元？',
+      opts: ['7(c − 5)', '7c − 5', '7(c + 5)', 'c − 35'],
+      why: '<em>每一杯</em>都折 5 元，所以是 (c－5)×7＝7c－35。寫成 7c－5 等於只折了一杯。' },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '一個正方形的周長是 x，它的邊長是多少？',
+      opts: () => [F('x', 4), '4x', 'x − 4', F('x', 2)],
+      why: () => `周長是邊長的 4 倍，所以邊長＝x÷4＝${F('x', 4)}。` },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '一個長方形面積 b 平方公分、寬 8 公分，長是多少公分？',
+      opts: () => [F('b', 8), '8b', 'b − 8', F(8, 'b')],
+      why: () => `長方形面積＝長×寬，所以長＝面積÷寬＝${F('b', 8)}。` },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '鉛筆 12 枝共 x 元，劉三買了 1 枝，最後剩下 5 元。劉三身上原有多少元？',
+      opts: () => [`${F('x', 12)} + 5`, '12x + 5', `${F('x', 12)} − 5`, F('x + 5', 12)],
+      why: () => `1 枝鉛筆是 ${F('x', 12)} 元，原有的錢＝<em>花掉的＋剩下的</em>＝${F('x', 12)}＋5。` },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '原子筆 x 枝分給學生，每人 5 枝，還剩下 4 枝。學生有幾人？',
+      opts: () => [F('x − 4', 5), `${F('x', 5)} − 4`, F('x + 4', 5), '5x − 4'],
+      why: () => `先把剩下的 4 枝<em>扣掉</em>，剩下的才是真正分出去的，再除以 5：${F('x − 4', 5)}。` },
+
+    { level: 'basic', tag: '以文字符號列式',
+      q: '一盒糖果 a 顆，再加 5 顆就能平分給 27 位學生。每位學生分得幾顆？',
+      opts: () => [F('a + 5', 27), `${F('a', 27)} + 5`, F('a − 5', 27), '27(a + 5)'],
+      why: () => `要平分的是<em>加完之後</em>的 (a＋5) 顆，整個除以 27：${F('a + 5', 27)}。` },
+
+    /* ── 3-1 簡記與求值 ───────────────── */
+    { level: 'basic', tag: '代數式的簡記',
+      q: 'x ÷ (−5) 可以簡記成什麼？',
+      opts: () => [`−${F('x', 5)}`, 'x(−5)', '−5x', 'x − 5'],
+      why: () => `除以 (−5) 就是乘 ${F(1, '−5')}，所以 x÷(−5)＝${F('x', '−5')}＝−${F('x', 5)}。寫成 x(−5) 會<em>變成乘以 −5</em>，意思相反。` },
+
+    { level: 'basic', tag: '求代數式的值',
+      q: '當 x = 2 時，−5x 的值是多少？',
+      opts: ['−10', '−52', '10', '−3'],
+      why: '−5x 是 −5 <em>乘以</em> x，代入得 (−5)×2＝−10。把 −5 和 2 連著寫成 −52 是課本點名的錯誤。' },
+
+    { level: 'basic', tag: '求代數式的值',
+      q: '當 x = −2 時，2x − 1 的值是多少？',
+      opts: ['−5', '3', '−3', '5'],
+      why: '2×(−2)－1＝−4－1＝<em>−5</em>。負數代入時要連負號一起乘進去。' },
+
+    { level: 'basic', tag: '求代數式的值',
+      q: '一本書定價 x 元，書局打八折出售。宜鈴有 200 元，買一本後還剩多少元？',
+      opts: ['200 − 0.8x', '200 − 8x', '0.8(200 − x)', '200 ÷ 0.8 − x'],
+      why: '打八折＝<em>定價×0.8</em>，所以付了 0.8x 元，剩下 200－0.8x 元。' },
+
+    /* ── 3-1 一元一次式的運算 ─────────── */
+    { level: 'basic', tag: '同類項的合併',
+      q: '化簡 3x + 5 + 2x + 7，結果是什麼？',
+      opts: ['5x + 12', '17x', '5x + 35', '6x + 12'],
+      why: '只有<em>同類項</em>才能合併：3x＋2x＝5x、5＋7＝12。x 項和常數項不能加在一起。' },
+
+    { level: 'basic', tag: '同類項的合併',
+      q: '化簡 2x − 5 + 4x − 3，結果是什麼？',
+      opts: ['6x − 8', '6x + 8', '6x − 2', '−2x − 8'],
+      why: '2x＋4x＝6x，(−5)＋(−3)＝−8，所以是 6x－8。減號要<em>連著後面的數一起搬</em>。' },
+
+    { level: 'basic', tag: '同類項的合併',
+      q: '化簡 7x − x，結果是什麼？',
+      opts: ['6x', '7x', '7', '6'],
+      why: 'x 的係數是 <em>1</em>（x＝1x），不是 0，所以 7x－1x＝(7－1)x＝6x。' },
+
+    { level: 'basic', tag: '去括號規則',
+      q: '化簡 −(4x − 3)，結果是什麼？',
+      opts: ['−4x + 3', '−4x − 3', '4x − 3', '4x + 3'],
+      why: '括號前面是負號，<em>括號裡每一項都要變號</em>：−4x＋3。只變第一項是最常見的錯。' },
+
+    { level: 'basic', tag: '分配律',
+      q: '化簡 (x + 4) × (−4)，結果是什麼？',
+      opts: ['−4x − 16', 'x − 16', '−4x + 16', '−4x − 4'],
+      why: '分配律要<em>兩項都乘</em>：x×(−4)＋4×(−4)＝−4x－16。' },
+
+    { level: 'basic', tag: '分配律',
+      q: '化簡 −2(3x − 5)，結果是什麼？',
+      opts: ['−6x + 10', '−6x − 10', '6x + 10', '−6x − 5'],
+      why: '(−2)×3x＝−6x，(−2)×(−5)＝<em>＋10</em>（負負得正），所以是 −6x＋10。' },
+
+    /* ── 3-2 一元一次方程式 ───────────── */
+    { level: 'adv', tag: '一元一次方程式的列式',
+      q: '媽媽今年 36 歲、意紋今年 x 歲。若三年前媽媽的年齡是意紋的 3 倍，可以列出哪一個方程式？',
+      opts: ['36 − 3 = 3(x − 3)', '36 = 3x', '36 + 3 = 3x + 3', '36 − 3 = 3x − 3'],
+      why: '三年前<em>兩個人都要減 3</em>：媽媽 (36－3) 歲、意紋 (x－3) 歲，而且意紋那邊要<em>整個</em>乘 3。' },
+
+    { level: 'adv', tag: '方程式的解',
+      q: 'x = −2 是下列哪一個方程式的解？',
+      opts: ['4x − 3 = 2x − 7', '3x + 2 = 1', '2 − x = x', 'x + 3 = 2x − 5'],
+      why: '代入 x＝−2：左邊 4×(−2)－3＝−11，右邊 2×(−2)－7＝−11，<em>兩邊相等</em>，所以 −2 是它的解。' },
+
+    { level: 'adv', tag: '一元一次方程式的列式',
+      q: '媽媽買了 6 盒牛奶（每盒 x 元）和 120 元的麵包，結帳共付 300 元。可以列出哪一個方程式？',
+      opts: ['6x + 120 = 300', '6(x + 120) = 300', 'x + 120 = 300', '6x − 120 = 300'],
+      why: '牛奶 6 盒是 6x 元，麵包<em>只有一份</em> 120 元，不要被括號一起乘進去。' },
+
+    /* ── 3-3 應用問題 ─────────────────── */
+    { level: 'adv', tag: '費用問題',
+      q: '1 盒蛋比 1 盒豆腐貴 60 元，買 1 盒蛋和 4 盒豆腐共付 210 元。設 1 盒豆腐 x 元，可列出哪一個方程式？',
+      opts: ['(x + 60) + 4x = 210', '(x − 60) + 4x = 210', 'x + 4(x + 60) = 210', '5(x + 60) = 210'],
+      why: '<em>貴的是蛋</em>，所以蛋是 (x＋60) 元、豆腐 4 盒是 4x 元。把 60 加到豆腐那邊就錯了。' },
+
+    { level: 'adv', tag: '費用問題',
+      q: '買 2 張全票、3 張學生票共付 3550 元，全票每張比學生票貴 150 元。設 1 張學生票 x 元，可列出哪一個方程式？',
+      opts: ['2(x + 150) + 3x = 3550', '2x + 3(x + 150) = 3550', '2(x − 150) + 3x = 3550', '5x + 150 = 3550'],
+      why: '全票比較貴，一張是 (x＋150) 元，而且<em>2 張都要加</em>，所以是 2(x＋150)。' },
+
+    { level: 'adv', tag: '分配問題',
+      q: '新生編班，班級數固定。每班 25 人會多出 10 人；每班 27 人則不足 20 人。設班級數 x 班，可列出哪一個方程式？',
+      opts: ['25x + 10 = 27x − 20', '25x − 10 = 27x + 20', '25x + 10 = 27x + 20', '25(x + 10) = 27(x − 20)'],
+      why: '等號兩邊都是<em>同一批新生的總人數</em>。「多出 10 人」要<em>加</em>回去，「不足 20 人」要<em>減</em>掉。' },
+
+    { level: 'adv', tag: '分配問題',
+      q: '一包糖果平分給全班，每人 7 顆會多出 4 顆；若再加 44 顆，每人 9 顆剛好分完。設全班 x 人，可列出哪一個方程式？',
+      opts: ['7x + 4 = 9x − 44', '7x + 4 = 9x + 44', '7x − 4 = 9x − 44', '7(x + 4) = 9(x − 44)'],
+      why: '等號兩邊都是<em>原本那包</em>糖果的顆數。每人 9 顆要用掉 9x 顆，其中 44 顆是後來加的，所以要減掉。' },
+
+    { level: 'adv', tag: '分配問題',
+      q: '露營烹飪比賽原本 6 人一組，會多出 2 人；臨時增加 3 個灶位改成 5 人一組，剛好分完。設原本有 x 個灶位，可列出哪一個方程式？',
+      opts: ['6x + 2 = 5(x + 3)', '6x + 2 = 5x + 3', '6x − 2 = 5(x + 3)', '6(x + 2) = 5(x + 3)'],
+      why: '等號兩邊都是<em>總人數</em>。增加 3 個灶位後有 (x＋3) 個灶、每灶 5 人，所以右邊是 5(x＋3)。' },
+
+    { level: 'adv', tag: '折扣問題',
+      q: '阿樂想買一雙鞋，售價比他的預算多 1500 元；後來這雙鞋打 8 折，就比他的預算少 200 元。設預算 x 元，可列出哪一個方程式？',
+      opts: ['(x + 1500) × 0.8 = x − 200', '(x − 1500) × 0.8 = x + 200', '0.8x + 1500 = x − 200', '(x + 1500) × 0.2 = x − 200'],
+      why: '原售價＝預算＋1500，打 8 折是<em>整個售價</em>乘 0.8，所以括號不能拆掉只乘一半。' },
+
+    { level: 'adv', tag: '折扣問題',
+      q: '一個鉛筆盒打 9 折後的價錢，恰好比原售價的一半多 60 元。設原售價 x 元，可列出哪一個方程式？',
+      opts: ['0.9x = 0.5x + 60', '0.9x = 0.5x − 60', '0.9x + 60 = 0.5x', '0.1x = 0.5x + 60'],
+      why: '打 9 折是 0.9x，「原售價的一半多 60」是 0.5x＋60，<em>多 60 要加在一半那邊</em>。' },
+
+    { level: 'adv', tag: '折扣問題',
+      q: '一款汽水買 2 瓶打 9 折，這樣只比買 1 瓶多 16 元。設一瓶原價 x 元，可列出哪一個方程式？',
+      opts: ['2x × 0.9 − x = 16', '2x − 0.9x = 16', '0.9(2x − x) = 16', '2x × 0.9 + x = 16'],
+      why: '買 2 瓶打 9 折要付 2x×0.9 元，買 1 瓶要付 x 元，<em>兩者相差 16 元</em>。' },
+
+    { level: 'adv', tag: '年齡問題',
+      q: '今年小妍和媽媽的年齡和是 56 歲；7 年後，媽媽的年齡是小妍的 2 倍多 10 歲。設小妍今年 x 歲，可列出哪一個方程式？',
+      opts: ['(56 − x) + 7 = 2(x + 7) + 10', '(56 − x) + 7 = 2x + 10', '56 − x = 2x + 10', '(56 − x) + 7 = 2(x − 7) + 10'],
+      why: '7 年後<em>兩個人都要加 7 歲</em>，小妍變成 (x＋7)。只幫媽媽加 7、忘了小妍，是最常見的錯。' },
+
+    { level: 'adv', tag: '年齡問題',
+      q: '小翔與爸爸的年齡相差 35 歲，5 年前爸爸的年齡恰好是小翔的 8 倍。設小翔現在 x 歲，可列出哪一個方程式？',
+      opts: ['(x + 35) − 5 = 8(x − 5)', '(x + 35) − 5 = 8x − 5', '(x + 35) + 5 = 8(x + 5)', 'x + 35 = 8x'],
+      why: '5 年前<em>兩個人都要減 5</em>，小翔是 (x－5) 歲，而且要<em>整個</em>乘 8。' },
+
+    { level: 'adv', tag: '數線問題',
+      q: '數線上 A 青蛙在 −17、B 青蛙在 5，兩隻朝相反方向跳（A 往左、B 往右）。A 跳 1 單位時 B 會跳 3 單位。設 A 跳了 x 單位後位置恰好是 B 的相反數，可列出哪一個方程式？',
+      opts: ['(−17 − x) + (5 + 3x) = 0', '(−17 − x) = (5 + 3x)', '(−17 + x) + (5 − 3x) = 0', '(−17 − x) − (5 + 3x) = 0'],
+      why: '「互為<em>相反數</em>」就是<em>兩數相加等於 0</em>。A 往左變成 −17－x，B 往右變成 5＋3x。' },
+
+    { level: 'adv', tag: '錢幣問題',
+      q: '全班 27 人，一部分人捐 100 元、其他人都捐 50 元，共捐了 1950 元。設捐 100 元的有 x 人，可列出哪一個方程式？',
+      opts: ['100x + 50(27 − x) = 1950', '100x + 50x = 1950', '100x + 50(x − 27) = 1950', '100(27 − x) + 50x = 1950'],
+      why: '捐 100 元的有 x 人，剩下的就是 <em>(27－x) 人</em>捐 50 元，相減的順序不能顛倒。' },
+
+    { level: 'adv', tag: '解與情境的合理性',
+      q: '一張全票 120 元，比一張優待票貴 40 元。買 4 張全票和若干張優待票，算出要付 780 元。這個金額合理嗎？',
+      opts: ['不合理，算出優待票是 3.75 張', '合理，剛好買 3 張優待票', '合理，剛好買 4 張優待票', '不合理，算出張數是負的'],
+      why: '優待票 120－40＝80 元，480＋80x＝780，x＝3.75。<em>張數一定是正整數</em>，算式沒錯但不合情境，所以不合理。' },
+
+    /* ── 歷屆基測會考 ─────────────────── */
+    { level: 'adv', tag: '折扣問題', src: '93 年第一次基本學測',
+      q: '小明以 <b>8 折</b>優待的價錢買文具，共花了 x 元。若沒有這個優待，他原本應付多少元？',
+      opts: () => [`x ÷ ${F(8, 10)}`, `x × ${F(8, 10)}`, '2 + x', '8 + x'],
+      why: () => `x 是<em>打完折之後</em>的錢。原價×${F(8, 10)}＝x，所以原價＝x÷${F(8, 10)}。看到「八折」就乘 0.8 是最常見的陷阱。` },
+
+    { level: 'adv', tag: '折扣問題', src: '91 年第一次基本學測',
+      q: () => `百貨公司把原價 x 元的衣服，改為 (${F(3, 5)}x ＋ 1) 元出售。下列哪一句可以當作促銷標語？`,
+      opts: ['原價打六折再加 1 元', '原價打三折再加 1 元', '原價打三五折再加 1 元', '原價打四折再加 1 元'],
+      why: () => `${F(3, 5)}＝0.6，也就是<em>打六折</em>，再加 1 元。分數要先換成小數，才看得出是幾折。` },
+
+    { level: 'adv', tag: '以文字符號列式', src: '113 年教育會考・通過率 52%',
+      q: '全球平均氣溫每十年上升約 0.08℃，2020 年為 14.88℃。若之後每年上升的度數相同，2020 年之後第 x 年的平均氣溫是多少℃？',
+      opts: ['14.88 + 0.008x', '14.88 + 0.08x', '14.88 + 0.08[x + (2020 − 1880)]', '14.88 + 0.008[x + (2020 − 1880)]'],
+      why: '每<em>十年</em>升 0.08℃，所以每<em>一年</em>只升 0.08÷10＝0.008℃，x 年就是 0.008x。' },
+
+    { level: 'adv', tag: '分段計費', src: '112 年教育會考・通過率 43%',
+      q: '停車場 08:00～20:00 每小時 20 元（該時段最多收 100 元）、20:00～08:00 每小時 5 元（該時段最多收 30 元）。阿虹 10:00 進場、停了 x 小時後離場，離場時間在當日 20:00～24:00 之間，停車費是多少元？',
+      opts: ['5x + 50', '5x + 30', '5x + 150', '5x + 200'],
+      why: '白天 10:00～20:00 共 10 小時原本要 200 元，但<em>該時段最多只收 100 元</em>；夜間停了 (x－10) 小時，5(x－10)＝5x－50。合起來 100＋5x－50＝5x＋50。' },
+
+    { level: 'adv', tag: '折扣問題', src: '102 年基本學測',
+      q: '服飾店外套原價 250 元、襯衫和褲子原價都是 125 元。某日外套打六折、襯衫和褲子打八折，共賣出 200 件、共得 24000 元。設外套賣出 x 件，可列出哪一個方程式？',
+      opts: ['0.6×250x + 0.8×125(200 − x) = 24000', '0.6×250x + 0.8×125(200 + x) = 24000', '0.8×125x + 0.6×250(200 − x) = 24000', '0.8×125x + 0.6×250(200 + x) = 24000'],
+      why: '外套 x 件打<em>六折</em>，其餘 <em>(200－x)</em> 件打八折。總共 200 件，所以另一種件數是 200 減去 x。' },
+
+    { level: 'adv', tag: '費用問題', src: '90 年第二次基本學測',
+      q: '山泉水平日每公升 70 元、假日特價；水桶每個 60 元、容量 3 公升。阿惠假日用販賣的水桶裝 6 公升山泉水回家，共花 330 元。特價每公升多少元？',
+      opts: ['35 元', '45 元', '55 元', '65 元'],
+      why: '6 公升要<em>2 個水桶</em>，桶子花 60×2＝120 元；水花 330－120＝210 元，210÷6＝35 元／公升。忘了算水桶就會選錯。' }
+  ];
+
+  const val = v => (typeof v === 'function' ? v() : v);
+
+  function pool() {
+    return level === 'all' ? QUESTIONS : QUESTIONS.filter(q => q.level === level);
+  }
+
+  /* 洗牌後逐題發，發完才重洗，同一輪不會重複出題 */
+  let deck = [], deckKey = '';
+  function nextQuestion() {
+    if (deckKey !== level || deck.length === 0) {
+      deckKey = level;
+      deck = shuffle(pool());
+    }
+    const src = deck.pop();
+    const opts = val(src.opts);
+    const order = shuffle([0, 1, 2, 3]);
+    return {
+      tag: src.tag,
+      src: src.src || '',
+      q: val(src.q),
+      why: val(src.why),
+      opts: order.map(i => opts[i]),
+      ans: order.indexOf(0)
+    };
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+
+  /* ── 狀態 ───────────────────────────── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true;
+
+  const optBtns = Array.from(document.querySelectorAll('.opt'));
+
+  function setView(v) { document.body.dataset.view = v; }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit; });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? limit <= LIMIT_MIN : limit >= LIMIT_MAX;
+    });
+  }
+
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.level === level));
+    });
+  }
+
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function startQuestion() {
+    cur = nextQuestion();
+    $('rule').innerHTML = cur.src
+      ? `${cur.tag}　<span class="src">【${cur.src}】</span>`
+      : cur.tag;
+    $('quest').innerHTML = cur.q;
+    optBtns.forEach((b, i) => {
+      b.querySelector('.txt').innerHTML = cur.opts[i];
+      b.querySelector('.key').textContent = LBL[i];
+      b.disabled = false;
+      b.classList.remove('is-right', 'is-wrong', 'is-dim');
+    });
+    locked = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + limit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      const ratio = left / (limit * 1000);
+      $('bar').style.transform = `scaleX(${ratio})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 3 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { judge(null); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 判定 ───────────────────────────── */
+  function judge(picked) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    document.body.classList.remove('urgent');
+
+    const timeout = picked === null;
+    const win = !timeout && picked === cur.ans;
+
+    optBtns.forEach((b, i) => {
+      b.disabled = true;
+      if (i === cur.ans) b.classList.add('is-right');
+      else if (i === picked) b.classList.add('is-wrong');
+      else b.classList.add('is-dim');
+    });
+
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+
+    $('sol-tag').innerHTML = cur.src ? `${cur.tag}　【${cur.src}】` : cur.tag;
+    $('sol-ask').innerHTML = cur.q;
+    $('sol-right').innerHTML = `✓ ${LBL[cur.ans]}　${cur.opts[cur.ans]}`;
+    const pk = $('sol-picked');
+    if (!win && !timeout) {
+      pk.innerHTML = `✗ 你選的是 ${LBL[picked]}　${cur.opts[picked]}`;
+      pk.hidden = false;
+    } else {
+      pk.hidden = true;
+    }
+    $('sol-why').innerHTML = cur.why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+
+  optBtns.forEach(b => {
+    b.addEventListener('click', () => judge(Number(b.dataset.i)));
+  });
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limit = clampLimit(limit + Number(b.dataset.step));
+      localStorage.setItem('em-limit', String(limit));
+      paintLimit();
+    });
+  });
+
+  document.querySelectorAll('#level button').forEach(b => {
+    b.addEventListener('click', () => {
+      level = b.dataset.level;
+      localStorage.setItem('em-level', level);
+      deck = [];
+      paintLevel();
+    });
+  });
+
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    localStorage.setItem('em-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      const n = '1234'.indexOf(e.key);
+      const i = n >= 0 ? n : LBL.indexOf(e.key.toUpperCase());
+      if (i >= 0) { e.preventDefault(); judge(i); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); audio(); startQuestion(); }
+    }
+  });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 初始 ───────────────────────────── */
+  paintScore();
+  paintLimit();
+  paintLevel();
+  paintMute();
+})();
+</script>
+</body>
+</html>

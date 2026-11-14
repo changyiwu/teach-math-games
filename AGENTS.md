@@ -24,6 +24,7 @@
 | `header-logo.svg` | 全站 favicon（與 teach-math-web 相同） |
 | `power-challenge/` | 次方大挑戰（1 上 1-4）：`index.html` 遊戲本體、`learn.html` 次方教學表 |
 | `exponent-rules/` | 指數律對錯快判（1 上 2-4）：`index.html` 遊戲本體、`learn.html` 指數律小抄 |
+| `expression-match/` | 列式選選看（1 上 3-1～3-3）：`index.html` 遊戲本體、`learn.html` 列式小抄 |
 | `output/` | 產出物（不進 git） |
 
 ## 專案專屬規則
