@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>指數律小抄 - 指數律對錯快判</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="四條指數律、零次方、負數與分數的乘方，加上一張常見錯誤對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 8px 0 16px;
+    }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+
+    .btn {
+      padding: 9px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.98rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .btn-play {
+      border: 0;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-weight: 800;
+    }
+    .btn-play:hover { color: #231a05; filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 1.3rem;
+      color: var(--accent-2);
+      border-left: 4px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      padding: 18px;
+    }
+    .card .no {
+      display: inline-block;
+      width: 26px;
+      height: 26px;
+      line-height: 26px;
+      text-align: center;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--accent-2);
+      font-weight: 800;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+    .card .law {
+      font-size: clamp(1.25rem, 3.6vw, 1.7rem);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .card .say { color: var(--muted); font-size: 0.96rem; margin: 0 0 10px; }
+    .card .eg {
+      border-top: 1px dashed var(--line);
+      padding-top: 10px;
+      font-size: 1.05rem;
+      color: var(--cyan);
+    }
+
+    sup { font-size: 0.6em; }
+
+    .note {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 14px 18px;
+      margin: 14px 0;
+    }
+    .note b { color: var(--accent-2); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+    }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.78em;
+      margin: 0 0.06em;
+    }
+    .fr i { font-style: normal; padding: 0 0.24em; }
+    .fr i:first-child { border-bottom: 0.09em solid currentColor; }
+
+    /* 包住分數的括號：用 flex 讓括號與分數垂直置中 */
+    .pf { display: inline-flex; align-items: center; vertical-align: middle; }
+    .pf > b { font-weight: inherit; font-size: 1.5em; line-height: 0.9; opacity: 0.85; }
+
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions">
+        <a class="btn btn-play" href="./">🎮 開始挑戰</a>
+      </div>
+    </header>
+
+    <h1>指數律小抄</h1>
+    <p class="lead">康軒 1 上 2-4。下面 <b>a</b>、<b>b</b> 都是不為 0 的數，<b>m</b>、<b>n</b> 是正整數或 0。</p>
+
+    <h2>四條指數律</h2>
+    <div class="grid">
+      <div class="card">
+        <span class="no">1</span>
+        <div class="law">a<sup>m</sup> × a<sup>n</sup> = a<sup>m+n</sup></div>
+        <p class="say">同底數相乘 → 指數<strong>相加</strong>。</p>
+        <div class="eg">5<sup>2</sup> × 5<sup>4</sup> = 5<sup>6</sup></div>
+      </div>
+
+      <div class="card">
+        <span class="no">2</span>
+        <div class="law">a<sup>m</sup> ÷ a<sup>n</sup> = a<sup>m−n</sup></div>
+        <p class="say">同底數相除 → 指數<strong>相減</strong>（課本限 m ＞ n）。</p>
+        <div class="eg">(−2)<sup>5</sup> ÷ (−2)<sup>2</sup> = (−2)<sup>3</sup></div>
+      </div>
+
+      <div class="card">
+        <span class="no">3</span>
+        <div class="law">( a<sup>m</sup> )<sup>n</sup> = a<sup>m×n</sup></div>
+        <p class="say">乘方的乘方 → 指數<strong>相乘</strong>。</p>
+        <div class="eg">( 5<sup>4</sup> )<sup>2</sup> = 5<sup>8</sup></div>
+      </div>
+
+      <div class="card">
+        <span class="no">4</span>
+        <div class="law">( a × b )<sup>m</sup> = a<sup>m</sup> × b<sup>m</sup></div>
+        <p class="say">兩數相乘的乘方 → <strong>每個底數各自</strong>次方。</p>
+        <div class="eg">( 7 × 11 )<sup>4</sup> = 7<sup>4</sup> × 11<sup>4</sup></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>零次方：</b>只要 a 不是 0，就規定 a<sup>0</sup> = 1。例如 10<sup>0</sup> = 1、(−3)<sup>0</sup> = 1、(−1998)<sup>0</sup> = 1。<br>
+      這是為了讓 a<sup>m</sup> ÷ a<sup>n</sup> = a<sup>m−n</sup> 在 m = n 時也成立：7<sup>3</sup> ÷ 7<sup>3</sup> = 1，也等於 7<sup>0</sup>。
+    </div>
+
+    <h2>負數、分數的乘方</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">(−a)<sup>n</sup></div>
+        <p class="say">負號<strong>在括號裡</strong>，連負號一起乘 n 次。<br>負號偶數個得正、奇數個得負。</p>
+        <div class="eg">(−2)<sup>2</sup> = 4、(−2)<sup>3</sup> = −8</div>
+      </div>
+
+      <div class="card">
+        <div class="law">−a<sup>n</sup></div>
+        <p class="say">負號<strong>不在</strong>括號裡，只有 a 自乘 n 次，<strong>算完才加負號</strong>。</p>
+        <div class="eg">−2<sup>2</sup> = −4、−2<sup>3</sup> = −8</div>
+      </div>
+
+      <div class="card">
+        <div class="law"><span class="pf"><b>(</b><span class="fr"><i>b</i><i>a</i></span><b>)</b></span><sup>n</sup> = <span class="fr"><i>b<sup>n</sup></i><i>a<sup>n</sup></i></span></div>
+        <p class="say">分數的乘方 → <strong>分子分母都要</strong>次方。</p>
+        <div class="eg"><span class="pf"><b>(</b><span class="fr"><i>3</i><i>5</i></span><b>)</b></span><sup>2</sup> = <span class="fr"><i>9</i><i>25</i></span></div>
+      </div>
+
+      <div class="card">
+        <div class="law">比較大小</div>
+        <p class="say">底數 0 ~ 1 之間：指數愈大，值<strong>愈小</strong>。<br>底數大於 1：指數愈大，值<strong>愈大</strong>。</p>
+        <div class="eg"><span class="pf"><b>(</b><span class="fr"><i>2</i><i>3</i></span><b>)</b></span><sup>3</sup> ＜ <span class="pf"><b>(</b><span class="fr"><i>2</i><i>3</i></span><b>)</b></span><sup>2</sup> ＜ 1</div>
+      </div>
+    </div>
+
+    <h2>常見錯誤對照表</h2>
+    <table>
+      <caption>遊戲裡的「錯誤」選項大多長得像左邊這一欄。</caption>
+      <thead>
+        <tr><th style="width:42%">常見的錯</th><th>正確</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="bad">a<sup>3</sup> × a<sup>4</sup> = a<sup>12</sup></td>
+          <td class="good">a<sup>3</sup> × a<sup>4</sup> = a<sup>7</sup>（指數相加）</td>
+        </tr>
+        <tr>
+          <td class="bad">a<sup>8</sup> ÷ a<sup>2</sup> = a<sup>4</sup></td>
+          <td class="good">a<sup>8</sup> ÷ a<sup>2</sup> = a<sup>6</sup>（指數相減）</td>
+        </tr>
+        <tr>
+          <td class="bad">( a<sup>3</sup> )<sup>4</sup> = a<sup>7</sup></td>
+          <td class="good">( a<sup>3</sup> )<sup>4</sup> = a<sup>12</sup>（指數相乘）</td>
+        </tr>
+        <tr>
+          <td class="bad">( a × b )<sup>5</sup> = a<sup>5</sup> × b</td>
+          <td class="good">( a × b )<sup>5</sup> = a<sup>5</sup> × b<sup>5</sup></td>
+        </tr>
+        <tr>
+          <td class="bad">a<sup>5</sup> + a<sup>5</sup> = a<sup>10</sup></td>
+          <td class="good">a<sup>5</sup> + a<sup>5</sup> = 2a<sup>5</sup>（相加不是相乘）</td>
+        </tr>
+        <tr>
+          <td class="bad">( 2 + 3 )<sup>2</sup> = 2<sup>2</sup> + 3<sup>2</sup> = 13</td>
+          <td class="good">( 2 + 3 )<sup>2</sup> = 5<sup>2</sup> = 25（加法不能拆）</td>
+        </tr>
+        <tr>
+          <td class="bad">a<sup>0</sup> = 0</td>
+          <td class="good">a<sup>0</sup> = 1（a 不為 0）</td>
+        </tr>
+        <tr>
+          <td class="bad">−3<sup>2</sup> = 9</td>
+          <td class="good">−3<sup>2</sup> = −9；(−3)<sup>2</sup> = 9</td>
+        </tr>
+        <tr>
+          <td class="bad"><span class="pf"><b>(</b><span class="fr"><i>2</i><i>3</i></span><b>)</b></span><sup>2</sup> = <span class="fr"><i>2</i><i>9</i></span></td>
+          <td class="good"><span class="pf"><b>(</b><span class="fr"><i>2</i><i>3</i></span><b>)</b></span><sup>2</sup> = <span class="fr"><i>4</i><i>9</i></span></td>
+        </tr>
+        <tr>
+          <td class="bad">2<sup>3</sup> × 3<sup>2</sup> = 6<sup>5</sup></td>
+          <td class="good">指數一樣才能併底數：2<sup>3</sup> × 3<sup>3</sup> = 6<sup>3</sup></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <footer>
+      <a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a>
+    </footer>
+  </div>
+</body>
+</html>

@@ -12,7 +12,7 @@
 ## 目標與路線圖
 
 - [x] 階段一：從 teach-math-web 搬出「次方大挑戰」，建立遊戲大廳首頁
-- [ ] 階段二：部署 GitHub Pages，教學網側欄改連到本站
+- [x] 階段二：部署 GitHub Pages，教學網側欄改連到本站（側欄卡片指向大廳首頁）
 - [ ] 階段三：陸續新增其他數學遊戲
 
 ## 資料夾結構
@@ -20,8 +20,10 @@
 | 位置 | 用途 |
 |---|---|
 | `index.html` | 遊戲大廳：每款遊戲一張卡片 |
+| `README.md` | 對外說明：使用情境、遊戲清單、課堂操作小抄 |
 | `header-logo.svg` | 全站 favicon（與 teach-math-web 相同） |
-| `power-challenge/` | 次方大挑戰：`index.html` 遊戲本體、`learn.html` 次方教學表 |
+| `power-challenge/` | 次方大挑戰（1 上 1-4）：`index.html` 遊戲本體、`learn.html` 次方教學表 |
+| `exponent-rules/` | 指數律對錯快判（1 上 2-4）：`index.html` 遊戲本體、`learn.html` 指數律小抄 |
 | `output/` | 產出物（不進 git） |
 
 ## 專案專屬規則
@@ -31,6 +33,9 @@
 - 遊戲頁的「回遊戲大廳」連結用相對路徑 `../index.html`，favicon 用 `../header-logo.svg`。
 - 數學內容（題目、記號、用語）遵循 teach-math-web 的共用正本 `docs/reference/shared-math/math-rules.md` 與 `chapter-notes.md`，不在本 repo 另存副本。
 - 畫面需同時適用智慧白板（大字、觸控）與手機寬度。
+- **遊戲一律設計成「一台裝置、一個人操作、全班觀戰」**：課堂情境是投在大螢幕叫學生上台挑戰，不可假設每個學生都有手機或平板，也不要做需要全班同時連線、掃 QR、分組帳號的玩法（那類互動交給 `audience-poll`／`audience-wordcloud` 之類的獨立工具）。學生回家用手機自己玩是第二順位情境，版面要撐得住。
+- 遊戲不記成績、不需登入；設定（限時、難度、音效）用 `localStorage` 記在該台瀏覽器即可。
+- 新增遊戲時同步更新 `README.md` 的〈遊戲清單〉。
 
 ## 同步層級（本專案初始化至第 3 層級）
 

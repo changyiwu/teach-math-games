@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>指數律對錯快判 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="螢幕出一個指數律的式子，限時內判斷對或錯，答錯立刻看正解。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 34ch;
+      line-height: 1.7;
+    }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys {
+      color: var(--muted);
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer {
+      flex: 0 0 auto;
+      height: 10px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(14px, 3vh, 34px);
+      padding: 16px;
+      min-height: 0;
+    }
+
+    .rule-tag {
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+      background: var(--panel);
+    }
+
+    .expr {
+      font-size: clamp(2rem, 8.5vw, 5.6rem);
+      font-weight: 700;
+      line-height: 1.35;
+      text-align: center;
+      letter-spacing: 0.02em;
+      padding: 0 8px;
+      text-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    }
+    .expr sup { font-size: 0.55em; }
+
+    .count {
+      position: absolute;
+      top: 54px;
+      right: 18px;
+      font-size: clamp(2.4rem, 7vw, 4.4rem);
+      font-weight: 800;
+      color: var(--accent-2);
+      opacity: 0.85;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    .answers {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(12px, 2.5vw, 28px);
+      width: min(900px, 100%);
+      padding: 0 8px 8px;
+    }
+
+    .ans {
+      padding: clamp(16px, 4vh, 34px) 10px;
+      border: 2px solid var(--line);
+      border-radius: 20px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: clamp(1.2rem, 3.6vw, 2.1rem);
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s, background 0.15s;
+    }
+    .ans .mark { display: block; font-size: 1.7em; line-height: 1; margin-bottom: 4px; }
+    .ans.yes .mark { color: var(--win); }
+    .ans.no .mark { color: var(--lose); }
+    .ans:hover:not(:disabled) { transform: translateY(-3px); }
+    .ans.yes:hover:not(:disabled) { border-color: var(--win); background: rgba(34, 197, 94, 0.14); }
+    .ans.no:hover:not(:disabled) { border-color: var(--lose); background: rgba(239, 68, 68, 0.14); }
+    .ans:disabled { opacity: 0.45; cursor: default; }
+
+    /* ── 結果 ───────────────────────────────── */
+    .verdict {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 24px 16px;
+      background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.76), rgba(2, 6, 23, 0.94));
+      backdrop-filter: blur(3px);
+      overflow-y: auto;
+    }
+    body[data-view="result"] .verdict { display: flex; }
+
+    .verdict h2 {
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 4.6rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .solution {
+      width: min(760px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: clamp(14px, 3vw, 24px);
+      text-align: center;
+    }
+    .solution .q {
+      font-size: clamp(1.3rem, 4.6vw, 2.5rem);
+      font-weight: 700;
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+    .solution .q sup { font-size: 0.55em; }
+    .solution .tag {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 2px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--cyan);
+      font-size: 0.9rem;
+    }
+    .solution .why {
+      color: var(--text);
+      font-size: clamp(1rem, 2.6vw, 1.35rem);
+      line-height: 1.75;
+      opacity: 0.95;
+    }
+    .solution .why sup { font-size: 0.6em; }
+    .solution .why em {
+      font-style: normal;
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── 堆疊分數 ───────────────────────────── */
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.74em;
+      margin: 0 0.06em;
+    }
+    .fr i { font-style: normal; padding: 0 0.24em; }
+    .fr i:first-child { border-bottom: 0.09em solid currentColor; }
+
+    /* 包住分數的括號：用 flex 讓括號與分數垂直置中 */
+    .pf { display: inline-flex; align-items: center; vertical-align: middle; }
+    .pf > b { font-weight: inherit; font-size: 1.5em; line-height: 0.9; opacity: 0.85; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; }
+    }
+
+    @media (max-height: 520px) {
+      .expr { font-size: clamp(1.6rem, 7vw, 3rem); }
+      .ans { padding: 12px 8px; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">指數律對錯快判</h1>
+      <p class="hint">螢幕出一個式子，<span class="limit-val">8</span> 秒內判斷它<strong>對</strong>還是<strong>錯</strong>。答錯會立刻告訴你哪裡錯了。</p>
+
+      <div class="ctl-row">
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-1" aria-label="減少 1 秒">−</button>
+          <b class="limit-val">8</b>秒
+          <button type="button" data-step="1" aria-label="增加 1 秒">＋</button>
+        </div>
+        <div class="seg" id="level" role="group" aria-label="題組難度">
+          <button type="button" data-level="basic" aria-pressed="false">基礎</button>
+          <button type="button" data-level="adv" aria-pressed="false">進階</button>
+          <button type="button" data-level="all" aria-pressed="true">混合</button>
+        </div>
+      </div>
+
+      <button type="button" class="big-btn" id="start">🎲 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看指數律小抄</a>
+      <p class="keys">鍵盤：<kbd>←</kbd> 正確　<kbd>→</kbd> 錯誤　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <!-- ── 作答 ───────────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="count" id="count">8</div>
+
+    <div class="play-body">
+      <div class="rule-tag" id="rule">指數律</div>
+      <div class="expr" id="expr"></div>
+      <div class="answers">
+        <button type="button" class="ans yes" id="btn-yes"><span class="mark" aria-hidden="true">○</span>正確</button>
+        <button type="button" class="ans no" id="btn-no"><span class="mark" aria-hidden="true">✗</span>錯誤</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 判定 ───────────────────────────── -->
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="tag" id="sol-tag">指數律</div>
+      <div class="q" id="sol-q"></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器）────────────── */
+  const LIMIT_MIN = 3, LIMIT_MAX = 20;
+  let limit = clampLimit(parseInt(localStorage.getItem('exp-limit'), 10) || 8);
+  let level = ['basic', 'adv', 'all'].includes(localStorage.getItem('exp-level'))
+    ? localStorage.getItem('exp-level') : 'all';
+  let muted = localStorage.getItem('exp-muted') === '1';
+
+  function clampLimit(v) { return Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v)); }
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const coin = () => Math.random() < 0.5;
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+
+  const MINUS = '−';          // 數學減號
+  const TIMES = '×';          // ×
+  const DIV = '÷';            // ÷
+  const NEQ = '≠';            // ≠
+
+  const p = (base, exp) => `${base}<sup>${exp}</sup>`;
+  const par = s => `(${s})`;
+  const fr = (n, d) => `<span class="fr"><i>${n}</i><i>${d}</i></span>`;
+  const parFr = s => `<span class="pf"><b>(</b>${s}<b>)</b></span>`;
+  const neg = s => `${MINUS}${s}`;
+
+  // 字母底數（課本用 a、b；x 也常見）
+  const letter = () => pickOf(['a', 'b', 'x']);
+  const numBase = () => R(2, 9);
+
+  // 兩個不同字母，依 a、b、x、y 的順序排
+  const ORDER = ['a', 'b', 'x', 'y'];
+  function letterPair() {
+    const i = R(0, ORDER.length - 2);
+    const j = R(i + 1, ORDER.length - 1);
+    return [ORDER[i], ORDER[j]];
+  }
+
+  // 分數一律給最簡分數；proper 為 true 時限定 0 ~ 1 之間
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  function fracPair(proper) {
+    for (;;) {
+      const d = R(2, 5);
+      const n = proper ? R(1, d - 1) : R(1, 7);
+      if (n !== d && gcd(n, d) === 1) return [n, d];
+    }
+  }
+
+  /* ── 題庫產生器 ───────────────────────
+     每個產生器回傳 { html, ok, why, rule }
+     ok 為這條式子是否成立；why 是答案說明。
+  ─────────────────────────────────────── */
+
+  const GENS = [
+    // ① aᵐ × aⁿ = aᵐ⁺ⁿ
+    { level: 'basic', rule: `a${'<sup>m</sup>'}${TIMES}a${'<sup>n</sup>'}`, make() {
+      const a = coin() ? letter() : numBase();
+      let m, n;
+      do { m = R(2, 7); n = R(2, 7); } while (m + n === m * n);
+      const ok = coin();
+      const shown = ok ? m + n : m * n;
+      return {
+        html: `${p(a, m)} ${TIMES} ${p(a, n)} = ${p(a, shown)}`,
+        ok,
+        why: ok
+          ? `同底數相乘，<em>指數相加</em>：${m}＋${n}＝${m + n}。`
+          : `同底數相乘要把<em>指數相加</em>，不是相乘。正確是 ${p(a, `${m}+${n}`)}＝${p(a, m + n)}，不是 ${p(a, m * n)}。`
+      };
+    } },
+
+    // ② aᵐ ÷ aⁿ = aᵐ⁻ⁿ
+    { level: 'basic', rule: `a${'<sup>m</sup>'}${DIV}a${'<sup>n</sup>'}`, make() {
+      const a = coin() ? letter() : numBase();
+      const n = R(2, 4), m = n + R(2, 5);
+      const ok = coin();
+      const shown = ok ? m - n : m + n;
+      return {
+        html: `${p(a, m)} ${DIV} ${p(a, n)} = ${p(a, shown)}`,
+        ok,
+        why: ok
+          ? `同底數相除，<em>指數相減</em>：${m}${MINUS}${n}＝${m - n}。`
+          : `相除要<em>指數相減</em>，相加是乘法才用的。正確是 ${p(a, `${m}${MINUS}${n}`)}＝${p(a, m - n)}。`
+      };
+    } },
+
+    // ③ (aᵐ)ⁿ = aᵐˣⁿ
+    { level: 'basic', rule: `(a${'<sup>m</sup>'})${'<sup>n</sup>'}`, make() {
+      const a = coin() ? letter() : numBase();
+      let m, n;
+      do { m = R(2, 6); n = R(2, 5); } while (m + n === m * n);
+      const ok = coin();
+      const shown = ok ? m * n : m + n;
+      return {
+        html: `${p(par(p(a, m)), n)} = ${p(a, shown)}`,
+        ok,
+        why: ok
+          ? `乘方的乘方，<em>指數相乘</em>：${m}${TIMES}${n}＝${m * n}。`
+          : `乘方的乘方要<em>指數相乘</em>。${p(par(p(a, m)), n)} 是 ${n} 個 ${p(a, m)} 相乘，正確是 ${p(a, m * n)}，不是 ${p(a, m + n)}。`
+      };
+    } },
+
+    // ④ (a×b)ᵐ = aᵐ×bᵐ
+    { level: 'basic', rule: `(a${TIMES}b)${'<sup>m</sup>'}`, make() {
+      const [a, b] = letterPair(); const m = R(2, 6);
+      const ok = coin();
+      return {
+        html: `${p(par(`${a}${TIMES}${b}`), m)} = ${ok ? `${p(a, m)} ${TIMES} ${p(b, m)}` : `${p(a, m)} ${TIMES} ${b}`}`,
+        ok,
+        why: ok
+          ? `兩數相乘的乘方，<em>兩個底數都要各自次方</em>：${p(a, m)}${TIMES}${p(b, m)}。`
+          : `${b} 也要次方才對。正確是 ${p(a, m)}${TIMES}${p(b, m)}，不是只有 ${a} 次方。`
+      };
+    } },
+
+    // ⑤ a⁰ = 1
+    { level: 'basic', rule: `a${'<sup>0</sup>'}`, make() {
+      const style = R(0, 2);
+      const base = style === 0 ? String(numBase() * R(1, 9))
+        : style === 1 ? par(neg(R(2, 30)))
+          : letter();
+      const ok = coin();
+      return {
+        html: `${p(base, 0)} = ${ok ? 1 : 0}`,
+        ok,
+        why: ok
+          ? `只要底數<em>不是 0</em>，零次方都等於 <em>1</em>。`
+          : `零次方等於 <em>1</em>，不是 0。${p(base, 0)}＝1。`
+      };
+    } },
+
+    // ⑥ 數值型：同底相乘後算出值
+    { level: 'basic', rule: '算出數值', make() {
+      const a = pickOf([2, 2, 3, 5]);
+      const m = R(1, 3), n = R(1, 3);
+      const right = Math.pow(a, m + n);
+      let wrong = Math.pow(a, m * n);
+      if (wrong === right || wrong > 99999) wrong = Math.pow(a, m + n + 1);
+      const ok = coin();
+      return {
+        html: `${p(a, m)} ${TIMES} ${p(a, n)} = ${ok ? right : wrong}`,
+        ok,
+        why: ok
+          ? `${p(a, m)}${TIMES}${p(a, n)}＝${p(a, m + n)}＝${right}。`
+          : `${p(a, m)}${TIMES}${p(a, n)}＝${p(a, `${m}+${n}`)}＝${p(a, m + n)}＝<em>${right}</em>，不是 ${wrong}。`
+      };
+    } },
+
+    // ⑦ 迷思：aᵏ + aᵏ 不是 a²ᵏ
+    { level: 'basic', rule: '相加不是相乘', make() {
+      const a = coin() ? letter() : numBase();
+      const k = R(3, 7);
+      const ok = coin();
+      return {
+        html: `${p(a, k)} + ${p(a, k)} = ${ok ? `2${p(a, k)}` : p(a, 2 * k)}`,
+        ok,
+        why: ok
+          ? `兩個一樣的東西相加是<em>兩倍</em>：${p(a, k)}＋${p(a, k)}＝2${p(a, k)}。指數律是給<em>相乘</em>用的。`
+          : `指數相加只能用在<em>相乘</em>。這裡是相加，答案是 <em>2${p(a, k)}</em>；${p(a, 2 * k)} 要由 ${p(a, k)}${TIMES}${p(a, k)} 才得到。`
+      };
+    } },
+
+    // ⑧ (a×b)ᵐ 可以拆、(a+b)ᵐ 不能拆
+    { level: 'basic', rule: '括號裡是乘還是加', make() {
+      const a = R(2, 5), b = R(2, 6), m = R(2, 3);
+      const ok = coin();
+      const op = ok ? TIMES : '+';
+      const lhs = p(par(`${a}${op}${b}`), m);
+      const rhs = `${p(a, m)} ${op} ${p(b, m)}`;
+      const lv = ok ? Math.pow(a * b, m) : Math.pow(a + b, m);
+      const rv = ok ? Math.pow(a, m) * Math.pow(b, m) : Math.pow(a, m) + Math.pow(b, m);
+      return {
+        html: `${lhs} = ${rhs}`,
+        ok,
+        why: ok
+          ? `括號裡是<em>相乘</em>才可以各自次方：兩邊都等於 ${lv}。`
+          : `括號裡是<em>相加</em>就不能各自次方。左邊＝${p(a + b, m)}＝<em>${lv}</em>，右邊＝${rv}，${lv} ${NEQ} ${rv}。`
+      };
+    } },
+
+    // ⑨ 負數的乘方
+    { level: 'adv', rule: '負數的乘方', make() {
+      const a = R(2, 5), n = R(2, 4);
+      const right = Math.pow(-a, n);
+      const ok = coin();
+      return {
+        html: `${p(par(neg(a)), n)} = ${(ok ? right : -right).toString().replace('-', MINUS)}`,
+        ok,
+        why: ok
+          ? `${n} 個負數相乘，負號有 ${n} 個，${n % 2 === 0 ? '偶數個負號相乘得<em>正</em>' : '奇數個負號相乘得<em>負</em>'}，所以是 ${String(right).replace('-', MINUS)}。`
+          : `${n} 個 ${par(neg(a))} 相乘，${n % 2 === 0 ? '負號有偶數個，結果是<em>正</em>的' : '負號有奇數個，結果是<em>負</em>的'}，正確是 <em>${String(right).replace('-', MINUS)}</em>。`
+      };
+    } },
+
+    // ⑩ −aⁿ 和 (−a)ⁿ 不一樣
+    { level: 'adv', rule: `${MINUS}a${'<sup>n</sup>'} 與 (${MINUS}a)${'<sup>n</sup>'}`, make() {
+      const a = R(2, 5), n = pickOf([2, 2, 4]);   // 偶次方才看得出差別
+      const inside = coin();                       // true: (−a)ⁿ，false: −aⁿ
+      const right = inside ? Math.pow(-a, n) : -Math.pow(a, n);
+      const ok = coin();
+      const lhs = inside ? p(par(neg(a)), n) : neg(p(a, n));
+      return {
+        html: `${lhs} = ${(ok ? right : -right).toString().replace('-', MINUS)}`,
+        ok,
+        why: ok
+          ? (inside
+            ? `括號包住負號，<em>連負號一起</em>乘 ${n} 次，偶次方得正：${right}。`
+            : `負號<em>沒有</em>被括號包住，只有 ${a} 自乘 ${n} 次，算完才加負號：${MINUS}${Math.pow(a, n)}。`)
+          : (inside
+            ? `${par(neg(a))} 的 ${n} 次方是把<em>整個 ${par(neg(a))}</em> 乘 ${n} 次，偶次方得正，應該是 <em>${right}</em>。`
+            : `${neg(p(a, n))} 的負號<em>不在</em>括號裡，只有 ${a} 自乘 ${n} 次，再加負號，應該是 <em>${MINUS}${Math.pow(a, n)}</em>。`)
+      };
+    } },
+
+    // ⑪ 分數的乘方
+    { level: 'adv', rule: '分數的乘方', make() {
+      const [n, d] = fracPair(false);
+      const e = R(2, 3);
+      const rn = Math.pow(n, e), rd = Math.pow(d, e);
+      const ok = coin();
+      const shown = ok ? fr(rn, rd) : (coin() ? fr(n, rd) : fr(rn, d));
+      return {
+        html: `${p(parFr(fr(n, d)), e)} = ${shown}`,
+        ok,
+        why: ok
+          ? `分數的乘方，<em>分子分母都要次方</em>：${fr(`${n}<sup>${e}</sup>`, `${d}<sup>${e}</sup>`)}＝${fr(rn, rd)}。`
+          : `分子和分母<em>都要</em>次方。正確是 ${fr(`${n}<sup>${e}</sup>`, `${d}<sup>${e}</sup>`)}＝<em>${fr(rn, rd)}</em>。`
+      };
+    } },
+
+    // ⑫ 分數底數套指數律
+    { level: 'adv', rule: '分數底數的指數律', make() {
+      const [n, d] = fracPair(false);
+      const b = R(2, 3), m = b + R(3, 5);
+      const base = parFr(fr(n, d));
+      const ok = coin();
+      const shown = ok ? m - b : m - b - 1;
+      return {
+        html: `${p(base, m)} ${DIV} ${p(base, b)} = ${p(base, shown)}`,
+        ok,
+        why: ok
+          ? `底數一樣（都是 ${fr(n, d)}），相除就<em>指數相減</em>：${m}${MINUS}${b}＝${m - b}。`
+          : `指數要相減：${m}${MINUS}${b}＝<em>${m - b}</em>，所以是 ${p(base, m - b)}。`
+      };
+    } },
+
+    // ⑬ 乘方的比較大小
+    { level: 'adv', rule: '乘方的比較大小', make() {
+      const small = coin();                       // true: 0<底數<1
+      const lo = R(2, 3), hi = lo + R(1, 3);      // 指數 lo < hi
+      let base, bigger;
+      if (small) {
+        const [n, d] = fracPair(true);
+        base = parFr(fr(n, d));
+        bigger = lo;                              // 底數在 0~1，指數愈大值愈小
+      } else {
+        base = String(R(2, 5));
+        bigger = hi;                              // 底數大於 1，指數愈大值愈大
+      }
+      const smaller = bigger === lo ? hi : lo;
+      const ok = coin();
+      const left = ok ? bigger : smaller, right = ok ? smaller : bigger;
+      return {
+        html: `${p(base, left)} &gt; ${p(base, right)}`,
+        ok,
+        why: small
+          ? (ok
+            ? `底數在 0 和 1 之間，<em>指數愈大、值愈小</em>，所以 ${p(base, lo)} ${'>'} ${p(base, hi)}。`
+            : `底數在 0 和 1 之間，每乘一次就更小，<em>指數愈大反而愈小</em>，正確是 ${p(base, lo)} ${'>'} ${p(base, hi)}。`)
+          : (ok
+            ? `底數大於 1，<em>指數愈大、值愈大</em>，所以 ${p(base, hi)} ${'>'} ${p(base, lo)}。`
+            : `底數大於 1，每乘一次就更大，<em>指數愈大值愈大</em>，正確是 ${p(base, hi)} ${'>'} ${p(base, lo)}。`)
+      };
+    } },
+
+    // ⑭ 兩條律合起來用
+    { level: 'adv', rule: '兩條律合用', make() {
+      const a = letter();
+      const m = R(2, 4), n = R(2, 3), k = R(2, 5);
+      const right = m * n + k;
+      const ok = coin();
+      const wrong = m + n + k === right ? right + 1 : m + n + k;
+      return {
+        html: `${p(par(p(a, m)), n)} ${TIMES} ${p(a, k)} = ${p(a, ok ? right : wrong)}`,
+        ok,
+        why: ok
+          ? `先算乘方的乘方：${p(par(p(a, m)), n)}＝${p(a, m * n)}；再同底相乘：${m * n}＋${k}＝${right}。`
+          : `先 ${m}${TIMES}${n}＝${m * n}（乘方的乘方，指數相乘），再 ${m * n}＋${k}＝<em>${right}</em>（同底相乘，指數相加），所以是 ${p(a, right)}。`
+      };
+    } },
+
+    // ⑮ 底數不同不能亂合併
+    { level: 'adv', rule: '底數不同能不能合併', make() {
+      const a = pickOf([2, 3]), b = a === 2 ? pickOf([3, 5]) : pickOf([2, 5]);
+      const ok = coin();
+      if (ok) {
+        const m = R(2, 4);
+        return {
+          html: `${p(a, m)} ${TIMES} ${p(b, m)} = ${p(a * b, m)}`,
+          ok: true,
+          why: `指數<em>一樣</em>的時候可以把底數乘起來：${p(a, m)}${TIMES}${p(b, m)}＝${p(par(`${a}${TIMES}${b}`), m)}＝${p(a * b, m)}。`
+        };
+      }
+      const m = R(2, 4);
+      let n; do { n = R(2, 4); } while (n === m);
+      return {
+        html: `${p(a, m)} ${TIMES} ${p(b, n)} = ${p(a * b, m + n)}`,
+        ok: false,
+        why: `底數不同、指數也不同，<em>不能合併</em>。${p(a, m)}${TIMES}${p(b, n)}＝${Math.pow(a, m) * Math.pow(b, n)}，而 ${p(a * b, m + n)}＝${Math.pow(a * b, m + n)}，兩個不一樣。`
+      };
+    } }
+  ];
+
+  function pool() {
+    return level === 'all' ? GENS : GENS.filter(g => g.level === level);
+  }
+
+  let lastHtml = '';
+  function nextQuestion() {
+    const list = pool();
+    let q;
+    for (let i = 0; i < 12; i++) {
+      const g = list[R(0, list.length - 1)];
+      q = g.make();
+      q.rule = g.rule;
+      if (q.html !== lastHtml) break;
+    }
+    lastHtml = q.html;
+    return q;
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+
+  /* ── 狀態 ───────────────────────────── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true;
+
+  function setView(v) { document.body.dataset.view = v; }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit; });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? limit <= LIMIT_MIN : limit >= LIMIT_MAX;
+    });
+  }
+
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.level === level));
+    });
+  }
+
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function startQuestion() {
+    cur = nextQuestion();
+    $('rule').innerHTML = cur.rule;
+    $('expr').innerHTML = cur.html;
+    $('btn-yes').disabled = $('btn-no').disabled = false;
+    locked = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + limit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      const ratio = left / (limit * 1000);
+      $('bar').style.transform = `scaleX(${ratio})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 3 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { judge(null); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 判定 ───────────────────────────── */
+  function judge(answer) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    $('btn-yes').disabled = $('btn-no').disabled = true;
+    document.body.classList.remove('urgent');
+
+    const timeout = answer === null;
+    const win = !timeout && answer === cur.ok;
+
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+
+    $('sol-tag').innerHTML = cur.rule;
+    $('sol-q').innerHTML = `${cur.html}　<span style="color:${cur.ok ? 'var(--win)' : 'var(--lose)'}">${cur.ok ? '○ 正確' : '✗ 錯誤'}</span>`;
+    $('sol-why').innerHTML = cur.why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+
+  $('btn-yes').addEventListener('click', () => judge(true));
+  $('btn-no').addEventListener('click', () => judge(false));
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limit = clampLimit(limit + Number(b.dataset.step));
+      localStorage.setItem('exp-limit', String(limit));
+      paintLimit();
+    });
+  });
+
+  document.querySelectorAll('#level button').forEach(b => {
+    b.addEventListener('click', () => {
+      level = b.dataset.level;
+      localStorage.setItem('exp-level', level);
+      paintLevel();
+    });
+  });
+
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    localStorage.setItem('exp-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      if (e.key === 'ArrowLeft' || e.key === 'o' || e.key === 'O' || e.key === '1') { e.preventDefault(); judge(true); }
+      else if (e.key === 'ArrowRight' || e.key === 'x' || e.key === 'X' || e.key === '2') { e.preventDefault(); judge(false); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); audio(); startQuestion(); }
+    }
+  });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  paintLimit();
+  paintLevel();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>
