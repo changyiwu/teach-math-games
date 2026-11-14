@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>移項闖關 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="一步一步解一元一次方程式：每次從四個操作裡挑一個，限時內把方程式變成 x = □。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 36ch;
+      line-height: 1.7;
+    }
+
+    .demo {
+      font-size: clamp(1.2rem, 3.4vw, 1.8rem);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .demo small { display: block; font-size: 0.55em; color: var(--cyan); font-weight: 400; }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 2.1em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys {
+      color: var(--muted);
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer {
+      flex: 0 0 auto;
+      height: 10px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(8px, 1.6vh, 18px);
+      padding: 12px 16px 16px;
+      min-height: 0;
+    }
+
+    .rule-tag {
+      flex: 0 0 auto;
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+      background: var(--panel);
+      text-align: center;
+    }
+    .rule-tag b { color: var(--accent-2); }
+
+    .count {
+      position: absolute;
+      top: 54px;
+      right: 18px;
+      font-size: clamp(2.2rem, 6vw, 4rem);
+      font-weight: 800;
+      color: var(--accent-2);
+      opacity: 0.85;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+      z-index: 2;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    /* ── 黑板：一行一行往下寫 ───────────────── */
+    .board {
+      --k: 1;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      display: grid;
+      grid-template-columns: max-content auto max-content;
+      justify-content: center;
+      align-content: unsafe end;
+      column-gap: 0.55em;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 26%);
+      mask-image: linear-gradient(to bottom, transparent 0, #000 26%);
+    }
+    .ln { display: contents; }
+    .ln > span {
+      font-weight: 700;
+      white-space: nowrap;
+      line-height: 1.5;
+      color: var(--muted);
+      font-size: calc(var(--k) * clamp(1.05rem, 3vw, 1.9rem));
+      transition: font-size 0.3s, color 0.3s;
+      position: relative;
+    }
+    .ln > .l { text-align: right; }
+    .ln > .r { text-align: left; }
+    .ln.cur > span { color: var(--text); font-size: calc(var(--k) * clamp(1.8rem, 6.2vw, 4.2rem)); }
+    .ln.new > span { animation: slideIn 0.35s ease-out; }
+    .ln.done > span { color: var(--win); text-shadow: 0 0 26px rgba(34, 197, 94, 0.55); animation: pop 0.45s cubic-bezier(0.2, 1.5, 0.4, 1); }
+    .ln.bad > span {
+      color: var(--lose);
+      font-size: calc(var(--k) * clamp(1.4rem, 4.6vw, 3rem));
+      animation: shake 0.42s;
+    }
+    .ln.bad > span::after {
+      content: "";
+      position: absolute;
+      left: -0.1em;
+      right: -0.1em;
+      top: 52%;
+      height: 0.09em;
+      background: var(--lose);
+      border-radius: 2px;
+    }
+    .ln.bad > .e::after { left: -0.2em; right: -0.2em; }
+
+    .note {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: calc(var(--k) * clamp(0.8rem, 1.8vw, 1.05rem));
+      color: var(--cyan);
+      line-height: 1.6;
+      white-space: nowrap;
+      /* 寬度設 0、內容置中外溢：註記不撐開等號兩側的欄寬 */
+      width: 0;
+      justify-self: center;
+      display: flex;
+      justify-content: center;
+    }
+    .note.detour { color: var(--accent-2); }
+    .note.bad { color: var(--lose); }
+    .note.new { animation: fadeIn 0.3s ease-out; }
+
+    @keyframes slideIn {
+      from { transform: translateY(0.8em); opacity: 0; }
+      to { transform: none; opacity: 1; }
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes shake {
+      0%, 100% { transform: none; }
+      20% { transform: translateX(-10px); }
+      40% { transform: translateX(9px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(4px); }
+    }
+
+    /* ── 回饋列 ─────────────────────────────── */
+    .fb {
+      flex: 0 0 auto;
+      width: min(1000px, 100%);
+      min-height: 3.4em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: clamp(0.92rem, 2.1vw, 1.2rem);
+      line-height: 1.6;
+      text-align: center;
+    }
+    .fb em { font-style: normal; color: var(--accent-2); font-weight: 700; }
+    .fb.good { border-color: rgba(34, 197, 94, 0.55); color: #bbf7d0; }
+    .fb.detour { border-color: rgba(245, 158, 11, 0.6); color: #fde68a; }
+    .fb.bad { border-color: rgba(239, 68, 68, 0.7); color: #fecaca; background: rgba(127, 29, 29, 0.35); animation: fadeIn 0.25s; }
+    .fb.bad em { color: #fff; }
+
+    .opts {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(8px, 1.6vw, 18px);
+      width: min(1000px, 100%);
+    }
+
+    .opt {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: clamp(54px, 9vh, 92px);
+      padding: 8px clamp(10px, 1.8vw, 18px);
+      border: 2px solid var(--line);
+      border-radius: 18px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s, background 0.15s, opacity 0.15s;
+    }
+    .opt[hidden] { display: none; }
+    .opt .key {
+      flex: 0 0 auto;
+      width: 1.9em;
+      height: 1.9em;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      color: var(--cyan);
+      font-size: clamp(0.9rem, 2vw, 1.25rem);
+      font-weight: 800;
+    }
+    .opt .txt {
+      flex: 1 1 auto;
+      font-size: clamp(1.05rem, 2.8vw, 1.9rem);
+      font-weight: 700;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+    .opt:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--accent); }
+    .opt:disabled { cursor: default; }
+    .opt.is-wrong { border-color: var(--lose); background: rgba(239, 68, 68, 0.14); opacity: 0.55; }
+    .opt.is-wrong .key { color: var(--lose); border-color: var(--lose); }
+    .opt.is-wrong .txt { text-decoration: line-through; text-decoration-color: var(--lose); }
+    .opt.is-pick { border-color: var(--win); background: rgba(34, 197, 94, 0.16); }
+
+    /* ── 結果 ───────────────────────────────── */
+    .verdict {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: safe center;
+      gap: 14px;
+      padding: 24px 16px;
+      background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95));
+      backdrop-filter: blur(3px);
+      overflow-y: auto;
+    }
+    body[data-view="result"] .verdict { display: flex; }
+
+    .verdict h2 {
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 4.6rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .solution {
+      width: min(820px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: clamp(14px, 3vw, 24px);
+      text-align: center;
+    }
+    .solution .tag {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 2px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--cyan);
+      font-size: 0.9rem;
+    }
+    .solution .sum {
+      font-size: clamp(1.1rem, 3.2vw, 1.7rem);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .solution .sum b { color: var(--accent-2); font-size: 1.2em; }
+    .solution .sub {
+      color: var(--muted);
+      font-size: clamp(0.9rem, 2.1vw, 1.1rem);
+      margin-bottom: 12px;
+    }
+    .solution h3 {
+      margin: 14px 0 6px;
+      font-size: 1rem;
+      color: var(--cyan);
+      font-weight: 600;
+    }
+    .solution .check {
+      margin-top: 12px;
+      color: #bbf7d0;
+      font-size: clamp(0.95rem, 2.3vw, 1.2rem);
+      line-height: 1.6;
+    }
+
+    .mini {
+      display: grid;
+      grid-template-columns: max-content auto max-content;
+      justify-content: center;
+      column-gap: 0.55em;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 4px 0;
+    }
+    .mini .ln > span { color: var(--text); font-size: clamp(1rem, 3vw, 1.6rem); animation: none; }
+    .mini .ln.bad > span { color: var(--lose); font-size: clamp(0.95rem, 2.8vw, 1.45rem); animation: none; }
+    .mini .ln.done > span { color: var(--win); animation: none; }
+    .mini .note { font-size: clamp(0.78rem, 1.8vw, 0.95rem); }
+
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── 堆疊分數 ───────────────────────────── */
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.74em;
+      margin: 0 0.06em;
+    }
+    .fr i { font-style: normal; padding: 0 0.24em; }
+    .fr i:first-child { border-bottom: 0.09em solid currentColor; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 64px; right: 12px; font-size: 2rem; }
+      .seg button { padding: 9px 12px; }
+      .opt { gap: 8px; border-radius: 14px; }
+      .opt .key { width: 1.6em; height: 1.6em; }
+      .play-body { padding: 10px 12px 12px; }
+      .keys { display: none; }
+    }
+
+    @media (max-height: 560px) {
+      .opt { min-height: 46px; }
+      .fb { min-height: 2.6em; padding: 4px 12px; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">過關 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">移項闖關</h1>
+      <p class="hint">每一步從四個操作裡挑一個，<span class="limit-val">20</span> 秒內把方程式變成 <strong>x = □</strong>。選錯會變紅並告訴你為什麼，可以馬上重選；<strong>步數越少越好</strong>。</p>
+      <div class="demo">5x + 3 = 18<small>⬇ 兩邊同減 3</small>5x = 15<small>⬇ 兩邊同除以 5</small>x = 3</div>
+
+      <div class="ctl-row">
+        <div class="seg" id="level" role="group" aria-label="難度">
+          <button type="button" data-level="basic" aria-pressed="true">基礎・一步</button>
+          <button type="button" data-level="adv" aria-pressed="false">進階・兩三步</button>
+          <button type="button" data-level="frac" aria-pressed="false">去分母</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-5" aria-label="減少 5 秒">−</button>
+          <b class="limit-val">20</b>秒
+          <button type="button" data-step="5" aria-label="增加 5 秒">＋</button>
+        </div>
+      </div>
+
+      <button type="button" class="big-btn" id="start">🎲 開始闖關</button>
+      <a class="learn-link" href="learn.html">📖 先看移項法則小抄</a>
+      <p class="keys">鍵盤：<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 或 <kbd>A</kbd>～<kbd>D</kbd> 選操作　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <!-- ── 作答 ───────────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連續過關 <b id="streak-n">0</b></div>
+      <div class="stat">過關 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="count" id="count">20</div>
+
+    <div class="play-body">
+      <div class="rule-tag" id="rule"></div>
+      <div class="board" id="board" aria-live="polite"></div>
+      <div class="fb" id="fb"></div>
+      <div class="opts" id="opts">
+        <button type="button" class="opt" data-i="0"><span class="key">A</span><span class="txt"></span></button>
+        <button type="button" class="opt" data-i="1"><span class="key">B</span><span class="txt"></span></button>
+        <button type="button" class="opt" data-i="2"><span class="key">C</span><span class="txt"></span></button>
+        <button type="button" class="opt" data-i="3"><span class="key">D</span><span class="txt"></span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 判定 ───────────────────────────── -->
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">過關！</h2>
+    <div class="solution">
+      <div class="tag" id="sol-tag"></div>
+      <div class="sum" id="sol-sum"></div>
+      <div class="sub" id="sol-sub"></div>
+      <div id="sol-mine"></div>
+      <div id="sol-best"></div>
+      <div class="check" id="sol-check"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  /* ── 難度與設定（記在這台瀏覽器）────────── */
+  const LEVELS = {
+    basic: { name: '基礎・一步', def: 20 },
+    adv:   { name: '進階・兩三步', def: 30 },
+    frac:  { name: '去分母', def: 45 }
+  };
+  const LIMIT_MIN = 10, LIMIT_MAX = 120;
+
+  function clampLimit(v) {
+    const n = Math.round(v / 5) * 5;
+    return Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, n));
+  }
+  function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 無痕模式 */ } }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  let level = LEVELS[load('es-level')] ? load('es-level') : 'basic';
+  const limits = {};
+  Object.keys(LEVELS).forEach(k => {
+    limits[k] = clampLimit(parseInt(load('es-limit-' + k), 10) || LEVELS[k].def);
+  });
+  let muted = load('es-muted') === '1';
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const nz = (a, b) => { let v; do { v = R(a, b); } while (v === 0); return v; };
+  const pickOne = arr => arr[R(0, arr.length - 1)];
+  const F = (n, d) => `<span class="fr"><i>${n}</i><i>${d}</i></span>`;
+  const LBL = ['A', 'B', 'C', 'D'];
+  const MINUS = '−';
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = R(0, i);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  /* ── 有理數 ─────────────────────────── */
+  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a || 1; };
+  function Q(n, d = 1) {
+    if (d < 0) { n = -n; d = -d; }
+    const g = gcd(n, d);
+    return { n: n / g + 0, d: d / g };
+  }
+  const toQ = v => (typeof v === 'number' ? Q(v) : v);
+  const qa = (x, y) => Q(x.n * y.d + y.n * x.d, x.d * y.d);
+  const qm = (x, y) => Q(x.n * y.n, x.d * y.d);
+  const qdv = (x, y) => Q(x.n * y.d, x.d * y.n);
+  const qn = x => Q(-x.n, x.d);
+  const qabs = x => Q(Math.abs(x.n), x.d);
+  const qz = x => x.n === 0;
+  const qi = x => x.d === 1;
+  const qeq = (x, y) => x.n === y.n && x.d === y.d;
+  const ZERO = Q(0), ONE = Q(1);
+  const isMul = (v, k) => qi(v) && qi(k) && k.n !== 0 && v.n % k.n === 0;
+
+  /* ── 顯示 ───────────────────────────── */
+  function fmtAbs(q) { return qi(q) ? String(Math.abs(q.n)) : F(Math.abs(q.n), q.d); }
+  function fmtNum(q) { return (q.n < 0 ? MINUS : '') + fmtAbs(q); }
+  function numP(q) { return q.n < 0 ? `(${fmtNum(q)})` : fmtNum(q); }   // 負數加括號
+  function xTerm(a) {
+    const s = a.n < 0 ? MINUS : '';
+    const n = Math.abs(a.n);
+    if (qi(a)) return s + (n === 1 ? 'x' : n + 'x');
+    return s + F(n === 1 ? 'x' : n + 'x', a.d);
+  }
+  const sx = c => (c.n < 0 ? MINUS : '+') + xTerm(qabs(c));     // 帶號的 x 項
+  const sn = b => (b.n < 0 ? MINUS : '+') + fmtAbs(b);          // 帶號的常數
+  const plusC = c => (qz(c) ? '' : (c.n < 0 ? ` ${MINUS} ` : ' + ') + fmtAbs(c));
+  function linHTML(a, b) {
+    if (qz(a)) return fmtNum(b);
+    return xTerm(a) + plusC(b);
+  }
+
+  /* ── 方程式狀態 ─────────────────────────
+     一邊（side）只有三種樣子：
+       lin  ax + b
+       par  m(ax + b) + c        括號
+       frc  (ax + b) / d + c     分數
+     一條方程式 st = { L, R }，x 一律留在左邊。
+  ───────────────────────────────────── */
+  const lin = (a, b) => ({ t: 'lin', a: toQ(a), b: toQ(b) });
+  const par = (m, a, b, c) => (m === 1
+    ? lin(toQ(a), qa(toQ(b), toQ(c)))
+    : { t: 'par', m, a: toQ(a), b: toQ(b), c: toQ(c) });
+  const frc = (d, a, b, c) => ({ t: 'frc', d, a: toQ(a), b: toQ(b), c: toQ(c) });
+
+  function sideHTML(s) {
+    if (s.t === 'lin') return linHTML(s.a, s.b);
+    if (s.t === 'par') {
+      const m = s.m === -1 ? MINUS : s.m < 0 ? MINUS + Math.abs(s.m) : String(s.m);
+      return `${m}(${linHTML(s.a, s.b)})${plusC(s.c)}`;
+    }
+    return F(linHTML(s.a, s.b), s.d) + plusC(s.c);
+  }
+  const parts = st => ({ l: sideHTML(st.L), r: sideHTML(st.R) });
+  const eqText = st => `${sideHTML(st.L)} = ${sideHTML(st.R)}`;
+
+  function evalSide(s, x) {
+    const inner = qa(qm(s.a, x), s.b);
+    if (s.t === 'lin') return inner;
+    if (s.t === 'par') return qa(qm(Q(s.m), inner), s.c);
+    return qa(qdv(inner, Q(s.d)), s.c);
+  }
+
+  function isSolved(st) {
+    return st.L.t === 'lin' && st.R.t === 'lin' &&
+      qeq(st.L.a, ONE) && qz(st.L.b) && qz(st.R.a);
+  }
+
+  /* 兩邊同時做的運算（等量公理） */
+  function addSide(s, ax, b) {
+    if (s.t === 'lin') return lin(qa(s.a, ax), qa(s.b, b));
+    return Object.assign({}, s, { c: qa(s.c, b) });          // 只會加常數
+  }
+  function mulSide(s, k) {
+    if (qz(k)) return lin(0, 0);
+    if (s.t === 'lin') return lin(qm(s.a, k), qm(s.b, k));
+    if (s.t === 'par') {
+      const m = qm(Q(s.m), k);
+      if (!qi(m)) return null;
+      if (!qz(s.c) && !qi(k)) return null;
+      return par(m.n, s.a, s.b, qm(s.c, k));
+    }
+    if (qi(k) && k.n % s.d === 0) return par(k.n / s.d, s.a, s.b, qm(s.c, k));
+    return null;
+  }
+  function expandSide(s) {
+    if (s.t === 'par') return lin(qm(Q(s.m), s.a), qa(qm(Q(s.m), s.b), s.c));
+    return s;
+  }
+  const both = (st, f) => ({ L: f(st.L), R: f(st.R) });
+
+  /* ── 操作（四個大按鈕的內容）─────────────
+     kind：good   往正解前進一步
+           detour 沒有錯、會照做，但多繞一步
+           bad    迷思或越弄越亂；畫出那一行、變紅、退回重選
+  ───────────────────────────────────── */
+  function mk(label, kind, why, next) {
+    return kind === 'bad'
+      ? { label, kind, why, wrong: parts(next) }
+      : { label, kind, why, next };
+  }
+  function addLabel(ax, b) {
+    const isX = !qz(ax);
+    const v = isX ? ax : b;
+    const body = isX ? xTerm(qabs(ax)) : fmtAbs(b);
+    return (v.n > 0 ? '兩邊同加 ' : '兩邊同減 ') + body;
+  }
+  const mkAdd = (st, ax, b, kind, why) => mk(addLabel(ax, b), kind, why, both(st, s => addSide(s, ax, b)));
+  const mkMul = (st, k, kind, why) => mk('兩邊同乘 ' + numP(k), kind, why, both(st, s => mulSide(s, k)));
+  const mkDiv = (st, k, kind, why) => mk('兩邊同除以 ' + numP(k), kind, why, both(st, s => mulSide(s, qdv(ONE, k))));
+
+  const WHY_ZERO = '兩邊同乘 0 變成 0 = 0，等式成立，但 x 的線索全沒了。' +
+    '所以 a×c = b×c <em>不一定</em>推得出 a = b——c 可能是 0；等量公理的除法也規定<em>除數不能是 0</em>。';
+  const WHY_BIG = k => `乘 ${k} 只是讓每一項都變大，離 x = □ 更遠，沒有幫助。`;
+  const fillers = st => [mkMul(st, Q(2), 'bad', WHY_BIG(2)), mkMul(st, Q(3), 'bad', WHY_BIG(3))];
+
+  function linMoves(st) {
+    const a = st.L.a, b = st.L.b, c = st.R.a, d = st.R.b;
+    const M = [];
+    const signWhyB = `左邊的 <em>${sn(b)}</em> 要消掉，得做相反的運算「${b.n > 0 ? '減' : '加'} ${fmtAbs(b)}」。` +
+      `移項時<em>${b.n > 0 ? '加變減' : '減變加'}</em>，寫成 ${xTerm(a)} = ${fmtNum(d)} ${b.n > 0 ? '+' : MINUS} ${fmtAbs(b)} 就是<em>忘了變號</em>。`;
+    const dirWhyD = `這樣把右邊的 ${fmtNum(d)} 搬到 x 那一邊，反而更亂。目標是 <em>x 項留在左邊、數字全搬到右邊</em>。`;
+
+    if (!qz(c)) {
+      /* ax + b = cx + d */
+      M.push(mkAdd(st, qn(c), ZERO, 'good',
+        `右邊的 <em>${sx(c)}</em> 移到左邊變成 <em>${sx(qn(c))}</em>（${c.n > 0 ? '加變減' : '減變加'}），x 項集中到左邊。`));
+      if (!qz(b)) M.push(mkAdd(st, ZERO, qn(b), 'good',
+        `左邊的 <em>${sn(b)}</em> 移到右邊變成 <em>${sn(qn(b))}</em>（${b.n > 0 ? '加變減' : '減變加'}），數字集中到右邊。`));
+      M.push(mkAdd(st, c, ZERO, 'bad',
+        `要消掉右邊的 ${sx(c)}，得做相反的運算「${c.n > 0 ? '減' : '加'} ${xTerm(qabs(c))}」。` +
+        `${c.n > 0 ? '加' : '減'}上去兩邊的 x 反而更多——這就是移項<em>忘了變號</em>。`));
+      if (!qz(b)) M.push(mkAdd(st, ZERO, b, 'bad', signWhyB));
+      if (!qz(d)) M.push(mkAdd(st, ZERO, qn(d), 'bad', dirWhyD));
+    } else if (!qz(b)) {
+      /* ax + b = d */
+      M.push(mkAdd(st, ZERO, qn(b), 'good',
+        `左邊的 <em>${sn(b)}</em> 移到右邊變成 <em>${sn(qn(b))}</em>（${b.n > 0 ? '加變減' : '減變加'}）。`));
+      if (qi(a) && Math.abs(a.n) > 1 && isMul(b, a) && isMul(d, a)) {
+        M.push(mkDiv(st, a, 'good',
+          `每一項都是 ${numP(a)} 的倍數，先兩邊同除以 ${numP(a)} 也行，一樣快。`));
+      }
+      M.push(mkAdd(st, ZERO, b, 'bad', signWhyB));
+      if (!qz(d)) M.push(mkAdd(st, ZERO, qn(d), 'bad', dirWhyD));
+      if (qi(b) && Math.abs(b.n) > 1 && !qeq(qabs(b), qabs(a))) {
+        M.push(mkDiv(st, b, 'bad',
+          `${sn(b)} 是<em>加減</em>上去的，不是乘上去的，除以 ${numP(b)} 消不掉它。加減要用<em>相反的加減</em>來抵消。`));
+      }
+      if (qi(a) && Math.abs(a.n) > 1) {
+        M.push(mkMul(st, a, 'bad', `現在該先處理 ${sn(b)}。乘 ${numP(a)} 只會讓每一項都變大。`));
+      }
+    } else if (!qeq(a, ONE)) {
+      if (qi(a)) {
+        /* ax = d */
+        M.push(mkDiv(st, a, 'good',
+          `x 前面乘著 ${numP(a)}，移到右邊變成<em>除以 ${numP(a)}</em>（乘變除）。`));
+        M.push(mkMul(st, a, 'bad',
+          `${xTerm(a)} 是 ${numP(a)} <em>乘</em> x，要做相反的運算「除以 ${numP(a)}」。再乘一次只會變成 ${xTerm(qm(a, a))}。（乘變除）`));
+        if (!qz(d) && qi(d) && Math.abs(d.n) > 1 && !qeq(qabs(d), qabs(a))) {
+          M.push(mkDiv(st, d, 'bad',
+            `${xTerm(a)} = ${fmtNum(d)} 不能寫成 x = ${fmtNum(a)} ÷ ${numP(d)}！要除以的是 <em>x 前面的係數 ${numP(a)}</em>：` +
+            `x = ${numP(d)} ÷ ${numP(a)} = ${fmtNum(qdv(d, a))}。`));
+        }
+        M.push(mkAdd(st, ZERO, qn(a), 'bad',
+          `${xTerm(a)} 是 ${numP(a)} <em>乘</em> x，不是 ${numP(a)} 加 x，用${a.n > 0 ? '減' : '加'}的消不掉。要兩邊同除以 ${numP(a)}。`));
+      } else if (Math.abs(a.n) === 1) {
+        /* x/q = d */
+        const q = a.d;
+        M.push(mkMul(st, Q(q * a.n), 'good',
+          `x 被<em>除以 ${q}</em>，移到右邊變成<em>乘 ${q}</em>（除變乘）。`));
+        M.push(mkDiv(st, Q(q), 'bad',
+          `${xTerm(a)} 是 x 除以 ${q}，再除一次會變成 ${xTerm(qdv(a, Q(q)))}。要做相反的運算：兩邊同乘 ${q}。（除變乘）`));
+        M.push(mkAdd(st, ZERO, Q(-q), 'bad',
+          `${xTerm(a)} 是 x <em>除以</em> ${q}，不是 x 加 ${q}，用減的消不掉。`));
+        if (qi(d) && Math.abs(d.n) > 1 && Math.abs(d.n) !== q) {
+          M.push(mkMul(st, d, 'bad', `要乘的是<em>分母 ${q}</em>，不是右邊的 ${fmtNum(d)}。`));
+        }
+      } else {
+        M.push(mkMul(st, qdv(ONE, a), 'good', `乘上係數的倒數，x 前面就剩 1。`));
+      }
+    }
+    M.push(mkMul(st, ZERO, 'bad', WHY_ZERO));
+    return M.concat(fillers(st));
+  }
+
+  /* m(x + p) = c */
+  function parMoves(st) {
+    const { m, b } = st.L;
+    const d = st.R.b;
+    const M = [];
+    const canDiv = isMul(d, Q(m));
+    const exp = both(st, expandSide);
+    if (canDiv) {
+      M.push(mkDiv(st, Q(m), 'good',
+        `括號外面乘著 ${m}，兩邊同除以 ${m}（乘變除），括號就能拿掉。`));
+      M.push({ label: '去括號（分配律）', kind: 'detour', next: exp,
+        why: `可以！用分配律得到 ${eqText(exp)}。不過 ${fmtNum(d)} 剛好能被 ${m} 整除，先兩邊同除以 ${m} 會<em>少一步</em>。` });
+    } else {
+      M.push({ label: '去括號（分配律）', kind: 'good', next: exp, why: '用分配律把括號拆開。' });
+    }
+    M.push(mkAdd(st, ZERO, qn(b), 'bad',
+      `括號外面還乘著 ${m}，${sn(b)} 被包在括號裡，不能直接${b.n < 0 ? '加' : '減'} ${fmtAbs(b)}。先兩邊同除以 ${m}（或先去括號）。`));
+    M.push(mkMul(st, Q(m), 'bad', `括號外是<em>乘</em> ${m}，要用相反的運算：兩邊同<em>除以</em> ${m}。（乘變除）`));
+    M.push(mkAdd(st, ZERO, Q(-m), 'bad', `${m} 是<em>乘</em>在括號外面，不是加上去的，用減的消不掉。`));
+    M.push(mkMul(st, ZERO, 'bad', WHY_ZERO));
+    return M.concat(fillers(st));
+  }
+
+  /* 去分母之後：m₁(x + p) = m₂(x + q) + k */
+  function parParMoves(st) {
+    const m1 = st.L.m;
+    const M = [];
+    M.push({ label: '去括號、合併同類項', kind: 'good', next: both(st, expandSide),
+      why: '用分配律把括號拆開，右邊的常數順便合併。' });
+    M.push({ label: '兩邊同除以 ' + m1, kind: 'bad',
+      wrong: { l: linHTML(st.L.a, st.L.b), r: F(sideHTML(st.R), m1) },
+      why: `右邊 ${sideHTML(st.R)} 不能整個被 ${m1} 整除，除下去又冒出分數。分母才剛去掉，<em>先去括號</em>再整理。` });
+    M.push(mkAdd(st, ZERO, Q(-m1), 'bad', `${m1} 是<em>乘</em>在括號外面，不能用減的消掉。`));
+    M.push(mkMul(st, Q(m1), 'bad', `分母已經去掉了，再乘 ${m1} 只會讓數字更大。`));
+    M.push(mkMul(st, ZERO, 'bad', WHY_ZERO));
+    return M;
+  }
+
+  /* (x + p)/d₁ = (x + q)/d₂ + k */
+  function frcTimes(s, k) {
+    const r = mulSide(s, Q(k));
+    if (r) return sideHTML(r);
+    return F(`${k}(${linHTML(s.a, s.b)})`, s.d) + plusC(qm(s.c, Q(k)));
+  }
+  function frcMoves(st) {
+    const d1 = st.L.d, d2 = st.R.d;
+    const L = d1 * d2 / gcd(d1, d2);
+    const k = qz(st.R.c) ? st.L.c : st.R.c;
+    const M = [];
+    M.push(mk('兩邊同乘 ' + L, 'good',
+      `分母 ${d1} 和 ${d2} 的最小公倍數是 ${L}。等號兩邊<em>每一項</em>都乘 ${L}，` +
+      `連沒有分母的 ${fmtNum(k)} 也要乘，變成 ${fmtNum(qm(k, Q(L)))}。`,
+      both(st, s => mulSide(s, Q(L)))));
+    const onlyFr = s => sideHTML(Object.assign({}, mulSide(s, Q(L)), { c: s.c }));
+    M.push({ label: `只把分數項乘 ${L}`, kind: 'bad',
+      wrong: { l: onlyFr(st.L), r: onlyFr(st.R) },
+      why: `去分母要等號兩邊<em>每一項</em>都乘 ${L}。${fmtNum(k)} 沒有分母也要乘，應該變成 ${fmtNum(qm(k, Q(L)))}——` +
+        `這就是課本挑錯題裡<em>小翊的錯</em>，漏乘會算出錯的答案。` });
+    const sum = d1 + d2;
+    if (sum % L !== 0) {
+      M.push({ label: '兩邊同乘 ' + sum, kind: 'bad',
+        wrong: { l: frcTimes(st.L, sum), r: frcTimes(st.R, sum) },
+        why: `分母是 ${d1} 和 ${d2}，要乘它們的<em>最小公倍數 ${L}</em>；乘 ${sum}（分母相加）分母消不掉。` });
+    }
+    [d1, d2].forEach(dd => {
+      const other = dd === d1 ? d2 : d1;
+      M.push({ label: '兩邊同乘 ' + dd, kind: 'bad',
+        wrong: { l: frcTimes(st.L, dd), r: frcTimes(st.R, dd) },
+        why: `乘 ${dd} 只消得掉分母 ${dd}，分母 ${other} 還在。要乘 ${d1} 和 ${d2} 的最小公倍數 ${L}。` });
+    });
+    return M;
+  }
+
+  function movesFor(st) {
+    if (st.L.t === 'frc') return frcMoves(st);
+    if (st.L.t === 'par' && st.R.t === 'par') return parParMoves(st);
+    if (st.L.t === 'par') return parMoves(st);
+    return linMoves(st);
+  }
+
+  /* 好的操作全放，其餘從錯誤選項裡補滿 4 個；同樣文字的只留一個 */
+  function pickButtons(moves) {
+    const seen = new Set(), out = [];
+    const take = mv => { if (mv && !seen.has(mv.label)) { seen.add(mv.label); out.push(mv); } };
+    moves.filter(m => m.kind !== 'bad').forEach(take);
+    const bad = moves.filter(m => m.kind === 'bad');
+    const generic = bad.filter(m => /^兩邊同乘 [023]$/.test(m.label));
+    const special = shuffle(bad.filter(m => !generic.includes(m)));
+    const zero = generic.filter(m => m.label === '兩邊同乘 0');
+    const rest = generic.filter(m => m.label !== '兩邊同乘 0');
+    const order = Math.random() < 0.3 ? zero.concat(special, rest) : special.concat(zero, rest);
+    for (const mv of order) { if (out.length >= 4) break; take(mv); }
+    return shuffle(out.slice(0, 4));
+  }
+
+  /* 最短走法：每一步都挑 good（題型設計上 good 一定在最短路徑上） */
+  function bestPath(st0) {
+    const path = [];
+    let st = st0;
+    for (let i = 0; i < 12 && !isSolved(st); i++) {
+      const mv = movesFor(st).find(m => m.kind === 'good');
+      if (!mv) break;
+      path.push({ label: mv.label, kind: 'good', st: mv.next });
+      st = mv.next;
+    }
+    return path;
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function mkProb(lv, L, Rs, sol) {
+    const st0 = { L, R: Rs };
+    const best = bestPath(st0);
+    return { level: lv, st0, sol, best, min: best.length };
+  }
+
+  function genBasic() {
+    const t = R(0, 3);
+    if (t === 0) { const a = R(1, 15), x = R(-9, 20); return mkProb('basic', lin(1, a), lin(0, x + a), Q(x)); }
+    if (t === 1) { const a = R(1, 15), x = R(-9, 20); return mkProb('basic', lin(1, -a), lin(0, x - a), Q(x)); }
+    if (t === 2) {
+      if (Math.random() < 0.3) {
+        // 答案是簡單分數，專練「6x = 3 → x = 3 ÷ 6」
+        for (;;) {
+          const a = pickOne([2, 3, 4, 6, 8, 9]);
+          const b = R(1, 2 * a) * (Math.random() < 0.2 ? -1 : 1);
+          const s = Q(b, a);
+          if (qi(s) || s.d > 4) continue;
+          return mkProb('basic', lin(a, 0), lin(0, b), s);
+        }
+      }
+      const a = Math.random() < 0.25 ? -R(2, 6) : R(2, 9);
+      const x = nz(-9, 9);
+      return mkProb('basic', lin(a, 0), lin(0, a * x), Q(x));
+    }
+    const n = R(2, 9), v = nz(-9, 9);
+    return mkProb('basic', lin(Q(1, n), 0), lin(0, v), Q(n * v));
+  }
+
+  function genAdv() {
+    const t = R(0, 2);
+    if (t === 0) {
+      const a = Math.random() < 0.25 ? -R(2, 6) : R(2, 9);
+      const x = nz(-9, 9), b = nz(-15, 15);
+      return mkProb('adv', lin(a, b), lin(0, a * x + b), Q(x));
+    }
+    if (t === 1) {
+      const b = Math.random() < 0.2 ? 0 : nz(-15, 15);
+      const c = R(1, 6), k = b === 0 ? R(2, 5) : R(1, 5), a = c + k, x = nz(-9, 9);   // 至少兩步
+      return mkProb('adv', lin(a, b), lin(c, k * x + b), Q(x));
+    }
+    for (;;) {
+      const m = R(2, 6), p = nz(-9, 9), x = R(-6, 12);
+      const c = m * (x + p);
+      if (c === 0) continue;
+      return mkProb('adv', par(m, 1, p, 0), lin(0, c), Q(x));
+    }
+  }
+
+  function genFrac() {
+    const pairs = [[2, 3], [3, 4], [2, 5], [3, 5]];
+    for (;;) {
+      const [d1, d2] = pickOne(pairs);
+      const p = nz(-7, 7), q = nz(-7, 7), k = nz(-3, 3);
+      const L = d1 * d2;
+      // d₂(x + p) = d₁(x + q) + kL  →  (d₂ − d₁)x = d₁q + kL − d₂p
+      const num = d1 * q + k * L - d2 * p, den = d2 - d1;
+      if (num % den !== 0) continue;
+      const x = num / den;
+      if (x === 0 || Math.abs(x) > 15) continue;
+      return mkProb('frac', frc(d1, 1, p, 0), frc(d2, 1, q, k), Q(x));
+    }
+  }
+
+  const GEN = { basic: genBasic, adv: genAdv, frac: genFrac };
+  let recent = [];
+  function nextProblem() {
+    for (let i = 0; i < 30; i++) {
+      const p = GEN[level]();
+      const key = eqText(p.st0);
+      if (recent.includes(key)) continue;
+      recent = recent.concat(key).slice(-12);
+      return p;
+    }
+    return GEN[level]();
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxStep = () => { tone(587, 0.08, 0, 'triangle', 0.12); tone(784, 0.12, 0.06, 'triangle', 0.12); };
+  const sfxDetour = () => tone(440, 0.16, 0, 'triangle', 0.12);
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+
+  /* ── 狀態 ───────────────────────────── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, busy = false;
+
+  const optBtns = Array.from(document.querySelectorAll('.opt'));
+  const board = $('board');
+
+  function setView(v) { document.body.dataset.view = v; }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+  function paintLimit() {
+    const lim = limits[level];
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = lim; });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? lim <= LIMIT_MIN : lim >= LIMIT_MAX;
+    });
+  }
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.level === level));
+    });
+    paintLimit();
+  }
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+  function paintTag() {
+    $('rule').innerHTML = `${LEVELS[cur.level].name}　｜　已走 <b>${cur.steps}</b> 步 ／ 最少 <b>${cur.min}</b> 步`;
+  }
+
+  /* ── 黑板 ───────────────────────────── */
+  function lineEl(p, cls) {
+    const el = document.createElement('div');
+    el.className = 'ln ' + (cls || '');
+    el.innerHTML = `<span class="l">${p.l}</span><span class="e">=</span><span class="r">${p.r}</span>`;
+    return el;
+  }
+  function noteEl(text, kind, cls) {
+    const el = document.createElement('div');
+    const mark = kind === 'bad' ? '✗ ' : kind === 'detour' ? '⬇ （繞路）' : '⬇ ';
+    el.className = `note ${kind} ${cls || ''}`;
+    el.innerHTML = `<span>${mark}${text}</span>`;
+    return el;
+  }
+  function fitBoard() {
+    board.style.setProperty('--k', '1');
+    const w = board.clientWidth, sw = board.scrollWidth;
+    if (sw > w + 1) board.style.setProperty('--k', String(Math.max(0.5, (w / sw) * 0.97)));
+  }
+  function clearTemp() { board.querySelectorAll('.tmp').forEach(el => el.remove()); }
+  function showFb(html, kind) {
+    const fb = $('fb');
+    fb.className = 'fb ' + (kind || '');
+    void fb.offsetWidth;
+    fb.innerHTML = `<span>${html}</span>`;
+  }
+
+  function dealButtons() {
+    cur.btns = pickButtons(movesFor(cur.st));
+    optBtns.forEach((b, i) => {
+      const mv = cur.btns[i];
+      b.hidden = !mv;
+      b.disabled = !mv;
+      b.classList.remove('is-wrong', 'is-pick');
+      b.querySelector('.key').textContent = LBL[i];
+      b.querySelector('.txt').innerHTML = mv ? mv.label : '';
+    });
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function startQuestion() {
+    const p = nextProblem();
+    cur = Object.assign(p, { st: p.st0, steps: 0, wrongs: 0, detours: 0, hist: [] });
+    board.innerHTML = '';
+    board.appendChild(lineEl(parts(cur.st), 'cur new'));
+    showFb('目標：一步一步把方程式變成 <em>x = □</em>', '');
+    paintTag();
+    dealButtons();
+    locked = false;
+    busy = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    fitBoard();
+    deadline = performance.now() + limits[level] * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const total = limits[cur.level] * 1000;
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      $('bar').style.transform = `scaleX(${left / total})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 3 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { finish(false); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  function choose(i) {
+    if (locked || busy || !cur) return;
+    const mv = cur.btns[i];
+    const btn = optBtns[i];
+    if (!mv || btn.disabled) return;
+    clearTemp();
+    cur.steps += 1;
+
+    if (mv.kind === 'bad') {
+      cur.wrongs += 1;
+      cur.hist.push({ kind: 'bad', label: mv.label, p: mv.wrong });
+      board.appendChild(noteEl(mv.label, 'bad', 'tmp new'));
+      board.appendChild(lineEl(mv.wrong, 'bad tmp'));
+      btn.classList.add('is-wrong');
+      btn.disabled = true;
+      showFb('✗ ' + mv.why, 'bad');
+      sfxNg();
+      fitBoard();
+      paintTag();
+      busy = true;
+      setTimeout(() => { busy = false; }, 300);
+      return;
+    }
+
+    if (mv.kind === 'detour') cur.detours += 1;
+    cur.st = mv.next;
+    cur.hist.push({ kind: mv.kind, label: mv.label, p: parts(cur.st) });
+    board.querySelectorAll('.ln.cur').forEach(el => el.classList.remove('cur', 'new'));
+    board.appendChild(noteEl(mv.label, mv.kind, 'new'));
+    const solved = isSolved(cur.st);
+    board.appendChild(lineEl(parts(cur.st), solved ? 'cur done' : 'cur new'));
+    showFb((mv.kind === 'detour' ? '△ ' : '✓ ') + mv.why, mv.kind);
+    btn.classList.add('is-pick');
+    paintTag();
+    fitBoard();
+
+    if (solved) {
+      locked = true;
+      cancelAnimationFrame(raf);
+      document.body.classList.remove('urgent');
+      optBtns.forEach(b => { b.disabled = true; });
+      sfxOk();
+      setTimeout(() => finish(true), 1000);
+      return;
+    }
+    if (mv.kind === 'detour') sfxDetour(); else sfxStep();
+    busy = true;
+    optBtns.forEach(b => { b.disabled = true; });
+    setTimeout(() => {
+      if (locked) return;
+      dealButtons();
+      busy = false;
+    }, 320);
+  }
+
+  /* ── 結算 ───────────────────────────── */
+  function miniBoard(start, entries) {
+    const box = document.createElement('div');
+    box.className = 'mini';
+    box.appendChild(lineEl(start, ''));
+    entries.forEach((h, idx) => {
+      box.appendChild(noteEl(h.label, h.kind, ''));
+      const last = idx === entries.length - 1;
+      box.appendChild(lineEl(h.p, h.kind === 'bad' ? 'bad' : (last && h.solved ? 'done' : '')));
+    });
+    return box;
+  }
+
+  function finish(win) {
+    if (!win && locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    document.body.classList.remove('urgent');
+    clearTemp();
+
+    total += 1;
+    const perfect = win && cur.steps === cur.min;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = !win ? '時間到！' : perfect ? '🌟 完美過關！' : '過關！';
+    $('sol-tag').textContent = LEVELS[cur.level].name;
+
+    const start = parts(cur.st0);
+    if (win) {
+      $('sol-sum').innerHTML = `你用了 <b>${cur.steps}</b> 步，最少 <b>${cur.min}</b> 步`;
+      const bits = [];
+      if (cur.wrongs) bits.push(`走錯 ${cur.wrongs} 次`);
+      if (cur.detours) bits.push(`繞路 ${cur.detours} 次`);
+      $('sol-sub').textContent = bits.length ? `（${bits.join('、')}）` : '一步都沒有浪費！';
+    } else {
+      $('sol-sum').innerHTML = `時間內沒走到 <b>x = □</b>`;
+      $('sol-sub').textContent = `已走 ${cur.steps} 步，最少只要 ${cur.min} 步。看看最短的走法：`;
+    }
+
+    const mine = $('sol-mine'), best = $('sol-best');
+    mine.innerHTML = ''; best.innerHTML = '';
+    const hist = cur.hist.map((h, i) => Object.assign({}, h, { solved: win && i === cur.hist.length - 1 }));
+    if (hist.length) {
+      if (!win) mine.insertAdjacentHTML('beforeend', '<h3>你的過程</h3>');
+      mine.appendChild(miniBoard(start, hist));
+    }
+    if (!win || cur.detours > 0) {   // 只走錯過的話，自己的過程扣掉紅線就是最短走法，不必重列
+      best.insertAdjacentHTML('beforeend', '<h3>最短走法</h3>');
+      best.appendChild(miniBoard(start, cur.best.map((b, i) => ({
+        kind: 'good', label: b.label, p: parts(b.st), solved: i === cur.best.length - 1
+      }))));
+    }
+
+    const vl = evalSide(cur.st0.L, cur.sol), vr = evalSide(cur.st0.R, cur.sol);
+    $('sol-check').innerHTML = `驗算：把 x = ${fmtNum(cur.sol)} 代回原式，左邊 = ${fmtNum(vl)}，右邊 = ${fmtNum(vr)}，` +
+      (qeq(vl, vr) ? '兩邊相等 ✓' : '不相等');
+
+    if (win) { if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    v.scrollTop = 0;
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+
+  optBtns.forEach(b => b.addEventListener('click', () => choose(Number(b.dataset.i))));
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limits[level] = clampLimit(limits[level] + Number(b.dataset.step));
+      store('es-limit-' + level, String(limits[level]));
+      paintLimit();
+    });
+  });
+
+  document.querySelectorAll('#level button').forEach(b => {
+    b.addEventListener('click', () => {
+      level = b.dataset.level;
+      store('es-level', level);
+      recent = [];
+      paintLevel();
+    });
+  });
+
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    store('es-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      const n = '1234'.indexOf(e.key);
+      const i = n >= 0 ? n : LBL.indexOf(e.key.toUpperCase());
+      if (i >= 0 && e.key.length === 1) { e.preventDefault(); choose(i); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); audio(); startQuestion(); }
+    }
+  });
+
+  window.addEventListener('resize', () => { if (document.body.dataset.view !== 'menu') fitBoard(); });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        if (locked) return;
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 初始 ───────────────────────────── */
+  paintScore();
+  paintLevel();
+  paintMute();
+
+  // 自動檢查用（瀏覽器主控台可呼叫），不影響遊戲
+  window.__equationSteps = { GEN, movesFor, isSolved, evalSide, eqText, pickButtons, parts };
+})();
+</script>
+</body>
+</html>
