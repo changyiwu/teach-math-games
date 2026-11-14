@@ -37,7 +37,7 @@
 | 層級 | 平台 | 位置 | 讀取時機 |
 |------|------|------|---------|
 | L1 | 本地（GDrive） | `AGENTS.md`＋`handoff.md`（不進 git，只走雲端硬碟）＋`CLAUDE.md`（橋接） | 每個 session |
-| L2 | GitHub | 待建立 | 指定時 |
+| L2 | GitHub | [changyiwu/teach-math-games](https://github.com/changyiwu/teach-math-games)（公開）；Pages：<https://changyiwu.github.io/teach-math-games/>（main 根目錄） | 指定時 |
 | L3 | Obsidian | `teach-math-games/專案工作流程.md` | 有需要時 |
 
 ## 三個檔案的職責（依「時效性」分家，不是依「詳細程度」）
