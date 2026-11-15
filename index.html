@@ -78,6 +78,16 @@
     .card .icon { font-size: 2.4rem; line-height: 1; }
     .card h2 { margin: 12px 0 4px; font-size: 1.4rem; color: var(--accent-2); }
     .card p { margin: 0; color: var(--muted); }
+    .card .unit {
+      margin: 14px 0 0;
+      padding: 8px 12px;
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      background: rgba(245, 158, 11, 0.08);
+      font-size: 0.95rem;
+    }
+    .card .unit dt { color: var(--accent-2); font-weight: 700; font-size: 0.85rem; }
+    .card .unit dd { margin: 0; color: var(--text); }
     .card .tag {
       display: inline-block;
       margin-top: 12px;
@@ -111,6 +121,7 @@
         <div class="icon" aria-hidden="true">⚡</div>
         <h2>次方大挑戰</h2>
         <p>隨機挑一題次方，限時內答出來就挑戰成功！</p>
+        <dl class="unit"><dt>📘 課本範圍</dt><dd>第1冊・第1章 整數的運算</dd><dd>第4節 指數記法與科學記號</dd></dl>
         <span class="tag">次方・平方數</span>
       </a>
 
@@ -118,14 +129,16 @@
         <div class="icon" aria-hidden="true">⚖️</div>
         <h2>指數律對錯快判</h2>
         <p>螢幕出一個式子，限時內判斷它對還是錯，答錯立刻看正解。</p>
-        <span class="tag">指數律・2-4</span>
+        <dl class="unit"><dt>📘 課本範圍</dt><dd>第1冊・第2章 分數的運算</dd><dd>第4節 指數律</dd></dl>
+        <span class="tag">指數律</span>
       </a>
 
       <a class="card" href="equation-steps/">
         <div class="icon" aria-hidden="true">🪜</div>
         <h2>移項闖關</h2>
         <p>一步一步解方程式：每次挑一個操作，用最少步數走到 x = □。</p>
-        <span class="tag">解一元一次方程式・3-2</span>
+        <dl class="unit"><dt>📘 課本範圍</dt><dd>第1冊・第3章 一元一次方程式</dd><dd>第2節 一元一次方程式</dd></dl>
+        <span class="tag">等量公理・移項法則</span>
       </a>
     </main>
 
