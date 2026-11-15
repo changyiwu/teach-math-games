@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>化簡對錯快判 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="螢幕出一個二元一次式的化簡結果或說法，限時內判斷對或錯，答錯立刻看錯在哪。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .unit { margin: 0 0 8px; opacity: 0.75; font-size: 0.95rem; }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 36ch;
+      line-height: 1.7;
+    }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+
+    .level-note { margin: -6px 0 0; color: var(--muted); font-size: 0.9rem; max-width: 40ch; line-height: 1.6; }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys {
+      color: var(--muted);
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer {
+      flex: 0 0 auto;
+      height: 10px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(14px, 3vh, 34px);
+      padding: 16px;
+      min-height: 0;
+    }
+
+    .rule-tag {
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+      background: var(--panel);
+    }
+
+    .expr {
+      font-size: clamp(1.9rem, 7.2vw, 5rem);
+      font-weight: 700;
+      line-height: 1.45;
+      text-align: center;
+      letter-spacing: 0.01em;
+      padding: 0 8px;
+      text-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+      max-width: 100%;
+    }
+    .expr.long { font-size: clamp(1.5rem, 5.4vw, 3.8rem); }
+    .expr.xlong { font-size: clamp(1.3rem, 4.4vw, 3rem); }
+    .expr sup { font-size: 0.55em; }
+    /* 句子裡的連接詞縮小，數式維持大字 */
+    .said { font-size: 0.56em; font-weight: 600; color: var(--muted); margin: 0 0.3em; white-space: nowrap; }
+    .sub { display: block; font-size: 0.56em; font-weight: 600; color: var(--muted); margin-bottom: 0.2em; }
+    .nw { white-space: nowrap; }
+
+    .count {
+      position: absolute;
+      top: 54px;
+      right: 18px;
+      font-size: clamp(2.4rem, 7vw, 4.4rem);
+      font-weight: 800;
+      color: var(--accent-2);
+      opacity: 0.85;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    .answers {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(12px, 2.5vw, 28px);
+      width: min(900px, 100%);
+      padding: 0 8px 8px;
+    }
+
+    .ans {
+      padding: clamp(16px, 4vh, 34px) 10px;
+      border: 2px solid var(--line);
+      border-radius: 20px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: clamp(1.2rem, 3.6vw, 2.1rem);
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s, background 0.15s;
+    }
+    .ans .mark { display: block; font-size: 1.7em; line-height: 1; margin-bottom: 4px; }
+    .ans.yes .mark { color: var(--win); }
+    .ans.no .mark { color: var(--lose); }
+    .ans:hover:not(:disabled) { transform: translateY(-3px); }
+    .ans.yes:hover:not(:disabled) { border-color: var(--win); background: rgba(34, 197, 94, 0.14); }
+    .ans.no:hover:not(:disabled) { border-color: var(--lose); background: rgba(239, 68, 68, 0.14); }
+    .ans:disabled { opacity: 0.45; cursor: default; }
+
+    /* ── 結果 ───────────────────────────────── */
+    .verdict {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 24px 16px;
+      background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.76), rgba(2, 6, 23, 0.94));
+      backdrop-filter: blur(3px);
+      overflow-y: auto;
+    }
+    body[data-view="result"] .verdict { display: flex; }
+
+    .verdict h2 {
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 4.6rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .solution {
+      width: min(820px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: clamp(14px, 3vw, 24px);
+      text-align: center;
+    }
+    .solution .q {
+      font-size: clamp(1.2rem, 4vw, 2.2rem);
+      font-weight: 700;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+    .solution .q sup { font-size: 0.55em; }
+    .solution .q .verdict-mark { white-space: nowrap; margin-left: 0.4em; }
+    .solution .tag {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 2px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--cyan);
+      font-size: 0.9rem;
+    }
+    .solution .why {
+      color: var(--text);
+      font-size: clamp(1rem, 2.6vw, 1.35rem);
+      line-height: 1.9;
+      opacity: 0.95;
+    }
+    .solution .why sup { font-size: 0.6em; }
+    .solution .why em {
+      font-style: normal;
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── 堆疊分數 ───────────────────────────── */
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.74em;
+      margin: 0 0.06em;
+    }
+    .fr i { font-style: normal; padding: 0 0.24em; white-space: nowrap; }
+    .fr i:first-child { border-bottom: 0.09em solid currentColor; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; }
+    }
+
+    @media (max-height: 520px) {
+      .expr { font-size: clamp(1.4rem, 6vw, 2.8rem); }
+      .expr.long, .expr.xlong { font-size: clamp(1.2rem, 4.4vw, 2.2rem); }
+      .ans { padding: 12px 8px; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">化簡對錯快判</h1>
+      <p class="unit">📘 第2冊・第1章 二元一次聯立方程式・第1節 二元一次方程式</p>
+      <p class="hint">螢幕出一個化簡結果或一句說法，<span class="limit-val">10</span> 秒內判斷它<strong>對</strong>還是<strong>錯</strong>。答錯會立刻告訴你錯在哪一步。</p>
+
+      <div class="ctl-row">
+        <div class="seg" id="level" role="group" aria-label="題組難度">
+          <button type="button" data-level="basic" aria-pressed="false">基礎</button>
+          <button type="button" data-level="adv" aria-pressed="false">進階</button>
+          <button type="button" data-level="all" aria-pressed="true">混合</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-1" aria-label="減少 1 秒">−</button>
+          <b class="limit-val">10</b>秒
+          <button type="button" data-step="1" aria-label="增加 1 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+
+      <button type="button" class="big-btn" id="start">🎲 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看化簡小抄</a>
+      <p class="keys">鍵盤：<kbd>←</kbd> 正確　<kbd>→</kbd> 錯誤　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <!-- ── 作答 ───────────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="count" id="count">10</div>
+
+    <div class="play-body">
+      <div class="rule-tag" id="rule">化簡</div>
+      <div class="expr" id="expr"></div>
+      <div class="answers">
+        <button type="button" class="ans yes" id="btn-yes"><span class="mark" aria-hidden="true">○</span>正確</button>
+        <button type="button" class="ans no" id="btn-no"><span class="mark" aria-hidden="true">✗</span>錯誤</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 判定 ───────────────────────────── -->
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="tag" id="sol-tag">化簡</div>
+      <div class="q" id="sol-q"></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器，限時依難度各自記）── */
+  const LEVELS = ['basic', 'adv', 'all'];
+  const LIMIT_DEFAULT = { basic: 10, adv: 20, all: 15 };
+  const LIMIT_MIN = 4, LIMIT_MAX = 40;
+  const LEVEL_NOTE = {
+    basic: '同類項、係數、代入求值、合併同類項、判斷是不是二元一次方程式。',
+    adv: '去括號、分配律、多層括號、分數通分，以及「化簡後才算數」。',
+    all: '基礎與進階混在一起出。'
+  };
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 私密視窗等情況：不記也能玩 */ } }
+  };
+
+  function clampLimit(v) { return Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v)); }
+
+  let level = LEVELS.includes(store.get('simp-level')) ? store.get('simp-level') : 'all';
+  const limits = {};
+  LEVELS.forEach(l => {
+    const v = parseInt(store.get(`simp-limit-${l}`), 10);
+    limits[l] = clampLimit(Number.isFinite(v) ? v : LIMIT_DEFAULT[l]);
+  });
+  let muted = store.get('simp-muted') === '1';
+  const limit = () => limits[level];
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const coin = (p = 0.5) => Math.random() < p;
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  const nz = (lo, hi) => (coin() ? 1 : -1) * R(lo, hi);     // 不為 0 的整數，正負隨機
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+
+  const MINUS = '−';
+  const TIMES = '×';
+
+  /* ── 有理數 ─────────────────────────── */
+  const gcd = (a, b) => (b ? gcd(b, a % b) : Math.abs(a));
+  const lcm = (a, b) => a / gcd(a, b) * b;
+  function Q(n, d = 1) {
+    if (d === 0) throw new Error('分母為 0');
+    if (d < 0) { n = -n; d = -d; }
+    const k = gcd(Math.abs(n), d) || 1;
+    return { n: n / k, d: d / k };
+  }
+  const qadd = (a, b) => Q(a.n * b.d + b.n * a.d, a.d * b.d);
+  const qmul = (a, b) => Q(a.n * b.n, a.d * b.d);
+  const qneg = a => Q(-a.n, a.d);
+  const qzero = a => a.n === 0;
+  const qeq = (a, b) => a.n === b.n && a.d === b.d;
+  const Z = Q(0);
+
+  /* ── 二元一次式：{ x, y, c } 三個係數 ──────
+     題目上的式子用「項的清單」表示（保留顯示順序），
+     需要比對時才用 polyOf 合併成 { x, y, c }。 */
+  const P = (x, y, c) => ({ x, y, c });
+  const padd = (a, b) => P(qadd(a.x, b.x), qadd(a.y, b.y), qadd(a.c, b.c));
+  const pscale = (a, k) => P(qmul(a.x, k), qmul(a.y, k), qmul(a.c, k));
+  const psub = (a, b) => padd(a, pscale(b, Q(-1)));
+  const peq = (a, b) => qeq(a.x, b.x) && qeq(a.y, b.y) && qeq(a.c, b.c);
+
+  const T = (coef, v = null) => ({ v, r: typeof coef === 'number' ? Q(coef) : coef });
+  function polyOf(list) {
+    return list.reduce((p, t) => {
+      if (t.v === 'x') return P(qadd(p.x, t.r), p.y, p.c);
+      if (t.v === 'y') return P(p.x, qadd(p.y, t.r), p.c);
+      return P(p.x, p.y, qadd(p.c, t.r));
+    }, P(Z, Z, Z));
+  }
+  const flipAll = list => list.map(t => T(qneg(t.r), t.v));
+  const flipFirst = list => list.map((t, i) => (i === 0 ? T(qneg(t.r), t.v) : t));
+  const scaleList = (list, k) => list.map(t => T(qmul(t.r, k), t.v));
+
+  /* ── 排版 ───────────────────────────── */
+  const fr = (n, d) => `<span class="fr"><i>${n}</i><i>${d}</i></span>`;
+  const absQ = a => Q(Math.abs(a.n), a.d);
+  const qAbsHtml = a => (a.d === 1 ? String(a.n) : fr(a.n, a.d));
+  const qHtml = a => (a.n < 0 ? MINUS : '') + qAbsHtml(absQ(a));
+  const intHtml = n => (n < 0 ? `${MINUS}${-n}` : String(n));
+
+  function termBody(t) {
+    const a = absQ(t.r);
+    if (!t.v) return qAbsHtml(a);
+    return (a.n === 1 && a.d === 1) ? t.v : qAbsHtml(a) + t.v;
+  }
+  function termHtml(t, first) {
+    const neg = t.r.n < 0;
+    if (first) return (neg ? MINUS : '') + termBody(t);
+    return (neg ? ` ${MINUS} ` : ' + ') + termBody(t);
+  }
+  function listHtml(list) {
+    const items = list.filter(t => !qzero(t.r));
+    if (!items.length) return '0';
+    return items.map((t, i) => termHtml(t, i === 0)).join('');
+  }
+  const canon = p => [T(p.x, 'x'), T(p.y, 'y'), T(p.c)];
+  const polyHtml = p => listHtml(canon(p));
+
+  // 有分數係數時寫成「一個分數」：課本例 5 的寫法
+  function polyOverHtml(p) {
+    const L = [p.x, p.y, p.c].reduce((m, r) => lcm(m, r.d), 1);
+    if (L === 1) return polyHtml(p);
+    return fr(polyHtml(pscale(p, Q(L))), L);
+  }
+
+  // 倍數：整數或分數，第一個位置帶自己的負號
+  const multHtml = k => qHtml(k);
+
+  /* ── 隨機項 ─────────────────────────── */
+  // 由 x、y、常數裡挑 n 種，係數都是不為 0 的整數；順序維持 x、y、常數
+  function randList(n, lo = 1, hi = 9, kinds = ['x', 'y', null]) {
+    const picked = shuffle(kinds).slice(0, n);
+    return kinds.filter(k => picked.includes(k)).map(v => T(nz(lo, hi), v));
+  }
+
+  /* ── 題庫產生器 ───────────────────────
+     每個產生器回傳 { html, ok, why }，
+     「式子＝式子」型另外附 check: { lhs, rhs }（兩個 { x, y, c }），
+     主控台自動檢查會驗 peq(lhs, rhs) === ok。
+  ─────────────────────────────────────── */
+
+  const GENS = [
+    // ① 同類項（課本 P.9）
+    { key: 'like', level: 'basic', rule: '同類項', make() {
+      const kind = pickOf(['x', 'y', 'c', 'xy', 'vc', 'vc']);
+      const coef = () => (coin(0.3) ? Q(nz(1, 7), R(2, 8)) : Q(nz(1, 9)));
+      let a, b;
+      do { a = coef(); b = coef(); } while (qeq(a, b));
+      let t1, t2, ok, why;
+      if (kind === 'x' || kind === 'y') {
+        t1 = T(a, kind); t2 = T(b, kind); ok = true;
+        why = `兩項都是 <em>${kind}</em>，文字符號和次數都相同，是同類項，可以合併：${termHtml(t1, true)}${termHtml(t2, false)}＝${listHtml([T(qadd(a, b), kind)])}。`;
+      } else if (kind === 'c') {
+        t1 = T(a); t2 = T(b); ok = true;
+        why = `兩個都是不含文字符號的數，<em>常數項彼此都是同類項</em>。`;
+      } else if (kind === 'xy') {
+        const [u, v] = coin() ? ['x', 'y'] : ['y', 'x'];
+        t1 = T(a, u); t2 = T(b, v); ok = false;
+        why = `一個是 x 項、一個是 y 項，<em>文字符號不同</em>，不是同類項，不能合併。`;
+      } else {
+        const u = pickOf(['x', 'y']);
+        [t1, t2] = coin() ? [T(a, u), T(b)] : [T(a), T(b, u)];
+        ok = false;
+        why = `一個是 ${u} 項、一個是<em>常數項</em>，不是同類項，不能合併。`;
+      }
+      return {
+        html: `<span class="nw">${termHtml(t1, true)}</span><span class="said">和</span><span class="nw">${termHtml(t2, true)}</span><span class="said">是同類項</span>`,
+        ok, why
+      };
+    } },
+
+    // ② 項與係數（課本 P.9：係數要連著負號看）
+    { key: 'coef', level: 'basic', rule: '項與係數', make() {
+      const a = nz(1, 9), c = nz(1, 9);
+      let b; do { b = nz(1, 9); } while (b === a);
+      const list = [T(a, 'x'), T(b, 'y'), T(c)];
+      const which = pickOf(['x', 'y', 'c']);
+      const val = { x: a, y: b, c }[which];
+      const name = { x: 'x 項的係數', y: 'y 項的係數', c: '常數項' };
+      const ok = coin();
+      let shown, why;
+      // 有負號時優先考「漏掉負號」，否則考「看錯是哪一項」
+      const wrongKind = val < 0 && coin(0.7) ? 'sign' : 'other';
+      if (ok) {
+        shown = val;
+        why = val < 0
+          ? `把減號改寫成加法：${list.map((t, i) => (i === 0 ? termHtml(t, true) : (t.r.n < 0 ? ` + (${termHtml(t, true)})` : termHtml(t, false)))).join('')}，所以${name[which]}要<em>連著負號</em>，是 <em>${intHtml(val)}</em>。`
+          : `${name[which]}是 <em>${intHtml(val)}</em>。`;
+      } else if (wrongKind === 'sign') {
+        shown = -val;
+        why = `係數要<em>連著前面的負號</em>一起看：${name[which]}是 <em>${intHtml(val)}</em>，不是 ${intHtml(shown)}。`;
+      } else {
+        const others = ['x', 'y', 'c'].filter(k => k !== which && { x: a, y: b, c }[k] !== val);
+        const o = pickOf(others);
+        shown = { x: a, y: b, c }[o];
+        why = `${intHtml(shown)} 是${name[o]}；題目問的是${name[which]}，答案是 <em>${intHtml(val)}</em>。`;
+      }
+      return {
+        html: `<span class="nw">${listHtml(list)}</span><span class="said">的${name[which]}是</span><span class="nw">${intHtml(shown)}</span>`,
+        ok, why
+      };
+    } },
+
+    // ③ 二元一次式的值（課本 P.8；自我檢核 2）
+    { key: 'value', level: 'basic', rule: '二元一次式的值', make() {
+      const a = nz(1, 6);
+      let b; do { b = nz(1, 6); } while (b === a);
+      const c = coin(0.75) ? nz(1, 9) : 0;
+      const xv = R(-4, 4), yv = R(-4, 4);
+      const truth = a * xv + b * yv + c;
+      const ok = coin();
+      let shown = truth, wrongWhy = '';
+      if (!ok) {
+        const cands = [
+          { v: xv + yv + c, w: '係數忘了乘進去' },
+          { v: Math.abs(a) * xv + Math.abs(b) * yv + c, w: '減號後面那一項的<em>負號</em>漏掉了' },
+          { v: a * xv - b * yv + c, w: '把 y 項的正負號弄反了' },
+          { v: a * xv + b * yv - c, w: '常數項的正負號弄反了' }
+        ].filter(o => o.v !== truth);
+        const pick = cands.length ? pickOf(cands) : { v: truth + nz(1, 4), w: '算錯了' };
+        shown = pick.v; wrongWhy = pick.w;
+      }
+      const seg = (co, val, first) => {
+        const body = `${Math.abs(co)}${TIMES}${val < 0 ? `(${MINUS}${-val})` : val}`;
+        return (first ? (co < 0 ? MINUS : '') : (co < 0 ? ` ${MINUS} ` : ' + ')) + body;
+      };
+      const line = seg(a, xv, true) + seg(b, yv, false) + (c ? (c < 0 ? ` ${MINUS} ${-c}` : ` + ${c}`) : '');
+      const list = [T(a, 'x'), T(b, 'y'), T(c)];
+      return {
+        html: `<span class="sub">當 x = ${intHtml(xv)}、y = ${intHtml(yv)} 時</span><span class="nw">${listHtml(list)} = ${intHtml(shown)}</span>`,
+        ok,
+        why: ok
+          ? `x、y <em>兩個一起代進去</em>：${line}＝<em>${intHtml(truth)}</em>。`
+          : `${wrongWhy}。正確是 ${line}＝<em>${intHtml(truth)}</em>，不是 ${intHtml(shown)}。`
+      };
+    } },
+
+    // ④ 合併同類項（課本 P.10 例 2；自我檢核 3）
+    { key: 'merge', level: 'basic', rule: '合併同類項', make() {
+      // 至少兩個 x 項、兩個 y 項，再加 0～2 個常數項，打散順序
+      let list;
+      do {
+        list = [T(nz(1, 7), 'x'), T(nz(1, 7), 'x'), T(nz(1, 7), 'y'), T(nz(1, 7), 'y')];
+        const nc = R(0, 2);
+        for (let i = 0; i < nc; i++) list.push(T(nz(1, 9)));
+        if (coin(0.4)) list.push(T(nz(1, 7), pickOf(['x', 'y'])));
+        list = shuffle(list);
+      } while (polyOf(list).x.n === 0 || polyOf(list).y.n === 0);
+      const truth = polyOf(list);
+      const ok = coin();
+      let shown = truth, why;
+      if (ok) {
+        why = `x 項和 x 項併、y 項和 y 項併${qzero(truth.c) && !list.some(t => !t.v) ? '' : '、常數和常數併'}：<em>${polyHtml(truth)}</em>。`;
+      } else {
+        const kinds = ['sign', 'xy'];
+        if (!qzero(truth.c)) kinds.push('yc', 'yc');
+        const k = pickOf(kinds);
+        if (k === 'yc') {
+          shown = P(truth.x, qadd(truth.y, truth.c), Z);
+          why = `${qHtml(truth.c)} 是<em>常數項</em>，不能跟 y 項併在一起。正確是 <em>${polyHtml(truth)}</em>。`;
+        } else if (k === 'xy') {
+          shown = P(qadd(truth.x, truth.y), Z, truth.c);
+          why = `x 項和 y 項<em>不是同類項</em>，不能併成一項。正確是 <em>${polyHtml(truth)}</em>。`;
+        } else {
+          const comp = pickOf(['x', 'y'].concat(qzero(truth.c) ? [] : ['c']));
+          shown = P(truth.x, truth.y, truth.c);
+          shown[comp] = qneg(truth[comp]);
+          why = `有一組同類項的<em>正負號</em>算錯了，減號要跟著後面那一項走。正確是 <em>${polyHtml(truth)}</em>。`;
+        }
+      }
+      return {
+        html: `<span class="nw">${listHtml(list)}</span> <span class="nw">= ${polyHtml(shown)}</span>`,
+        ok, why, check: { lhs: truth, rhs: shown }
+      };
+    } },
+
+    // ⑤ 二元一次式？二元一次方程式？（課本 P.18 重點整理 1）
+    { key: 'kind', level: 'basic', rule: '二元一次方程式', make() {
+      const a = nz(1, 9), b = nz(1, 9), c = nz(1, 20), d = nz(1, 9);
+      const kind = pickOf(['std', 'std', 'both', 'both', 'xy', 'sq', 'noeq', 'one']);
+      let lhs, ok, why;
+      const tail = '含 x、y 兩種未知數，且次數都是 1';
+      switch (kind) {
+        case 'std':
+          lhs = `${listHtml([T(a, 'x'), T(b, 'y')])} = ${intHtml(c)}`;
+          ok = true; why = `有等號、${tail}，是二元一次方程式。`;
+          break;
+        case 'both':
+          lhs = `${listHtml([T(a, 'x'), T(d)])} = ${listHtml([T(b, 'y'), T(c)])}`;
+          ok = true; why = `未知數分在等號兩邊也可以：移項後是 ${listHtml([T(a, 'x'), T(-b, 'y')])} = ${intHtml(c - d)}，${tail}。`;
+          break;
+        case 'xy':
+          lhs = `${Math.abs(a) === 1 ? '' : Math.abs(a)}xy ${d < 0 ? MINUS : '+'} ${Math.abs(d)} = ${intHtml(c)}`;
+          ok = false; why = `xy 是 x 乘 y，這一項的<em>次數是 2</em>，不是一次，所以不是二元一次方程式。`;
+          break;
+        case 'sq':
+          lhs = `${listHtml([T(a, 'x')]).replace(/x$/, 'x<sup>2</sup>')}${termHtml(T(b, 'y'), false)} = ${intHtml(c)}`;
+          ok = false; why = `x<sup>2</sup> 的<em>次數是 2</em>，不是一次，所以不是二元一次方程式。`;
+          break;
+        case 'noeq':
+          lhs = listHtml([T(a, 'x'), T(b, 'y'), T(d)]);
+          ok = false; why = `<em>沒有等號</em>，這是二元一次<em>式</em>，不是方程式。`;
+          break;
+        default:
+          lhs = `${listHtml([T(a, 'x'), T(d)])} = ${intHtml(c)}`;
+          ok = false; why = `只有 x <em>一種</em>未知數，是<em>一元</em>一次方程式。`;
+      }
+      return {
+        html: `<span class="nw">${lhs}</span><span class="said">是二元一次方程式</span>`,
+        ok, why
+      };
+    } },
+
+    // ⑥ 去括號規則（課本 P.11 例 3；自我評量 2(1)）
+    { key: 'paren', level: 'adv', rule: '去括號規則', make() {
+      const A = randList(R(2, 3)), B = randList(R(2, 3));
+      const minus = coin(0.7);
+      const wrapA = coin(0.6);
+      const truth = minus ? psub(polyOf(A), polyOf(B)) : padd(polyOf(A), polyOf(B));
+      const ok = coin();
+      let shown = truth, why;
+      const opened = minus ? flipAll(B) : B;
+      if (ok) {
+        why = minus
+          ? `減號括號，裡面<em>每一項都變號</em>：${MINUS}(${listHtml(B)}) → ${listHtml(opened)}，再合併同類項得 <em>${polyHtml(truth)}</em>。`
+          : `加號括號直接拿掉，裡面<em>符號照抄</em>，再合併同類項得 <em>${polyHtml(truth)}</em>。`;
+      } else if (minus) {
+        // 減號括號只翻了第一項（B 至少兩項，所以一定和正解不同）
+        shown = padd(polyOf(A), polyOf(flipFirst(B)));
+        why = `減號後面的括號，<em>每一項</em>都要變號，不是只變第一項：${MINUS}(${listHtml(B)})＝${listHtml(opened)}。正確是 <em>${polyHtml(truth)}</em>。`;
+      } else {
+        // 加號括號卻把裡面整組變號
+        shown = psub(polyOf(A), polyOf(B));
+        why = `括號前面是<em>加號</em>，拿掉括號時裡面的符號照抄，不用變號。正確是 <em>${polyHtml(truth)}</em>。`;
+      }
+      const left = wrapA ? `(${listHtml(A)})` : listHtml(A);
+      return {
+        html: `<span class="nw">${left} ${minus ? MINUS : '+'} (${listHtml(B)})</span> <span class="nw">= ${polyHtml(shown)}</span>`,
+        ok, why, check: { lhs: truth, rhs: shown }
+      };
+    } },
+
+    // ⑦ 分配律（課本 P.12 例 4(1)(2)、重新布題的分數倍）
+    { key: 'dist', level: 'adv', rule: '分配律', make() {
+      const fracK = [Q(1, 2), Q(1, 3), Q(2, 3), Q(3, 2), Q(-1, 2), Q(-1, 3), Q(3, 4)];
+      const two = coin(0.6);
+      if (!two) {
+        const k = coin(0.3) ? pickOf(fracK) : Q(nz(2, 6));
+        const A = randList(3);
+        const truth = pscale(polyOf(A), k);
+        const ok = coin();
+        // 錯法：只乘到括號裡第一項
+        const shown = ok ? truth : padd(pscale(polyOf([A[0]]), k), polyOf(A.slice(1)));
+        return {
+          html: `<span class="nw">${multHtml(k)}(${listHtml(A)})</span> <span class="nw">= ${polyHtml(shown)}</span>`,
+          ok,
+          why: ok
+            ? `${qHtml(k)} 要乘到括號裡的<em>每一項</em>：${listHtml(scaleList(A, k))}。`
+            : `分配律要乘到括號裡<em>每一項</em>，不能只乘第一項：${listHtml(scaleList(A, k))}。`,
+          check: { lhs: truth, rhs: shown }
+        };
+      }
+      const k1 = Q(nz(2, 6)), k2 = Q(R(2, 6));
+      const A = randList(2, 1, 6, ['x', 'y']), B = randList(3, 1, 6);
+      const truth = psub(pscale(polyOf(A), k1), pscale(polyOf(B), k2));
+      const ok = coin();
+      // 錯法：減號後面那個倍數，只有第一項變號（其餘項的負號沒乘進去）
+      const shown = ok ? truth
+        : padd(pscale(polyOf(A), k1), padd(pscale(polyOf([B[0]]), qneg(k2)), pscale(polyOf(B.slice(1)), k2)));
+      const opened = listHtml(scaleList(A, k1).concat(scaleList(B, qneg(k2))));
+      return {
+        html: `<span class="nw">${multHtml(k1)}(${listHtml(A)}) ${MINUS} ${qAbsHtml(k2)}(${listHtml(B)})</span> <span class="nw">= ${polyHtml(shown)}</span>`,
+        ok,
+        why: ok
+          ? `兩段各自乘開：${opened}，再合併得 <em>${polyHtml(truth)}</em>。`
+          : `後面是 <em>${MINUS}${qAbsHtml(k2)}</em> 乘進括號，每一項都要<em>連負號</em>一起乘：${opened}。正確是 <em>${polyHtml(truth)}</em>。`,
+        check: { lhs: truth, rhs: shown }
+      };
+    } },
+
+    // ⑧ 多層括號（課本 P.12 例 4(3)、P.13 重新布題）
+    { key: 'nest', level: 'adv', rule: '多層括號', make() {
+      // T0 ± k[ B − (C) ]，先去小括號，再用分配律
+      const T0 = randList(R(1, 2), 1, 9);
+      const k = Q(R(2, 4));
+      const s1 = coin(0.6) ? 1 : -1;
+      const B = randList(1, 1, 9, ['x', 'y']);
+      const C = randList(2, 1, 9);
+      const inner = padd(polyOf(B), pscale(polyOf(C), Q(-1)));
+      const truth = padd(polyOf(T0), pscale(inner, qmul(k, Q(s1))));
+      const ok = coin();
+      let shown = truth, why;
+      const step1 = listHtml(B.concat(flipAll(C)));
+      if (ok) {
+        why = `先去小括號：[${step1}]，合併得 [${polyHtml(inner)}]；再把 ${s1 < 0 ? MINUS : ''}${k.n} 乘進去，最後合併得 <em>${polyHtml(truth)}</em>。`;
+      } else if (coin()) {
+        // 錯法 1：小括號前是減號，只翻了第一項
+        const innerBad = padd(polyOf(B), polyOf(flipFirst(C)));
+        shown = padd(polyOf(T0), pscale(innerBad, qmul(k, Q(s1))));
+        why = `小括號前面是減號，<em>裡面每一項</em>都要變號：${MINUS}(${listHtml(C)})＝${listHtml(flipAll(C))}。正確是 <em>${polyHtml(truth)}</em>。`;
+      } else {
+        // 錯法 2：中括號外的倍數只乘到第一項
+        const innerBad = padd(pscale(polyOf(B), k), pscale(polyOf(C), Q(-1)));
+        shown = padd(polyOf(T0), pscale(innerBad, Q(s1)));
+        why = `去完小括號是 [${step1}]，中括號外的 ${k.n} 要乘到<em>裡面每一項</em>，不能只乘第一項。正確是 <em>${polyHtml(truth)}</em>。`;
+      }
+      return {
+        html: `<span class="nw">${listHtml(T0)} ${s1 < 0 ? MINUS : '+'} ${k.n}[${listHtml(B)} ${MINUS} (${listHtml(C)})]</span> <span class="nw">= ${polyHtml(shown)}</span>`,
+        ok, why, check: { lhs: truth, rhs: shown }
+      };
+    } },
+
+    // ⑨ 分數的化簡（課本 P.13 例 5；P.21 挑錯題）
+    { key: 'frac', level: 'adv', rule: '分數的化簡', make() {
+      let p, q; do { p = R(2, 5); q = R(2, 5); } while (p === q);
+      const A = randList(R(2, 3), 1, 6), B = randList(R(2, 3), 1, 6);
+      const minus = coin(0.7);
+      const L = lcm(p, q);
+      const pa = polyOf(A), pb = polyOf(B);
+      const truth = minus ? psub(pscale(pa, Q(1, p)), pscale(pb, Q(1, q)))
+        : padd(pscale(pa, Q(1, p)), pscale(pb, Q(1, q)));
+      const ok = coin();
+      let shown = truth, why;
+      const numerA = `${L / p}${TIMES}(${listHtml(A)})`, numerB = `${L / q}${TIMES}(${listHtml(B)})`;
+      if (ok) {
+        why = minus
+          ? `通分成 ${L}：${fr(`${numerA} ${MINUS} ${numerB}`, L)}，被減的那一組分子要<em>整組變號</em>，合併後得 <span class="nw">${polyOverHtml(truth)}。</span>`
+          : `通分成 ${L}：${fr(`${numerA} + ${numerB}`, L)}，合併後得 <span class="nw">${polyOverHtml(truth)}。</span>`;
+      } else if (minus) {
+        // 錯法：通分後，被減式的分子只有第一項變號（課本挑錯題小翊的錯）
+        shown = padd(pscale(pa, Q(1, p)), pscale(polyOf(flipFirst(B)), Q(1, q)));
+        why = `前面是減號，通分後被減的分子<em>每一項都要變號</em>，不能只變第一項。正確是 <span class="nw">${polyOverHtml(truth)}。</span>`;
+      } else {
+        // 錯法：分母直接相加
+        shown = pscale(padd(pa, pb), Q(1, p + q));
+        why = `分母<em>不能直接相加</em>，要先通分成 ${L}：${fr(`${numerA} + ${numerB}`, L)}。正確是 <span class="nw">${polyOverHtml(truth)}。</span>`;
+      }
+      if (!ok && peq(shown, truth)) return this.make();   // 極少數巧合：錯法剛好等於正解，重抽
+      return {
+        html: `<span class="nw">${fr(listHtml(A), p)} ${minus ? MINUS : '+'} ${fr(listHtml(B), q)}</span> <span class="nw">= ${polyOverHtml(shown)}</span>`,
+        ok, why, check: { lhs: truth, rhs: shown }
+      };
+    } },
+
+    // ⑩ 經化簡後才算數（課本自我檢核 4；化簡後只剩一元的反例）
+    { key: 'reduce', level: 'adv', rule: '化簡後才算數', make() {
+      const ok = coin();
+      let leftHtml, left, right;
+      if (ok && coin()) {
+        // (x+a)+(y+b)=c 型
+        const a = R(1, 9), b = R(1, 9);
+        const A = [T(1, 'x'), T(a)], B = [T(1, 'y'), T(b)];
+        left = A.concat(B);
+        right = [T(R(a + b + 5, 60))];
+        leftHtml = `(${listHtml(A)}) + (${listHtml(B)})`;
+      } else {
+        const ax = nz(1, 6), by = nz(1, 6);
+        const lc = nz(1, 9), rc = nz(1, 9);
+        if (ok) {
+          // 兩邊都有 x、y，係數不同，化簡後兩種未知數都留著
+          let rx; do { rx = nz(1, 6); } while (rx === ax);
+          let ry; do { ry = nz(1, 6); } while (ry === by);
+          left = [T(ax, 'x'), T(by, 'y'), T(lc)];
+          right = coin() ? [T(rx, 'x'), T(rc)] : [T(ry, 'y'), T(rc)];
+        } else {
+          // 兩邊同一種未知數的係數一樣，化簡後消掉，只剩一元
+          const gone = pickOf(['x', 'y']);
+          const keep = gone === 'x' ? 'y' : 'x';
+          const g = nz(1, 6);
+          left = [T(g, gone), T(keep === 'y' ? by : ax, keep), T(lc)];
+          left.sort((s, t) => ['x', 'y', null].indexOf(s.v) - ['x', 'y', null].indexOf(t.v));
+          right = [T(g, gone), T(rc)];
+        }
+        leftHtml = listHtml(left);
+      }
+      const diff = psub(polyOf(left), polyOf(right));
+      const truth = !qzero(diff.x) && !qzero(diff.y);
+      const eq = `${listHtml([T(diff.x, 'x'), T(diff.y, 'y')])} = ${qHtml(qneg(diff.c))}`;
+      const gone = qzero(diff.x) ? 'x' : 'y';
+      return {
+        html: `<span class="nw">${leftHtml} = ${listHtml(right)}</span><span class="said">是二元一次方程式</span>`,
+        ok: truth,
+        why: truth
+          ? `移項化簡後是 <em>${eq}</em>，含 x、y 兩種未知數、次數都是 1，所以是二元一次方程式。`
+          : `等號兩邊的 ${gone} 項<em>一樣</em>，移項後消掉了，剩下 <em>${eq}</em>，只有一種未知數，是<em>一元</em>一次方程式。`,
+        claimed: ok
+      };
+    } }
+  ];
+
+  function pool() {
+    return level === 'all' ? GENS : GENS.filter(g => g.level === level);
+  }
+
+  const plain = html => html.replace(/<[^>]+>/g, '');
+
+  let lastHtml = '';
+  function nextQuestion() {
+    const list = pool();
+    let q;
+    for (let i = 0; i < 12; i++) {
+      const g = list[R(0, list.length - 1)];
+      q = g.make();
+      q.rule = g.rule;
+      q.key = g.key;
+      if (q.html !== lastHtml) break;
+    }
+    lastHtml = q.html;
+    return q;
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+
+  /* ── 狀態 ───────────────────────────── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, curLimit = 10;
+
+  function setView(v) { document.body.dataset.view = v; }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.level === level));
+    });
+    $('level-note').textContent = LEVEL_NOTE[level];
+    paintLimit();
+  }
+
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function startQuestion() {
+    cur = nextQuestion();
+    curLimit = limit();
+    $('rule').textContent = cur.rule;
+    const ex = $('expr');
+    ex.innerHTML = cur.html;
+    const len = plain(cur.html).length;
+    ex.classList.toggle('long', len > 18 && len <= 28);
+    ex.classList.toggle('xlong', len > 28);
+    $('btn-yes').disabled = $('btn-no').disabled = false;
+    locked = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + curLimit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      const ratio = left / (curLimit * 1000);
+      $('bar').style.transform = `scaleX(${ratio})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 3 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { judge(null); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 判定 ───────────────────────────── */
+  function judge(answer) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    $('btn-yes').disabled = $('btn-no').disabled = true;
+    document.body.classList.remove('urgent');
+
+    const timeout = answer === null;
+    const win = !timeout && answer === cur.ok;
+
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+
+    $('sol-tag').textContent = cur.rule;
+    $('sol-q').innerHTML = `${cur.html}<span class="verdict-mark" style="color:${cur.ok ? 'var(--win)' : 'var(--lose)'}">${cur.ok ? '○ 正確' : '✗ 錯誤'}</span>`;
+    $('sol-why').innerHTML = cur.why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+
+  $('btn-yes').addEventListener('click', () => judge(true));
+  $('btn-no').addEventListener('click', () => judge(false));
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limits[level] = clampLimit(limits[level] + Number(b.dataset.step));
+      store.set(`simp-limit-${level}`, String(limits[level]));
+      paintLimit();
+    });
+  });
+
+  document.querySelectorAll('#level button').forEach(b => {
+    b.addEventListener('click', () => {
+      level = b.dataset.level;
+      store.set('simp-level', level);
+      paintLevel();
+    });
+  });
+
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    store.set('simp-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      if (e.key === 'ArrowLeft' || e.key === 'o' || e.key === 'O' || e.key === '1') { e.preventDefault(); judge(true); }
+      else if (e.key === 'ArrowRight' || e.key === 'x' || e.key === 'X' || e.key === '2') { e.preventDefault(); judge(false); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); audio(); startQuestion(); }
+    }
+  });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）─────── */
+  window.__expressionSimplify = {
+    GENS, peq, polyOf, plain,
+    selfTest(n = 3000) {
+      const report = {};
+      const errors = [];
+      GENS.forEach(g => {
+        let yes = 0;
+        for (let i = 0; i < n; i++) {
+          let q;
+          try { q = g.make(); } catch (e) { errors.push([g.key, 'throw', e.message]); continue; }
+          if (typeof q.ok !== 'boolean') errors.push([g.key, 'ok 不是布林', q.html]);
+          const txt = q.html + q.why;
+          if (/undefined|NaN|Infinity|\[object/.test(txt)) errors.push([g.key, '字串有壞值', plain(txt)]);
+          if (q.check && peq(q.check.lhs, q.check.rhs) !== q.ok) errors.push([g.key, '對錯與式子不符', plain(q.html)]);
+          if (q.ok) yes++;
+        }
+        report[g.key] = `${(yes / n * 100).toFixed(0)}% 正確題`;
+      });
+      return { report, errors: errors.slice(0, 20), errorCount: errors.length };
+    }
+  };
+
+  paintLevel();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>

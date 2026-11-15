@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>化簡小抄 - 化簡對錯快判</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="二元一次式的項、係數、同類項，去括號規則、分配律、分數化簡，加上一張常見錯誤對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 8px 0 16px;
+    }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+
+    .btn {
+      padding: 9px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.98rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .btn-play {
+      border: 0;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-weight: 800;
+    }
+    .btn-play:hover { color: #231a05; filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 1.3rem;
+      color: var(--accent-2);
+      border-left: 4px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      padding: 18px;
+    }
+    .card .no {
+      display: inline-block;
+      width: 26px;
+      height: 26px;
+      line-height: 26px;
+      text-align: center;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--accent-2);
+      font-weight: 800;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+    .card .law {
+      font-size: clamp(1.15rem, 3.2vw, 1.5rem);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .card .say { color: var(--muted); font-size: 0.96rem; margin: 0 0 10px; }
+    .card .eg {
+      border-top: 1px dashed var(--line);
+      padding-top: 10px;
+      font-size: 1.05rem;
+      color: var(--cyan);
+      line-height: 1.9;
+    }
+
+    sup { font-size: 0.6em; }
+
+    .note {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 14px 18px;
+      margin: 14px 0;
+    }
+    .note b { color: var(--accent-2); }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+    }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.82em;
+      margin: 0 0.06em;
+    }
+    .fr i { font-style: normal; padding: 0 0.24em; white-space: nowrap; }
+    .fr i:first-child { border-bottom: 0.09em solid currentColor; }
+
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions">
+        <a class="btn btn-play" href="./">🎮 開始挑戰</a>
+      </div>
+    </header>
+
+    <h1>化簡小抄</h1>
+    <p class="lead">康軒 1 下 1-1 二元一次方程式。化簡二元一次式的規則，和第一冊化簡一元一次式完全一樣，只是多了一種文字符號。</p>
+
+    <h2>先認識「項」</h2>
+    <div class="grid">
+      <div class="card">
+        <span class="no">1</span>
+        <div class="law">項、係數、常數項</div>
+        <p class="say">用加號隔開的每一部分叫做<strong>項</strong>。有減號時，先改寫成加法再看，<strong>係數要連著負號</strong>。</p>
+        <div class="eg">5x − 3y + 1 ＝ 5x + (−3y) + 1<br>x 項係數 5、y 項係數 <b>−3</b>、常數項 1</div>
+      </div>
+
+      <div class="card">
+        <span class="no">2</span>
+        <div class="law">同類項</div>
+        <p class="say"><strong>文字符號和次數都相同</strong>才是同類項。常數項彼此也是同類項。</p>
+        <div class="eg">−x 和 <span class="fr"><i>1</i><i>7</i></span>x ○　5y 和 −6y ○<br>−3 和 <span class="fr"><i>1</i><i>8</i></span> ○　2x 和 3y ✗　4y 和 7 ✗</div>
+      </div>
+
+      <div class="card">
+        <span class="no">3</span>
+        <div class="law">二元一次式的值</div>
+        <p class="say">x、y <strong>兩個一起</strong>代進去。代負數要加括號。</p>
+        <div class="eg">x ＝ 1、y ＝ 2 時<br>2x − 5y + 4 ＝ 2×1 − 5×2 + 4 ＝ <b>−4</b></div>
+      </div>
+
+      <div class="card">
+        <span class="no">4</span>
+        <div class="law">式？還是方程式？</div>
+        <p class="say">二元一次<strong>式</strong>沒有等號；二元一次<strong>方程式</strong>有等號，且<strong>化簡後</strong>含兩種未知數、次數都是 1。</p>
+        <div class="eg">5x + 2y：二元一次式<br>(x + 7) + (y + 7) ＝ 42：二元一次方程式<br>xy ＝ 6、x<sup>2</sup> + y ＝ 4：都不是</div>
+      </div>
+    </div>
+
+    <h2>化簡的四個工具</h2>
+    <div class="grid">
+      <div class="card">
+        <span class="no">1</span>
+        <div class="law">合併同類項</div>
+        <p class="say">同類項才能併，<strong>不同類項不能併</strong>。</p>
+        <div class="eg">2x − 5y + 2 − 4x + 2y − 7<br>＝ (2x − 4x) + (−5y + 2y) + (2 − 7)<br>＝ −2x − 3y − 5</div>
+      </div>
+
+      <div class="card">
+        <span class="no">2</span>
+        <div class="law">去括號規則</div>
+        <p class="say">加號括號：符號<strong>照抄</strong>。<br>減號括號：裡面<strong>每一項都變號</strong>。</p>
+        <div class="eg">+(a + b) ＝ a + b　+(a − b) ＝ a − b<br>−(a + b) ＝ −a − b　−(a − b) ＝ −a + b</div>
+      </div>
+
+      <div class="card">
+        <span class="no">3</span>
+        <div class="law">分配律</div>
+        <p class="say">括號外的數要乘到<strong>裡面每一項</strong>；負數要<strong>連負號</strong>一起乘。</p>
+        <div class="eg">6(x − y) − 2(5x − 2y + 3)<br>＝ 6x − 6y − 10x + 4y − 6<br>＝ −4x − 2y − 6</div>
+      </div>
+
+      <div class="card">
+        <span class="no">4</span>
+        <div class="law">分數：先通分</div>
+        <p class="say">分母取最小公倍數。前面是減號時，<strong>被減的分子整組變號</strong>。</p>
+        <div class="eg"><span class="fr"><i>2x − y + 4</i><i>3</i></span> − <span class="fr"><i>x + y − 1</i><i>2</i></span>
+          ＝ <span class="fr"><i>2(2x − y + 4) − 3(x + y − 1)</i><i>6</i></span>
+          ＝ <span class="fr"><i>x − 5y + 11</i><i>6</i></span></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>多層括號：</b>由內往外，<b>先去小括號、再去中括號</b>。<br>
+      5 − y + 2[4x − (6x + y)] ＝ 5 − y + 2[4x − 6x − y] ＝ 5 − y + 2[−2x − y] ＝ 5 − y − 4x − 2y ＝ −4x − 3y + 5
+    </div>
+
+    <h2>常見錯誤對照表</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>遊戲裡的「錯誤」選項大多長得像左邊這一欄。</caption>
+        <thead>
+          <tr><th style="width:44%">常見的錯</th><th>正確</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="bad">4x + 3y + x + 2 ＝ 5x + 5y</td>
+            <td class="good">4x + 3y + x + 2 ＝ 5x + 3y + 2（常數項不能和 y 項併）</td>
+          </tr>
+          <tr>
+            <td class="bad">3x + 4y ＝ 7xy</td>
+            <td class="good">x 項和 y 項不是同類項，3x + 4y 已經最簡</td>
+          </tr>
+          <tr>
+            <td class="bad">5x − 3y + 1 的 y 項係數是 3</td>
+            <td class="good">y 項係數是 −3（係數連著負號）</td>
+          </tr>
+          <tr>
+            <td class="bad">x ＝ 1、y ＝ 2 時，2x − 5y + 4 ＝ 1</td>
+            <td class="good">2×1 − 5×2 + 4 ＝ −4</td>
+          </tr>
+          <tr>
+            <td class="bad">(2x + y) − (x − 3y) ＝ 2x + y − x − 3y</td>
+            <td class="good">減號括號每一項都變號：＝ 2x + y − x + 3y ＝ x + 4y</td>
+          </tr>
+          <tr>
+            <td class="bad">3(x + 3y − 2) ＝ 3x + 3y − 2</td>
+            <td class="good">3 要乘到每一項：＝ 3x + 9y − 6</td>
+          </tr>
+          <tr>
+            <td class="bad">6(x − y) − 2(5x − 2y + 3) ＝ 6x − 6y − 10x − 2y + 3</td>
+            <td class="good">−2 連負號乘進去：＝ 6x − 6y − 10x + 4y − 6 ＝ −4x − 2y − 6</td>
+          </tr>
+          <tr>
+            <td class="bad"><span class="fr"><i>x − y</i><i>4</i></span> − <span class="fr"><i>y − 1</i><i>3</i></span> ＝ <span class="fr"><i>3x − 3y − 4y − 4</i><i>12</i></span></td>
+            <td class="good">被減的分子整組變號：＝ <span class="fr"><i>3x − 3y − 4y + 4</i><i>12</i></span> ＝ <span class="fr"><i>3x − 7y + 4</i><i>12</i></span></td>
+          </tr>
+          <tr>
+            <td class="bad"><span class="fr"><i>x</i><i>2</i></span> + <span class="fr"><i>y</i><i>3</i></span> ＝ <span class="fr"><i>x + y</i><i>5</i></span></td>
+            <td class="good">分母不能直接相加，先通分：＝ <span class="fr"><i>3x + 2y</i><i>6</i></span></td>
+          </tr>
+          <tr>
+            <td class="bad">2x + 3y − 1 ＝ 2x + 5 是二元一次方程式</td>
+            <td class="good">兩邊的 2x 消掉，化簡後是 3y ＝ 6，只剩一元</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a>
+    </footer>
+  </div>
+</body>
+</html>

@@ -25,6 +25,7 @@
 | `power-challenge/` | 次方大挑戰（1 上 1-4）：`index.html` 遊戲本體、`learn.html` 次方教學表 |
 | `exponent-rules/` | 指數律對錯快判（1 上 2-4）：`index.html` 遊戲本體、`learn.html` 指數律小抄 |
 | `equation-steps/` | 移項闖關（1 上 3-2）：`index.html` 遊戲本體、`learn.html` 移項法則小抄 |
+| `expression-simplify/` | 化簡對錯快判（1 下 1-1）：`index.html` 遊戲本體、`learn.html` 化簡小抄 |
 | `output/` | 產出物（不進 git） |
 
 ## 專案專屬規則
