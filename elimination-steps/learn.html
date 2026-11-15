@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>消去法小抄 - 消去闖關</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="代入消去法、加減消去法、對齊係數、先整理式子，加上一張解二元一次聯立方程式的常見錯誤對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 8px 0 16px;
+    }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+
+    .btn {
+      padding: 9px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.98rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .btn-play {
+      border: 0;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-weight: 800;
+    }
+    .btn-play:hover { color: #231a05; filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 1.3rem;
+      color: var(--accent-2);
+      border-left: 4px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      padding: 18px;
+    }
+    .card .law {
+      font-size: clamp(1.1rem, 3vw, 1.4rem);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .card .say { color: var(--muted); font-size: 0.96rem; margin: 10px 0 0; }
+
+    .note {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 14px 18px;
+      margin: 14px 0;
+    }
+    .note b { color: var(--accent-2); }
+
+    .chain { font-size: clamp(1.02rem, 2.9vw, 1.25rem); font-weight: 700; line-height: 1.85; }
+    .chain small { display: block; font-size: 0.72em; font-weight: 400; color: var(--cyan); line-height: 1.4; }
+    .chain .cir { color: var(--cyan); font-weight: 600; margin-left: 0.25em; }
+    .chain .ok { color: var(--win); }
+    .chain .ng { color: var(--lose); }
+
+    .rules2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+    .rules2 .card { text-align: center; padding: 14px 10px; }
+    .rules2 .big { font-size: clamp(1.3rem, 3.6vw, 1.7rem); font-weight: 800; color: var(--accent-2); margin-bottom: 6px; }
+    .rules2 .say { font-size: 1.02rem; color: var(--text); margin: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: clamp(0.92rem, 2.3vw, 1.08rem);
+    }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+    td.say { color: var(--muted); font-size: 0.95em; }
+
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.78em;
+      margin: 0 0.06em;
+    }
+    .fr i { font-style: normal; padding: 0 0.24em; }
+    .fr i:first-child { border-bottom: 0.09em solid currentColor; }
+
+    ol.steps { padding-left: 1.3em; margin: 8px 0 0; }
+    ol.steps li { margin-bottom: 10px; }
+    ol.steps b { color: var(--accent-2); }
+
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+
+    @media (max-width: 560px) {
+      table, thead, tbody, tr, th, td { font-size: 0.9rem; }
+      th, td { padding: 8px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions">
+        <a class="btn btn-play" href="./">🎮 開始闖關</a>
+      </div>
+    </header>
+
+    <h1>消去法小抄</h1>
+    <p class="lead">康軒 1 下 1-2。兩個未知數太多了：先<b>消去一個未知數</b>，變成一元一次方程式解出來，再<b>代回</b>求另一個。</p>
+
+    <h2>解聯立方程式的流程</h2>
+    <div class="note">
+      能讓兩條方程式<b>同時成立</b>的 x、y 值（共同解），就是聯立方程式的解。
+      解的方法：<b>代入消去法</b>或<b>加減消去法</b>消去一個未知數 → 解一元一次方程式 → 把解<b>代回</b>任一條式子求另一個未知數 → 代回<b>兩條原式</b>驗算。
+    </div>
+
+    <h2>代入消去法：有現成的「x = …」就直接代</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">已經是 y = … 的樣子</div>
+        <div class="chain">y = 2 − 3x<span class="cir">①</span><br>4x + 2y = 6<span class="cir">②</span>
+          <small>把①代入②：② 的 y 換成 (2 − 3x)</small>4x + 2(2 − 3x) = 6
+          <small>2 要乘進括號裡<b>每一項</b></small>4x + 4 − 6x = 6，−2x = 2，x = −1
+          <small>把 x = −1 代回①</small>y = 2 − 3 × (−1) = 5</div>
+      </div>
+      <div class="card">
+        <div class="law">先移項成 x = …</div>
+        <div class="chain">x + 2y = 7<span class="cir">①</span><br>3x − y = 7<span class="cir">②</span>
+          <small>① 的 x 係數是 1，移項（<b>要變號</b>）</small>x = 7 − 2y
+          <small>代入②</small>3(7 − 2y) − y = 7，21 − 7y = 7，y = 2
+          <small>把 y = 2 代回①</small>x + 4 = 7，x = 3</div>
+        <p class="say">係數是 1 或 −1 的未知數最好移項；係數是 −1 時別忘了最後兩邊同乘 −1。</p>
+      </div>
+    </div>
+
+    <h2>加減消去法：係數相同用減、相反用加</h2>
+    <div class="rules2">
+      <div class="card"><div class="big">相反 → 加</div><p class="say">−4x 和 4x<br>相加得 0</p></div>
+      <div class="card"><div class="big">相同 → 減</div><p class="say">12x 和 12x<br>相減得 0</p></div>
+    </div>
+    <div class="grid" style="margin-top:14px">
+      <div class="card">
+        <div class="law">係數相反：直接加</div>
+        <div class="chain">2x + y = 1<span class="cir">①</span><br>4x − y = 5<span class="cir">②</span>
+          <small>y 的係數 1 和 −1 互為相反數 → ①＋② 消去 y</small>6x = 6，x = 1
+          <small>把 x = 1 代回①</small>2 + y = 1，y = −1</div>
+        <p class="say">課本自我檢核：這題用「①−②」<b>消不掉 y</b>，會得到 −2x + 2y = −4。</p>
+      </div>
+      <div class="card">
+        <div class="law">係數相同：相減，整條變號</div>
+        <div class="chain">3x − 9y = −3<span class="cir">③</span><br>3x + 2y = 8<span class="cir">②</span>
+          <small>x 的係數都是 3 → ③−② 消去 x</small>−9y − 2y = −11y、−3 − 8 = −11
+          <small></small>−11y = −11，y = 1</div>
+        <p class="say">減的時候 ② 的<b>每一項</b>都要變號。課本挑錯題小妍只變了一半，算成 −7y = 11。</p>
+      </div>
+    </div>
+
+    <h2>係數不一樣：先乘倍數對齊</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">取最小公倍數</div>
+        <div class="chain">3x + 5y = 8<span class="cir">①</span><br>4x + 3y = 7<span class="cir">②</span>
+          <small>想消去 x：[3, 4] = 12</small>①×4：12x + 20y = 32<span class="cir">③</span><br>②×3：12x + 9y = 21<span class="cir">④</span>
+          <small>③−④ 消去 x</small>11y = 11，y = 1
+          <small>把 y = 1 代回①</small>3x + 5 = 8，x = 1</div>
+      </div>
+      <div class="card">
+        <div class="law">挑好對齊的那個未知數</div>
+        <div class="chain">2x + 3y = 12<span class="cir">①</span><br>5x + 9y = 33<span class="cir">②</span>
+          <small>y 的係數 3 和 9：只要 ①×3 就對齊</small>6x + 9y = 36<span class="cir">③</span>
+          <small>③−② 消去 y</small>x = 3</div>
+        <p class="say">一個係數剛好是另一個的倍數，只要乘一條，<b>少一步</b>。</p>
+      </div>
+    </div>
+    <div class="note">
+      <b>乘完要看清楚消去的是誰：</b>3x − 4y = 13、2x + 3y = 3，①×2 和 ②×3 讓 <b>x</b> 的係數都變成 6，所以「①×2 − ②×3」消去的是 <b>x</b>，不是 y（課本自我檢核）。
+      想消去 y 要讓 y 的係數對齊：[4, 3] = 12，①×3、②×4，再相加。
+    </div>
+
+    <h2>先整理：散在兩邊、分數、小數</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">未知數散在等號兩邊</div>
+        <div class="chain">3x = −1 + 2x − 2y
+          <small>x、y 移到左邊、數字移到右邊（<b>移過去要變號</b>）</small>x + 2y = −1</div>
+      </div>
+      <div class="card">
+        <div class="law">分數係數：乘分母的最小公倍數</div>
+        <div class="chain"><span class="fr"><i>x</i><i>2</i></span> − <span class="fr"><i>y</i><i>3</i></span> = 3
+          <small>[2, 3] = 6，<b>每一項</b>都乘 6</small>3x − 2y = <span class="ok">18</span></div>
+        <p class="say">右邊的 3 沒有分母也要乘，寫成 3x − 2y = <span style="color:var(--lose)">3</span> 就錯了。</p>
+      </div>
+      <div class="card">
+        <div class="law">小數係數：乘 10</div>
+        <div class="chain">0.3x − 0.2y = 2.5
+          <small>每一項都乘 10</small>3x − 2y = 25</div>
+      </div>
+    </div>
+
+    <h2>解題順序（遊戲裡的最短走法）</h2>
+    <ol class="steps">
+      <li><b>有分數、小數，或未知數散在兩邊，先整理</b>成「ax + by = c」的整數係數式子。</li>
+      <li><b>有現成的 x = …、y = …，或係數是 1、−1</b>：用代入消去法，一步就消去一個未知數。</li>
+      <li><b>有係數相同或相反</b>：直接相減或相加。</li>
+      <li><b>都沒有</b>：挑比較好對齊的未知數，乘到兩個係數的<b>最小公倍數</b>，再加減。</li>
+      <li><b>代回</b>任一條式子求另一個未知數（挑係數簡單的比較好算），最後代回<b>兩條原式</b>驗算。</li>
+    </ol>
+
+    <h2>常見錯誤對照表</h2>
+    <table>
+      <caption>遊戲裡的紅色按鈕大多就是左邊這一欄。</caption>
+      <thead>
+        <tr><th style="width:34%">常見的錯</th><th style="width:28%">正確</th><th>為什麼</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="bad">2x + y = 1、4x − y = 5，①−② 消去 y</td><td class="good">①＋② 消去 y</td><td class="say">y 的係數互為相反數要用<strong>加</strong>（課本自我檢核）</td></tr>
+        <tr><td class="bad">3x − 4y = 13、2x + 3y = 3，①×2 − ②×3 消去 y</td><td class="good">消去的是 x</td><td class="say">乘完 x 的係數都是 6（課本自我檢核）</td></tr>
+        <tr><td class="bad">x − 3y = −1、3x + 2y = 8，①×3 − ② 得 −7y = 11</td><td class="good">−11y = −11</td><td class="say">相減時 ② 的<strong>每一項</strong>都要變號（課本挑錯題小妍）</td></tr>
+        <tr><td class="bad">由 x = −1 + 3y 代入 3x + 2y = 8 得 y = <span class="fr"><i>11</i><i>5</i></span></td><td class="good">−3 + 9y + 2y = 8，y = 1</td><td class="say">3 要乘進括號裡<strong>每一項</strong>（課本挑錯題小美）</td></tr>
+        <tr><td class="bad">x − 3y = −1 → x = −1 − 3y</td><td class="good">x = 3y − 1</td><td class="say">−3y 移過等號要<strong>變號</strong></td></tr>
+        <tr><td class="bad">3x 和 4x，直接相減消去 x</td><td class="good">先 ①×4、②×3</td><td class="say">係數要先對齊成最小公倍數 12</td></tr>
+        <tr><td class="bad">3x 和 4x，①×3、②×4</td><td class="good">①×4、②×3</td><td class="say">乘自己的係數會變成 9x 和 16x，還是對不齊</td></tr>
+        <tr><td class="bad">由①得 x = 3y − 1，再代回①</td><td class="good">代入另一條②</td><td class="say">代回自己只會得到 −1 = −1</td></tr>
+        <tr><td class="bad"><span class="fr"><i>x</i><i>2</i></span> − <span class="fr"><i>y</i><i>3</i></span> = 3 → 3x − 2y = 3</td><td class="good">3x − 2y = 18</td><td class="say">去分母時沒有分母的項也要乘</td></tr>
+        <tr><td class="bad">y = 1 代入 x − 3y = −1 得 x = −4</td><td class="good">x − 3 = −1，x = 2</td><td class="say">−3 移到右邊要變號</td></tr>
+      </tbody>
+    </table>
+
+    <h2>驗算：代回兩條原式</h2>
+    <div class="note">
+      解 3x + 5y = 8、4x + 3y = 7 得 x = 1、y = 1。代回①：3 + 5 = <b>8</b> ✓；代回②：4 + 3 = <b>7</b> ✓。<br>
+      要代回<strong>兩條</strong>，而且是<strong>題目原本的式子</strong>——只代一條，可能剛好代到自己算錯的那一條。
+    </div>
+
+    <footer>
+      <a href="./">🎮 消去闖關</a>　｜　<a href="../index.html">回遊戲大廳</a>
+    </footer>
+  </div>
+</body>
+</html>

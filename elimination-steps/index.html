@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>消去闖關 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="一步一步解二元一次聯立方程式：每次從四個操作（加減消去、乘倍數、代入）裡挑一個，限時內解出 x、y。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: safe center;
+      gap: 16px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 38ch;
+      line-height: 1.7;
+    }
+
+    .demo {
+      font-size: clamp(1.1rem, 3.2vw, 1.7rem);
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.45;
+    }
+    .demo small { display: block; font-size: 0.55em; color: var(--cyan); font-weight: 400; }
+    .demo .cir { color: var(--cyan); font-weight: 600; margin-left: 0.3em; }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 2.1em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys {
+      color: var(--muted);
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer {
+      flex: 0 0 auto;
+      height: 10px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(8px, 1.4vh, 16px);
+      padding: 12px 16px 16px;
+      min-height: 0;
+    }
+
+    .rule-tag {
+      flex: 0 0 auto;
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+      background: var(--panel);
+      text-align: center;
+    }
+    .rule-tag b { color: var(--accent-2); }
+
+    .count {
+      position: absolute;
+      top: 54px;
+      right: 18px;
+      font-size: clamp(2.2rem, 6vw, 4rem);
+      font-weight: 800;
+      color: var(--accent-2);
+      opacity: 0.85;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+      z-index: 2;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    /* ── 黑板：一行一行往下寫（左欄式子、右欄編號）── */
+    .board {
+      --k: 1;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      display: grid;
+      grid-template-columns: max-content max-content;
+      justify-content: center;
+      align-content: unsafe end;
+      column-gap: 0.5em;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 24%);
+      mask-image: linear-gradient(to bottom, transparent 0, #000 24%);
+    }
+    .ln { display: contents; }
+    .ln > span {
+      font-weight: 700;
+      white-space: nowrap;
+      line-height: 1.45;
+      color: var(--muted);
+      font-size: calc(var(--k) * clamp(1rem, 2.7vw, 1.6rem));
+      transition: font-size 0.3s, color 0.3s;
+      position: relative;
+      align-self: center;
+    }
+    .ln > .t { text-align: center; justify-self: center; }
+    .ln > .no { text-align: left; color: rgba(34, 211, 238, 0.55); font-weight: 600; }
+    .ln.work > span { font-weight: 600; font-size: calc(var(--k) * clamp(0.95rem, 2.4vw, 1.45rem)); }
+    .ln.act > span { color: var(--text); font-size: calc(var(--k) * clamp(1.45rem, 4.9vw, 3.1rem)); }
+    .ln.act > .no { color: var(--cyan); }
+    .ln.new > span { animation: slideIn 0.35s ease-out; }
+    .ln.done > span { color: var(--win); text-shadow: 0 0 26px rgba(34, 197, 94, 0.55); animation: pop 0.45s cubic-bezier(0.2, 1.5, 0.4, 1); }
+    .ln.bad > span {
+      color: var(--lose);
+      font-size: calc(var(--k) * clamp(1.2rem, 3.8vw, 2.4rem));
+      animation: shake 0.42s;
+    }
+    .ln.bad > .t::after {
+      content: "";
+      position: absolute;
+      left: -0.1em;
+      right: -0.1em;
+      top: 52%;
+      height: 0.09em;
+      background: var(--lose);
+      border-radius: 2px;
+    }
+
+    .note {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: calc(var(--k) * clamp(0.8rem, 1.8vw, 1.05rem));
+      color: var(--cyan);
+      line-height: 1.6;
+      white-space: nowrap;
+      /* 寬度設 0、內容置中外溢：註記不撐開式子的欄寬 */
+      width: 0;
+      justify-self: center;
+      display: flex;
+      justify-content: center;
+    }
+    .note.detour { color: var(--accent-2); }
+    .note.bad { color: var(--lose); }
+    .note.new { animation: fadeIn 0.3s ease-out; }
+
+    @keyframes slideIn {
+      from { transform: translateY(0.8em); opacity: 0; }
+      to { transform: none; opacity: 1; }
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes shake {
+      0%, 100% { transform: none; }
+      20% { transform: translateX(-10px); }
+      40% { transform: translateX(9px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(4px); }
+    }
+
+    /* ── 回饋列 ─────────────────────────────── */
+    .fb {
+      flex: 0 0 auto;
+      width: min(1000px, 100%);
+      min-height: 3.4em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: clamp(0.9rem, 2vw, 1.15rem);
+      line-height: 1.6;
+      text-align: center;
+    }
+    .fb em { font-style: normal; color: var(--accent-2); font-weight: 700; }
+    .fb.good { border-color: rgba(34, 197, 94, 0.55); color: #bbf7d0; }
+    .fb.detour { border-color: rgba(245, 158, 11, 0.6); color: #fde68a; }
+    .fb.bad { border-color: rgba(239, 68, 68, 0.7); color: #fecaca; background: rgba(127, 29, 29, 0.35); animation: fadeIn 0.25s; }
+    .fb.bad em { color: #fff; }
+
+    .opts {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(8px, 1.6vw, 18px);
+      width: min(1000px, 100%);
+    }
+
+    .opt {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: clamp(54px, 9vh, 92px);
+      padding: 8px clamp(10px, 1.8vw, 18px);
+      border: 2px solid var(--line);
+      border-radius: 18px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s, background 0.15s, opacity 0.15s;
+    }
+    .opt[hidden] { display: none; }
+    .opt .key {
+      flex: 0 0 auto;
+      width: 1.9em;
+      height: 1.9em;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      color: var(--cyan);
+      font-size: clamp(0.9rem, 2vw, 1.25rem);
+      font-weight: 800;
+    }
+    .opt .txt {
+      flex: 1 1 auto;
+      font-size: clamp(0.95rem, 2.3vw, 1.55rem);
+      font-weight: 700;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .opt:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--accent); }
+    .opt:disabled { cursor: default; }
+    .opt.is-wrong { border-color: var(--lose); background: rgba(239, 68, 68, 0.14); opacity: 0.55; }
+    .opt.is-wrong .key { color: var(--lose); border-color: var(--lose); }
+    .opt.is-wrong .txt { text-decoration: line-through; text-decoration-color: var(--lose); }
+    .opt.is-pick { border-color: var(--win); background: rgba(34, 197, 94, 0.16); }
+
+    /* ── 結果 ───────────────────────────────── */
+    .verdict {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: safe center;
+      gap: 14px;
+      padding: 24px 16px;
+      background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95));
+      backdrop-filter: blur(3px);
+      overflow-y: auto;
+    }
+    body[data-view="result"] .verdict { display: flex; }
+
+    .verdict h2 {
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 4.6rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .solution {
+      width: min(820px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: clamp(14px, 3vw, 24px);
+      text-align: center;
+    }
+    .solution .tag {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 2px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--cyan);
+      font-size: 0.9rem;
+    }
+    .solution .sum {
+      font-size: clamp(1.1rem, 3.2vw, 1.7rem);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .solution .sum b { color: var(--accent-2); font-size: 1.2em; }
+    .solution .sub {
+      color: var(--muted);
+      font-size: clamp(0.9rem, 2.1vw, 1.1rem);
+      margin-bottom: 12px;
+    }
+    .solution h3 {
+      margin: 14px 0 6px;
+      font-size: 1rem;
+      color: var(--cyan);
+      font-weight: 600;
+    }
+    .solution .check {
+      margin-top: 12px;
+      color: #bbf7d0;
+      font-size: clamp(0.92rem, 2.2vw, 1.15rem);
+      line-height: 1.7;
+    }
+
+    .mini {
+      display: grid;
+      grid-template-columns: max-content max-content;
+      justify-content: center;
+      column-gap: 0.5em;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 4px 0;
+    }
+    .mini .ln > span { color: var(--text); font-size: clamp(0.95rem, 2.8vw, 1.45rem); animation: none; }
+    .mini .ln.work > span { color: var(--muted); font-size: clamp(0.85rem, 2.4vw, 1.2rem); }
+    .mini .ln.bad > span { color: var(--lose); font-size: clamp(0.9rem, 2.6vw, 1.3rem); animation: none; }
+    .mini .ln.done > span { color: var(--win); animation: none; }
+    .mini .note { font-size: clamp(0.78rem, 1.8vw, 0.95rem); }
+
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── 堆疊分數 ───────────────────────────── */
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.74em;
+      margin: 0 0.06em;
+    }
+    .fr i { font-style: normal; padding: 0 0.24em; }
+    .fr i:first-child { border-bottom: 0.09em solid currentColor; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 64px; right: 12px; font-size: 2rem; }
+      .seg button { padding: 9px 12px; }
+      .opt { gap: 8px; border-radius: 14px; padding: 6px 8px; }
+      .opt .key { width: 1.6em; height: 1.6em; }
+      .play-body { padding: 10px 12px 12px; }
+      .rule-tag { align-self: flex-start; font-size: 0.8rem; padding: 4px 10px; max-width: calc(100% - 56px); }
+      .keys { display: none; }
+    }
+
+    @media (max-height: 560px) {
+      .opt { min-height: 46px; }
+      .fb { min-height: 2.6em; padding: 4px 12px; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">過關 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">消去闖關</h1>
+      <p class="unit" style="margin:0 0 8px;opacity:.75;font-size:.95rem">📘 第2冊・第1章 二元一次聯立方程式・第2節 解二元一次聯立方程式</p>
+      <p class="hint">每一步從四個操作（加減消去、乘倍數、代入）裡挑一個，<span class="limit-val">30</span> 秒內解出 <strong>x = □、y = □</strong>。選錯會變紅並告訴你為什麼，可以馬上重選；<strong>步數越少越好</strong>。</p>
+      <div class="demo">x + y = 5<span class="cir">①</span><br>x − y = 1<span class="cir">②</span><small>⬇ ①＋② 消去 y</small>2x = 6，x = 3<small>⬇ 把 x = 3 代回①</small>x = 3、y = 2</div>
+
+      <div class="ctl-row">
+        <div class="seg" id="level" role="group" aria-label="難度">
+          <button type="button" data-level="basic" aria-pressed="true">基礎</button>
+          <button type="button" data-level="adv" aria-pressed="false">進階・乘倍數</button>
+          <button type="button" data-level="tidy" aria-pressed="false">整理・化簡</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-5" aria-label="減少 5 秒">−</button>
+          <b class="limit-val">30</b>秒
+          <button type="button" data-step="5" aria-label="增加 5 秒">＋</button>
+        </div>
+      </div>
+
+      <button type="button" class="big-btn" id="start">🎲 開始闖關</button>
+      <a class="learn-link" href="learn.html">📖 先看消去法小抄</a>
+      <p class="keys">鍵盤：<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> 或 <kbd>A</kbd>～<kbd>D</kbd> 選操作　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <!-- ── 作答 ───────────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連續過關 <b id="streak-n">0</b></div>
+      <div class="stat">過關 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="count" id="count">30</div>
+
+    <div class="play-body">
+      <div class="rule-tag" id="rule"></div>
+      <div class="board" id="board" aria-live="polite"></div>
+      <div class="fb" id="fb"></div>
+      <div class="opts" id="opts">
+        <button type="button" class="opt" data-i="0"><span class="key">A</span><span class="txt"></span></button>
+        <button type="button" class="opt" data-i="1"><span class="key">B</span><span class="txt"></span></button>
+        <button type="button" class="opt" data-i="2"><span class="key">C</span><span class="txt"></span></button>
+        <button type="button" class="opt" data-i="3"><span class="key">D</span><span class="txt"></span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 判定 ───────────────────────────── -->
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">過關！</h2>
+    <div class="solution">
+      <div class="tag" id="sol-tag"></div>
+      <div class="sum" id="sol-sum"></div>
+      <div class="sub" id="sol-sub"></div>
+      <div id="sol-mine"></div>
+      <div id="sol-best"></div>
+      <div class="check" id="sol-check"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  /* ── 難度與設定（記在這台瀏覽器）────────── */
+  const LEVELS = {
+    basic: { name: '基礎', def: 30, lo: 2, hi: 2 },
+    adv:   { name: '進階・乘倍數', def: 45, lo: 3, hi: 4 },
+    tidy:  { name: '整理・化簡', def: 60, lo: 3, hi: 5 }
+  };
+  const LIMIT_MIN = 10, LIMIT_MAX = 180;
+
+  function clampLimit(v) {
+    const n = Math.round(v / 5) * 5;
+    return Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, n));
+  }
+  function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 無痕模式 */ } }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  let level = LEVELS[load('elim-level')] ? load('elim-level') : 'basic';
+  const limits = {};
+  Object.keys(LEVELS).forEach(k => {
+    limits[k] = clampLimit(parseInt(load('elim-limit-' + k), 10) || LEVELS[k].def);
+  });
+  let muted = load('elim-muted') === '1';
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const nz = (a, b) => { let v; do { v = R(a, b); } while (v === 0); return v; };
+  const pm = (a, b) => R(a, b) * (Math.random() < 0.5 ? 1 : -1);
+  const pickOne = arr => arr[R(0, arr.length - 1)];
+  const F = (n, d) => `<span class="fr"><i>${n}</i><i>${d}</i></span>`;
+  const LBL = ['A', 'B', 'C', 'D'];
+  const MINUS = '−';
+  const CIR = n => String.fromCharCode(0x245F + n);      // 1 → ①
+  const other = v => (v === 'x' ? 'y' : 'x');
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = R(0, i);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  /* ── 有理數 ─────────────────────────── */
+  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a || 1; };
+  const lcm = (a, b) => Math.abs(a * b) / gcd(a, b);
+  const gcd3 = (a, b, c) => gcd(gcd(a, b), c);
+  function Q(n, d = 1) {
+    if (d < 0) { n = -n; d = -d; }
+    const g = gcd(n, d);
+    return { n: n / g + 0, d: d / g };
+  }
+  const toQ = v => (typeof v === 'number' ? Q(v) : v);
+  const qa = (x, y) => Q(x.n * y.d + y.n * x.d, x.d * y.d);
+  const qs = (x, y) => Q(x.n * y.d - y.n * x.d, x.d * y.d);
+  const qm = (x, y) => Q(x.n * y.n, x.d * y.d);
+  const qdv = (x, y) => Q(x.n * y.d, x.d * y.n);
+  const qn = x => Q(-x.n, x.d);
+  const qz = x => x.n === 0;
+  const qi = x => x.d === 1;
+  const qeq = (x, y) => x.n === y.n && x.d === y.d;
+  const qabsN = x => Math.abs(x.n);
+  const ZERO = Q(0), ONE = Q(1);
+
+  /* ── 顯示 ───────────────────────────── */
+  function fmtAbs(q) { return qi(q) ? String(Math.abs(q.n)) : F(Math.abs(q.n), q.d); }
+  function fmtNum(q) { return (q.n < 0 ? MINUS : '') + fmtAbs(q); }
+  function numP(q) { return q.n < 0 ? `(${fmtNum(q)})` : fmtNum(q); }
+  const decAbs = q => String(Math.abs(q.n) / q.d);
+  const decNum = q => (q.n < 0 ? MINUS : '') + decAbs(q);
+
+  function absTerm(c, v, dec) {
+    if (dec) return decAbs(c) + v;
+    const n = Math.abs(c.n);
+    if (qi(c)) return (n === 1 ? '' : n) + v;
+    return F((n === 1 ? '' : n) + v, c.d);
+  }
+
+  /* rep：把某個未知數換掉
+       { kind: 'val',  v, val }            代數值
+       { kind: 'expr', v, html, single }   代式子（single：單一正項，可不加括號） */
+  function repBody(c, rep, bare) {
+    const n = Math.abs(c.n);
+    if (rep.kind === 'val') {
+      if (n === 1) return bare ? fmtNum(rep.val) : numP(rep.val);
+      return `${fmtAbs(c)} × ${numP(rep.val)}`;
+    }
+    if (n === 1) return bare || rep.single ? rep.html : `(${rep.html})`;
+    return `${fmtAbs(c)}(${rep.html})`;
+  }
+
+  /* 項的清單 [{c: Q, v: 'x'|'y'|'', dec}] → 3x − 2y + 5 */
+  function polyHTML(terms, rep) {
+    const ts = terms.filter(t => !qz(t.c));
+    if (!ts.length) return '0';
+    return ts.map((t, i) => {
+      const neg = t.c.n < 0, first = i === 0;
+      let body;
+      if (rep && t.v && t.v === rep.v) body = repBody(t.c, rep, first && !neg);
+      else if (t.v) body = absTerm(t.c, t.v, t.dec);
+      else body = t.dec ? decAbs(t.c) : fmtAbs(t.c);
+      if (first) return (neg ? MINUS : '') + body;
+      return (neg ? ` ${MINUS} ` : ' + ') + body;
+    }).join('');
+  }
+
+  /* ── 方程式 ─────────────────────────────
+     每條式子都記成等價的 a·x + b·y = c（有理數），另記顯示用的樣子：
+       std  ax + by = c（整數係數）
+       iso  v = k·w + m（x = 4y、y = 3 − 9x 這種可以直接代入的）
+       raw  還要整理的原式：scatter 散在兩邊／zero 等號右邊是 0／frac 分數係數／dec 小數係數
+  ───────────────────────────────────── */
+  const coef = (e, v) => (v === 'x' ? e.a : e.b);
+
+  function stdEq(a, b, c, dec) {
+    const e = { form: 'std', a: toQ(a), b: toQ(b), c: toQ(c) };
+    if (dec) e.dec = dec;
+    return e;
+  }
+  function isoEq(v, k, m, constFirst) {
+    const e = { form: 'iso', v, w: other(v), k: toQ(k), m: toQ(m), constFirst: !!constFirst };
+    if (v === 'x') { e.a = ONE; e.b = qn(e.k); } else { e.b = ONE; e.a = qn(e.k); }
+    e.c = e.m;
+    return e;
+  }
+  const sumOf = (terms, v) => terms.filter(t => t.v === v).reduce((s, t) => qa(s, t.c), ZERO);
+  function rawEq(kind, Lt, Rt, extra) {
+    Lt = Lt.map(t => Object.assign({}, t, { c: toQ(t.c) }));
+    Rt = Rt.map(t => Object.assign({}, t, { c: toQ(t.c) }));
+    return Object.assign({
+      form: 'raw', kind, Lt, Rt,
+      a: qs(sumOf(Lt, 'x'), sumOf(Rt, 'x')),
+      b: qs(sumOf(Lt, 'y'), sumOf(Rt, 'y')),
+      c: qs(sumOf(Rt, ''), sumOf(Lt, ''))
+    }, extra || {});
+  }
+
+  const stdTerms = e => [
+    { c: e.a, v: 'x', dec: e.dec && e.dec.a },
+    { c: e.b, v: 'y', dec: e.dec && e.dec.b }
+  ];
+  function isoTerms(e) {
+    const t1 = { c: e.k, v: e.w }, t2 = { c: e.m, v: '' };
+    return e.constFirst ? [t2, t1] : [t1, t2];
+  }
+  function exprOf(iso) {
+    const ts = isoTerms(iso).filter(t => !qz(t.c));
+    return { kind: 'expr', v: iso.v, html: polyHTML(ts), single: ts.length === 1 && ts[0].c.n > 0 };
+  }
+
+  function eqHTML(e, rep) {
+    if (e.form === 'std') return polyHTML(stdTerms(e), rep) + ' = ' + (e.dec && e.dec.c ? decNum(e.c) : fmtNum(e.c));
+    if (e.form === 'iso') {
+      const left = rep && rep.v === e.v ? (rep.kind === 'val' ? fmtNum(rep.val) : rep.html) : e.v;
+      return left + ' = ' + polyHTML(isoTerms(e), rep);
+    }
+    return polyHTML(e.Lt) + ' = ' + polyHTML(e.Rt);
+  }
+
+  const keyOf = e => [e.form, e.v || '', e.kind || '', e.a.n, e.a.d, e.b.n, e.b.d, e.c.n, e.c.d].join(',');
+  const stKey = st => (st.solved ? 'S' : st.known ? 'K' : keyOf(st.slots[0]) + '|' + keyOf(st.slots[1]));
+  const sat = (e, s) => qeq(qa(qm(e.a, s.x), qm(e.b, s.y)), e.c);
+  const evalTerms = (terms, s) => terms.reduce((acc, t) => qa(acc, qm(t.c, t.v ? s[t.v] : ONE)), ZERO);
+  const intCoefs = e => qi(e.a) && qi(e.b) && qi(e.c);
+  const maxCoef = e => Math.max(qabsN(e.a), qabsN(e.b), qabsN(e.c));
+
+  function solveSys(e1, e2) {
+    const det = qs(qm(e1.a, e2.b), qm(e1.b, e2.a));
+    if (qz(det)) return null;
+    return {
+      x: qdv(qs(qm(e1.c, e2.b), qm(e1.b, e2.c)), det),
+      y: qdv(qs(qm(e1.a, e2.c), qm(e1.c, e2.a)), det)
+    };
+  }
+
+  /* 整理原式：散在兩邊的移項合併；分數、小數乘公倍數 */
+  function tidyOf(e) {
+    if (e.kind === 'frac' || e.kind === 'dec') {
+      const m = Q(e.mult);
+      return stdEq(qm(e.a, m), qm(e.b, m), qm(e.c, m));
+    }
+    let { a, b, c } = e;
+    if (a.n < 0 || (qz(a) && b.n < 0)) { a = qn(a); b = qn(b); c = qn(c); }
+    return stdEq(a, b, c);
+  }
+
+  /* 由係數 ±1 的那條移項：v = k·w + m */
+  function rearr(s, v) {
+    const a = coef(s, v), b = coef(s, other(v));
+    const k = qn(qdv(b, a)), m = qdv(s.c, a);
+    return isoEq(v, k, m, !qz(m) && k.n < 0);
+  }
+
+  /* 把 v = k·w + m 代入 t，解出 w */
+  function subSolve(iso, t) {
+    const cv = coef(t, iso.v), cw = coef(t, iso.w);
+    const den = qa(qm(cv, iso.k), cw);
+    if (qz(den)) return null;
+    const rhs = qs(t.c, qm(cv, iso.m));
+    return { den, rhs, val: qdv(rhs, den) };
+  }
+
+  /* 已知 w = val，代回 e 求另一個未知數 */
+  function backSolve(e, w, val) {
+    const u = other(w), cu = coef(e, u);
+    if (qz(cu)) return null;
+    return qdv(qs(e.c, qm(coef(e, w), val)), cu);
+  }
+
+  const comb = (e0, e1, sg) => stdEq(
+    sg > 0 ? qa(e0.a, e1.a) : qs(e0.a, e1.a),
+    sg > 0 ? qa(e0.b, e1.b) : qs(e0.b, e1.b),
+    sg > 0 ? qa(e0.c, e1.c) : qs(e0.c, e1.c));
+  const scaleEq = (e, k) => stdEq(qm(e.a, Q(k)), qm(e.b, Q(k)), qm(e.c, Q(k)));
+
+  /* ── 狀態 ───────────────────────────────
+     st = { slots: [兩條還在用的式子], eqs: [黑板上所有式子], nextId,
+            known: null | { v, val }（已消去一個未知數、解出另一個）, solved, sol }
+  ───────────────────────────────────── */
+  function place(st, i, e) {
+    const ne = Object.assign({}, e, { id: st.nextId });
+    const slots = st.slots.slice();
+    slots[i] = ne;
+    return Object.assign({}, st, { slots, eqs: st.eqs.concat(ne), nextId: st.nextId + 1 });
+  }
+  const withKnown = (st, v, val) => Object.assign({}, st, { known: { v, val } });
+
+  /* 合法的步驟（只算數學，不管文字）；BFS 和出按鈕都用它 */
+  function validSteps(st) {
+    const out = [];
+    if (st.solved) return out;
+    if (st.known) {
+      const { v: w, val } = st.known;
+      st.eqs.forEach(e => {
+        if (e.form === 'raw') return;
+        const uval = backSolve(e, w, val);
+        if (!uval) return;
+        const sol = w === 'x' ? { x: val, y: uval } : { x: uval, y: val };
+        out.push({ type: 'back', e, uval, next: Object.assign({}, st, { solved: true, sol }) });
+      });
+      return out;
+    }
+    const [e0, e1] = st.slots;
+    if (e0.form === 'raw' || e1.form === 'raw') {
+      st.slots.forEach((e, i) => {
+        if (e.form === 'raw') out.push({ type: 'tidy', i, next: place(st, i, tidyOf(e)) });
+      });
+      return out;
+    }
+    if (e0.form === 'std' && e1.form === 'std') {
+      [1, -1].forEach(sg => {
+        const r = comb(e0, e1, sg);
+        const zx = qz(r.a), zy = qz(r.b);
+        if (zx === zy) return;
+        const w = zx ? 'y' : 'x';
+        out.push({ type: 'comb', sg, elim: other(w), w, r, next: withKnown(st, w, qdv(r.c, coef(r, w))) });
+      });
+      [0, 1].forEach(i => {
+        const e = st.slots[i], o = st.slots[1 - i];
+        const seen = new Set();
+        ['x', 'y'].forEach(v => {
+          const ai = qabsN(coef(e, v)), aj = qabsN(coef(o, v));
+          const k = lcm(ai, aj) / ai;
+          if (k <= 1 || seen.has(k) || maxCoef(e) * k > 200) return;
+          seen.add(k);
+          out.push({ type: 'scale', i, k, v, next: place(st, i, scaleEq(e, k)) });
+        });
+      });
+    }
+    [0, 1].forEach(i => {
+      const s = st.slots[i], t = st.slots[1 - i];
+      if (t.form !== 'std') return;
+      const isos = s.form === 'iso' ? [s]
+        : s.form === 'std' ? ['x', 'y'].filter(v => qabsN(coef(s, v)) === 1 && qi(coef(s, v))).map(v => rearr(s, v))
+        : [];
+      isos.forEach(iso => {
+        const r = subSolve(iso, t);
+        if (!r) return;
+        out.push({ type: 'sub', i, iso, fromIso: s.form === 'iso', r, w: iso.w, next: withKnown(st, iso.w, r.val) });
+      });
+    });
+    return out;
+  }
+
+  /* ── 最短步數（BFS）────────────────────
+     走到 known 之後一定再一步（代回）就解完，所以 dist(known) = 1。 */
+  const distMemo = new Map();
+  const MAX_DEPTH = 8;
+  function dist(st) {
+    if (st.solved) return 0;
+    if (st.known) return 1;
+    const k0 = stKey(st);
+    if (distMemo.has(k0)) return distMemo.get(k0);
+    if (distMemo.size > 60000) distMemo.clear();
+    let frontier = [st], d = 0, ans = Infinity;
+    const seen = new Set([k0]);
+    outer:
+    while (frontier.length && d < MAX_DEPTH) {
+      d += 1;
+      const nxt = [];
+      for (const s of frontier) {
+        for (const m of validSteps(s)) {
+          if (m.next.known) { ans = d + 1; break outer; }
+          const k = stKey(m.next);
+          if (seen.has(k)) continue;
+          seen.add(k);
+          nxt.push(m.next);
+        }
+      }
+      frontier = nxt;
+    }
+    distMemo.set(k0, ans);
+    return ans;
+  }
+
+  /* 獨立的檢查：逐層加深的 DFS，不用記憶表 */
+  function idsMin(st0) {
+    const dfs = (st, j) => {
+      if (st.known) return true;
+      if (j === 0) return false;
+      return validSteps(st).some(m => dfs(m.next, j - 1));
+    };
+    for (let j = 1; j < MAX_DEPTH; j++) if (dfs(st0, j)) return j + 1;
+    return Infinity;
+  }
+
+  /* ── 文字 ───────────────────────────── */
+  const tm = (c, v) => polyHTML([{ c: toQ(c), v }]);         // 單一項：−9y
+  const tmP = (c, v) => (toQ(c).n < 0 ? `(${tm(c, v)})` : tm(c, v));
+  const opSym = sg => (sg > 0 ? '＋' : '−');
+  const resLine = (c, w, rhs, val) => (qeq(c, ONE) ? '' : `${tm(c, w)} = ${fmtNum(rhs)}，`) + `${w} = ${fmtNum(val)}`;
+  const doneHTML = s => `x = ${fmtNum(s.x)}、y = ${fmtNum(s.y)}`;
+
+  /* 代入後展開：把 t 裡 v 那一項換成 cv×(式子的每一項)；mode 用來造「只乘一項」的錯 */
+  function expandSub(t, iso, mode, repVar) {
+    const rv = repVar || iso.v;
+    const cv = coef(t, rv);
+    const its = isoTerms(iso).filter(x => !qz(x.c));
+    const list = [];
+    stdTerms(t).forEach(term => {
+      if (term.v !== rv) { list.push(term); return; }
+      its.forEach((x, j) => {
+        const mul = mode === 'all' || (mode === 'first' && j === 0) || (mode === 'second' && j === 1);
+        list.push({ c: mul ? qm(cv, x.c) : x.c, v: x.v });
+      });
+    });
+    return list;
+  }
+
+  function describe(st, s) {
+    const C = e => CIR(e.id);
+    if (s.type === 'tidy') {
+      const e = st.slots[s.i], ne = s.next.slots[s.i];
+      const res = eqHTML(ne);
+      let label, why;
+      if (e.kind === 'frac' || e.kind === 'dec') {
+        label = `${C(e)}×${e.mult} 得 ${res}`;
+        why = e.kind === 'dec'
+          ? `每一項都乘 10，小數就變成整數（右邊的 ${decNum(e.c)} 也要乘，變成 ${fmtNum(ne.c)}）。`
+          : (e.dens.length > 1 ? `分母 ${e.dens.join('、')} 的最小公倍數是 ${e.mult}` : `分母是 ${e.mult}`) +
+            `，等號兩邊<em>每一項</em>都乘 ${e.mult}（右邊的 ${fmtNum(e.c)} 也要乘），係數就都是整數。`;
+      } else {
+        label = `整理${C(e)} 得 ${res}`;
+        why = e.kind === 'zero'
+          ? `常數項移到等號右邊要<em>變號</em>，整理成「ax + by = c」的樣子。`
+          : `x、y 項移到等號左邊、數字移到右邊，<em>移過等號要變號</em>，合併後得 ${res}。`;
+      }
+      return { label, why, lines: [{ cls: 'eq', html: res, id: ne.id }] };
+    }
+    if (s.type === 'comb') {
+      const [e0, e1] = st.slots, { r, w, elim, sg } = s;
+      const cw = coef(r, w), val = s.next.known.val;
+      const c0 = coef(e0, elim), c1 = coef(e1, elim);
+      let why = `${elim} 的係數 ${fmtNum(c0)} 和 ${fmtNum(c1)} ${sg > 0 ? '互為相反數，<em>相加</em>' : '相同，<em>相減</em>'}就消去 ${elim}`;
+      if (sg < 0) {
+        why += `；相減時${C(e1)}<em>每一項都要變號</em>：${tm(coef(e0, w), w)} − ${tmP(coef(e1, w), w)} = ${tm(cw, w)}、` +
+          `${fmtNum(e0.c)} − ${numP(e1.c)} = ${fmtNum(r.c)}`;
+      }
+      why += `，解出 <em>${w} = ${fmtNum(val)}</em>。`;
+      return {
+        label: `${C(e0)}${opSym(sg)}${C(e1)} 消去 ${elim}`, why,
+        lines: [{ cls: 'res', html: resLine(cw, w, r.c, val) }]
+      };
+    }
+    if (s.type === 'scale') {
+      const e = st.slots[s.i], o = st.slots[1 - s.i], ne = s.next.slots[s.i];
+      const v = s.v, nv = coef(ne, v), ov = coef(o, v);
+      const L = qabsN(nv);
+      let why = `每一項都乘 ${s.k}（常數也要乘），${v} 的係數變成 ${fmtNum(nv)}`;
+      if (qabsN(ov) === L) {
+        why += `，和${C(o)}的 ${tm(ov, v)} 對齊了，接著<em>${qeq(nv, ov) ? '相減' : '相加'}</em>就能消去 ${v}。`;
+      } else {
+        why += `；${C(o)}再乘 ${L / qabsN(ov)}，兩條的 ${v} 係數就都是 ${L}（[${qabsN(coef(e, v))}, ${qabsN(ov)}] = ${L}）。`;
+      }
+      return { label: `${C(e)}×${s.k}`, why, lines: [{ cls: 'eq', html: eqHTML(ne), id: ne.id }] };
+    }
+    if (s.type === 'sub') {
+      const src = st.slots[s.i], t = st.slots[1 - s.i], { iso, r, w } = s;
+      const ex = exprOf(iso);
+      const cv = coef(t, iso.v);
+      const two = isoTerms(iso).filter(x => !qz(x.c)).length === 2;
+      const expanded = polyHTML(expandSub(t, iso, 'all')) + ' = ' + fmtNum(t.c);
+      const res = resLine(r.den, w, r.rhs, r.val);
+      if (s.fromIso) {
+        return {
+          label: `把${C(src)}代入${C(t)}：${expanded}`,
+          why: `${C(src)}已經是「${iso.v} = …」的樣子，把${C(t)}的 <em>${iso.v}</em> 換成 ${ex.html}` +
+            (qabsN(cv) !== 1 && two ? `，${fmtNum(cv)} 要乘進括號裡<em>每一項</em>` : '') +
+            `，就只剩 ${w}：${res}。`,
+          lines: [{ cls: 'res', html: res }]
+        };
+      }
+      return {
+        label: `由${C(src)}得 ${iso.v} = ${ex.html}，代入${C(t)}`,
+        why: `${C(src)}的 ${iso.v} 係數是 ${fmtNum(coef(src, iso.v))}，移項得 ${iso.v} = ${ex.html}（<em>移過去要變號</em>）。` +
+          `代入${C(t)}` + (qabsN(cv) !== 1 && two ? `，括號前的 ${fmtNum(cv)} 要乘進<em>每一項</em>：${expanded}` : '') +
+          `，解出 <em>${w} = ${fmtNum(r.val)}</em>。`,
+        lines: [{ cls: 'work', html: eqHTML(t, ex) }, { cls: 'res', html: res }]
+      };
+    }
+    /* back */
+    const { v: w, val } = st.known, u = other(w), e = s.e;
+    const work = `${eqHTML(e, { kind: 'val', v: w, val })}，${u} = ${fmtNum(s.uval)}`;
+    return {
+      label: `把 ${w} = ${fmtNum(val)} 代回${C(e)}，得 ${u} = ${fmtNum(s.uval)}`,
+      why: `代回${C(e)}：${work}。兩個未知數都求出來了！（代回哪一條都可以，挑係數簡單的比較好算）`,
+      lines: [{ cls: 'work', html: work }, { cls: 'done', html: doneHTML(s.next.sol) }]
+    };
+  }
+
+  /* ── 誘答（選了會變紅、退回重選）───────────
+     每個誘答附 check()：回傳 true 代表它「真的錯」，自動檢查用。
+     tb：取自課本自我檢核、挑錯題的錯法，優先出；lo：湊數用，最後才出。 */
+  function badMoves(st) {
+    const B = [];
+    const C = e => CIR(e.id);
+    const add = (label, why, wrong, check, flag) => B.push(Object.assign({ label, kind: 'bad', why, wrong, check }, flag || {}));
+
+    if (st.known) {
+      const { v: w, val } = st.known, u = other(w);
+      const sol = st.sol;
+      st.eqs.filter(e => e.form === 'std').forEach(e => {
+        const cu = coef(e, u), cw = coef(e, w), right = backSolve(e, w, val);
+        const cwv = qm(cw, val);
+        const work = `${eqHTML(e, { kind: 'val', v: w, val })}，${u} = ${fmtNum(right)}`;
+        const lbl = x => `把 ${w} = ${fmtNum(val)} 代回${C(e)}，得 ${u} = ${fmtNum(x)}`;
+        const cand = [
+          { x: qdv(qa(e.c, cwv), cu), tb: true,
+            why: `${tm(cw, w)} 代入後是 ${fmtNum(cwv)}，移到等號右邊要<em>變號</em>：${tm(cu, u)} = ${fmtNum(e.c)} − ${numP(cwv)}。正確：${work}。` },
+          { x: qdv(qs(e.c, qm(cu, val)), cw),
+            why: `${w} = ${fmtNum(val)} 要代進 <em>${w}</em> 的位置，不是 ${u} 的位置。正確：${work}。` }
+        ];
+        if (qabsN(cu) !== 1 || !qi(cu)) {
+          cand.push({ x: qs(e.c, cwv),
+            why: `算到 ${tm(cu, u)} = ${fmtNum(qs(e.c, cwv))} 之後，還要兩邊同除以 ${numP(cu)}：${u} = ${fmtNum(right)}。` });
+        }
+        cand.forEach(cd => {
+          if (qeq(cd.x, right)) return;
+          add(lbl(cd.x), cd.why, `${u} = ${fmtNum(cd.x)}`, () => !qeq(cd.x, sol[u]), { tb: cd.tb });
+        });
+      });
+      const e = st.eqs.find(x => x.form === 'std') || st.eqs.find(x => x.form === 'iso');
+      const right = backSolve(e, w, val);
+      const used = new Set(B.map(b => b.label));
+      [1, -1, 2, -2].forEach(dlt => {
+        const x = qa(right, Q(dlt));
+        if (used.has(`把 ${w} = ${fmtNum(val)} 代回${C(e)}，得 ${u} = ${fmtNum(x)}`)) return;
+        add(`把 ${w} = ${fmtNum(val)} 代回${C(e)}，得 ${u} = ${fmtNum(x)}`,
+          `算錯了，再算一次：${eqHTML(e, { kind: 'val', v: w, val })}，${u} = ${fmtNum(right)}。`,
+          `${u} = ${fmtNum(x)}`, () => !qeq(x, sol[u]), { lo: true });
+      });
+      return B;
+    }
+
+    const [e0, e1] = st.slots;
+    const rawSlots = st.slots.filter(e => e.form === 'raw');
+    const sol = st.sol;
+
+    if (rawSlots.length) {
+      rawSlots.forEach(e => tidyBads(e, sol, add));
+      const r = rawSlots[0];
+      [['＋', 'x'], ['−', 'y']].forEach(([op, v]) => {
+        add(`${C(e0)}${op}${C(e1)} 消去 ${v}`,
+          `${C(r)}還沒整理成「ax + by = c」的樣子，係數還看不清楚，直接加減很容易出錯。先把它整理好。`,
+          '', () => st.slots.some(x => x.form === 'raw'), { lo: true });
+      });
+      st.slots.forEach(e => {
+        if (e.kind === 'frac') return;
+        const we = scaleEq(e, 2);
+        const useless = e.form !== 'raw' || e.kind !== 'dec' || !intCoefs(we);
+        if (!useless) return;
+        add(`${C(e)}×2`,
+          e.form === 'raw'
+            ? `乘 2 只是讓數字變大，${e.kind === 'dec' ? '小數還是消不掉' : '式子還是沒整理好'}。先把${C(e)}整理成「ax + by = c」。`
+            : `${C(r)}還沒整理好，還看不出要乘多少才對齊；先整理${C(r)}。`,
+          '', () => useless, { lo: true });
+      });
+      return B;
+    }
+
+    if (e0.form === 'std' && e1.form === 'std') {
+      /* 加減：符號用錯、說錯消去哪一個、係數沒對齊 */
+      ['x', 'y'].forEach(v => [1, -1].forEach(sg => {
+        const r = comb(e0, e1, sg);
+        if (qz(coef(r, v))) return;
+        const u = other(v), c0 = coef(e0, v), c1 = coef(e1, v);
+        const res = eqHTML(r);
+        const op = sg > 0 ? '相加' : '相減';
+        let why, tb = true;
+        if (qz(coef(r, u))) {
+          why = `${C(e0)}${opSym(sg)}${C(e1)} 消去的是 <em>${u}</em>，不是 ${v}（${u} 的係數 ${fmtNum(coef(e0, u))} 和 ${fmtNum(coef(e1, u))} 才是對齊的）。`;
+        } else if (qabsN(c0) === qabsN(c1)) {
+          why = `${v} 的係數 ${fmtNum(c0)} 和 ${fmtNum(c1)} ${qeq(c0, c1) ? '相同，要用<em>減</em>的' : '互為相反數，要用<em>加</em>的'}；${op}得 ${res}，${v} 還在。`;
+        } else {
+          const L = lcm(qabsN(c0), qabsN(c1));
+          why = `${v} 的係數 ${fmtNum(c0)} 和 ${fmtNum(c1)} 不一樣大，直接${op}消不掉（得 ${res}）。要先乘倍數讓係數對齊：[${qabsN(c0)}, ${qabsN(c1)}] = ${L}。`;
+          tb = false;
+        }
+        add(`${C(e0)}${opSym(sg)}${C(e1)} 消去 ${v}`, why, res, () => !qz(coef(comb(e0, e1, sg), v)), { tb });
+      }));
+      /* 乘倍數：乘自己的係數、亂乘 */
+      [0, 1].forEach(i => {
+        const e = st.slots[i], o = st.slots[1 - i];
+        const valid = new Set(['x', 'y'].map(v => lcm(qabsN(coef(e, v)), qabsN(coef(o, v))) / qabsN(coef(e, v))));
+        const aligns = k => ['x', 'y'].some(u => qabsN(coef(e, u)) * k === qabsN(coef(o, u)));
+        const cands = ['x', 'y'].map(v => ({ k: qabsN(coef(e, v)), v })).concat([{ k: 2 }, { k: 3 }]);
+        const used = new Set();
+        cands.forEach(cd => {
+          const k = cd.k;
+          if (k <= 1 || valid.has(k) || used.has(k) || aligns(k)) return;
+          used.add(k);
+          const ne = scaleEq(e, k);
+          let why;
+          if (cd.v && qabsN(coef(o, cd.v)) === k) {
+            const same = qeq(coef(e, cd.v), coef(o, cd.v));
+            why = `${cd.v} 的係數 ${fmtNum(coef(e, cd.v))} 和 ${fmtNum(coef(o, cd.v))} 已經對齊了，直接<em>${same ? '相減' : '相加'}</em>就能消去 ${cd.v}；再乘 ${k} 反而對不齊。`;
+          } else if (cd.v) {
+            const n = k, m = qabsN(coef(o, cd.v)), L = lcm(n, m);
+            why = `${C(e)}×${k} 是乘上自己的 ${cd.v} 係數，${cd.v} 變成 ${tm(coef(ne, cd.v), cd.v)}，和${C(o)}的 ${tm(coef(o, cd.v), cd.v)} 還是對不齊。` +
+              `要讓兩個係數都變成<em>最小公倍數</em> [${n}, ${m}] = ${L}：` +
+              [L / n > 1 ? `${C(e)}×${L / n}` : '', L / m > 1 ? `${C(o)}×${L / m}` : ''].filter(Boolean).join('、') + '。';
+          } else {
+            why = `乘 ${k} 之後，x、y 的係數都還和${C(o)}對不齊（${eqHTML(ne)}），只是讓數字變大。`;
+          }
+          add(`${C(e)}×${k}`, why, eqHTML(ne), () => !aligns(k), { lo: !cd.v });
+        });
+      });
+    }
+
+    [0, 1].forEach(i => {
+      const s = st.slots[i], t = st.slots[1 - i];
+      if (s.form === 'iso' && t.form === 'std') {
+        const ex = exprOf(s);
+        const good = polyHTML(expandSub(t, s, 'all')) + ' = ' + fmtNum(t.c);
+        const lblOf = list => `把${C(s)}代入${C(t)}：${polyHTML(list)} = ${fmtNum(t.c)}`;
+        /* 換錯未知數 */
+        const wrongVar = expandSub(t, s, 'all', s.w);
+        add(lblOf(wrongVar),
+          `${C(s)}說的是 <em>${s.v}</em> = ${ex.html}，要換掉的是${C(t)}裡的 <em>${s.v}</em>；換掉 ${s.w} 的話，x、y 都還在，解不出來。`,
+          `${eqHTML(t, Object.assign({}, ex, { v: s.w }))}`, () => true, { tb: true });
+        /* 分配律只乘一項（課本挑錯題小美的錯） */
+        const cv = coef(t, s.v);
+        if (!qeq(cv, ONE)) {
+          ['first', 'second'].forEach(mode => {
+            const list = expandSub(t, s, mode);
+            if (list.length < 3) return;
+            const lb = lblOf(list);
+            if (lb === `把${C(s)}代入${C(t)}：${good}`) return;
+            const holds = qeq(evalTerms(list, sol), t.c);
+            add(lb,
+              `括號前的 ${fmtNum(cv)} 要乘進括號裡<em>每一項</em>，不能只乘一項：${good}。（課本挑錯題裡小美就是漏乘，才算出錯的 y）`,
+              `${polyHTML(list)} = ${fmtNum(t.c)}`, () => !holds, { tb: true, skip: holds });
+          });
+        }
+        /* 代回自己 */
+        add(`把${C(s)}代入${C(s)}：${ex.html} = ${ex.html}`,
+          `代回自己這一條只會得到「${ex.html} = ${ex.html}」這種一定成立的式子，什麼都解不出來；要代入<em>另一條</em>${C(t)}。`,
+          `${ex.html} = ${ex.html}`, () => true, { lo: true });
+        /* 亂乘 */
+        const k = qabsN(cv) > 1 ? qabsN(cv) : 2;
+        add(`${C(t)}×${k}`,
+          `${C(s)}已經是「${s.v} = …」的樣子，直接代入${C(t)}就好；乘 ${k} 只是讓數字變大。`,
+          eqHTML(scaleEq(t, k)), () => true, { lo: true });
+      }
+      if (s.form === 'std' && t.form === 'std') {
+        ['x', 'y'].filter(v => qabsN(coef(s, v)) === 1 && qi(coef(s, v))).forEach(v => {
+          const iso = rearr(s, v), ex = exprOf(iso), w = other(v);
+          const a = coef(s, v), b = coef(s, w);
+          /* 代回自己 */
+          add(`由${C(s)}得 ${v} = ${ex.html}，代回${C(s)}`,
+            `${v} = ${ex.html} 本來就是從${C(s)}移項來的，代回${C(s)}只會得到 ${fmtNum(s.c)} = ${fmtNum(s.c)}，什麼都解不出來。要代入<em>另一條</em>${C(t)}。`,
+            `${fmtNum(s.c)} = ${fmtNum(s.c)}`, () => true);
+          /* 移項沒變號 */
+          const wrongs = a.n > 0
+            ? [{ k: b, m: s.c, why: `${tm(b, w)} 從左邊移到右邊要<em>變號</em>，正確是 ${v} = ${ex.html}。` }]
+            : [{ k: qn(b), m: s.c, why: `${C(s)}裡是 ${MINUS}${v}，移項後得 ${MINUS}${v} = …，還要<em>兩邊同乘 ${MINUS}1</em>：${v} = ${ex.html}。` },
+               { k: qn(b), m: qn(s.c), why: `${tm(b, w)} 從左邊移到右邊要<em>變號</em>，正確是 ${v} = ${ex.html}。` }];
+          wrongs.forEach(wr => {
+            const wi = isoEq(v, wr.k, wr.m, !qz(wr.m) && wr.k.n < 0);
+            if (qeq(wi.k, iso.k) && qeq(wi.m, iso.m)) return;
+            const wx = exprOf(wi);
+            add(`由${C(s)}得 ${v} = ${wx.html}，代入${C(t)}`, wr.why, `${v} = ${wx.html}`,
+              () => !(qeq(wi.k, iso.k) && qeq(wi.m, iso.m)), { tb: true });
+          });
+        });
+      }
+    });
+    return B.filter(b => !b.skip);
+  }
+
+  /* 整理時的錯：移項沒變號、去分母漏乘、乘錯倍數 */
+  function tidyBads(e, sol, add) {
+    const C = CIR(e.id);
+    const clean = tidyOf(e);
+    const fails = we => !sat(we, sol);
+    const norm = (a, b, c) => (a.n < 0 || (qz(a) && b.n < 0) ? stdEq(qn(a), qn(b), qn(c)) : stdEq(a, b, c));
+    if (e.kind === 'scatter' || e.kind === 'zero') {
+      const moved = [];
+      e.Rt.forEach(t => { if (t.v && !qz(t.c)) moved.push({ t, from: '右', to: '左' }); });
+      e.Lt.forEach(t => { if (!t.v && !qz(t.c)) moved.push({ t, from: '左', to: '右' }); });
+      moved.forEach(({ t, from, to }) => {
+        // 沒變號：等於多加了兩倍
+        const d2 = qm(t.c, Q(2));
+        const a = t.v === 'x' ? qa(e.a, d2) : e.a;
+        const b = t.v === 'y' ? qa(e.b, d2) : e.b;
+        const c = t.v ? e.c : qa(e.c, d2);
+        if (qz(a) && qz(b)) return;
+        const we = norm(a, b, c);
+        if (!fails(we)) return;
+        const body = t.v ? tm(t.c, t.v) : fmtNum(t.c);
+        add(`整理${C} 得 ${eqHTML(we)}`,
+          `${from}邊的 ${body} 移到等號${to}邊要<em>變號</em>。正確應該是 ${eqHTML(clean)}。`,
+          eqHTML(we), () => fails(we), { tb: true });
+      });
+      if (e.kind === 'zero') {
+        const we = stdEq(clean.a, qn(clean.b), clean.c);
+        if (fails(we)) {
+          add(`整理${C} 得 ${eqHTML(we)}`,
+            `${tm(clean.b, 'y')} 本來就在等號左邊，沒有移動，<em>不用變號</em>。正確應該是 ${eqHTML(clean)}。`,
+            eqHTML(we), () => fails(we));
+        }
+      }
+      return;
+    }
+    const L = e.mult;
+    if (e.kind === 'dec') {
+      const w1 = stdEq(qm(e.a, Q(10)), qm(e.b, Q(10)), e.c, { c: true });
+      if (fails(w1)) {
+        add(`${C}×10 得 ${eqHTML(w1)}`,
+          `右邊的 ${decNum(e.c)} 也要乘 10，變成 ${fmtNum(clean.c)}。等號兩邊<em>每一項</em>都要乘！`,
+          eqHTML(w1), () => fails(w1), { tb: true });
+      }
+      const w2 = stdEq(qm(e.a, Q(10)), e.b, qm(e.c, Q(10)), { b: true });
+      if (fails(w2)) {
+        add(`${C}×10 得 ${eqHTML(w2)}`,
+          `y 項的係數 ${decNum(e.b)} 也要乘 10，變成 ${fmtNum(clean.b)}。<em>每一項</em>都要乘！`,
+          eqHTML(w2), () => fails(w2));
+      }
+      return;
+    }
+    /* frac */
+    const w1 = stdEq(clean.a, clean.b, e.c);
+    if (fails(w1)) {
+      add(`${C}×${L} 得 ${eqHTML(w1)}`,
+        `等號兩邊<em>每一項</em>都要乘 ${L}，右邊的 ${fmtNum(e.c)} 也要乘，應該是 ${fmtNum(clean.c)}。漏乘沒有分母的那一項，是去分母最常見的錯。`,
+        eqHTML(w1), () => fails(w1), { tb: true });
+    }
+    const nonInt = we => !intCoefs(we);
+    const termDens = [...new Set([e.a.d, e.b.d].filter(d => d > 1))];
+    if (termDens.length === 2) {
+      const sum = termDens[0] + termDens[1];
+      if (sum % L !== 0) {
+        const we = scaleEq(e, sum);
+        add(`${C}×${sum} 得 ${eqHTML(we)}`,
+          `分母 ${termDens.join(' 和 ')} 要乘它們的<em>最小公倍數 ${L}</em>；乘 ${sum}（分母相加）分母消不完。`,
+          eqHTML(we), () => nonInt(we));
+      }
+    }
+    e.dens.forEach(d => {
+      if (d >= L) return;
+      const we = scaleEq(e, d);
+      if (!nonInt(we)) return;
+      add(`${C}×${d} 得 ${eqHTML(we)}`,
+        `乘 ${d} 只消得掉分母 ${d}，其他分母還在；要乘所有分母的最小公倍數 ${L}。`,
+        eqHTML(we), () => nonInt(we));
+    });
+  }
+
+  /* 每個狀態的全部操作：合法的標 good／detour，再加誘答 */
+  function movesFor(st) {
+    const M = [];
+    if (st.solved) return M;
+    const d0 = dist(st);
+    validSteps(st).forEach(s => {
+      const dn = dist(s.next);
+      if (dn === d0 - 1) M.push(Object.assign(describe(st, s), { kind: 'good', next: s.next, step: s }));
+      else if (dn === d0) M.push(Object.assign(describe(st, s), { kind: 'detour', next: s.next, step: s }));
+      // 多繞兩步以上、或走進死路的合法步驟不出
+    });
+    const goods = M.filter(m => m.kind === 'good');
+    M.filter(m => m.kind === 'detour').forEach(m => {
+      m.why = `可以，但多繞一步。${m.why}` + (goods.length ? `（更快的走法：${goods[0].label}）` : '');
+    });
+    const validLabels = new Set(M.map(m => m.label));
+    return M.concat(badMoves(st).filter(b => !validLabels.has(b.label)));
+  }
+
+  /* 好的操作放 1～2 個，偶爾放一個繞路，其餘用誘答補滿 4 個；同樣文字只留一個 */
+  function pickButtons(moves, st) {
+    const seen = new Set(), out = [];
+    const take = mv => { if (mv && out.length < 4 && !seen.has(mv.label)) { seen.add(mv.label); out.push(mv); } };
+    const goods = shuffle(moves.filter(m => m.kind === 'good'));
+    const dets = shuffle(moves.filter(m => m.kind === 'detour'));
+    const bads = moves.filter(m => m.kind === 'bad');
+    const tb = shuffle(bads.filter(m => m.tb)), lo = shuffle(bads.filter(m => m.lo)), mid = shuffle(bads.filter(m => !m.tb && !m.lo));
+    goods.slice(0, st.known ? 1 : 2).forEach(take);
+    if (dets.length && Math.random() < 0.3) take(dets[0]);
+    (Math.random() < 0.75 ? tb.concat(mid) : shuffle(tb.concat(mid))).concat(lo).forEach(take);
+    goods.concat(dets).forEach(take);
+    return shuffle(out);
+  }
+
+  function bestPath(st0) {
+    const out = [];
+    let st = st0;
+    for (let i = 0; i < 10 && !st.solved; i++) {
+      const g = movesFor(st).find(m => m.kind === 'good');
+      if (!g) break;
+      out.push({ kind: 'good', label: g.label, lines: g.lines });
+      st = g.next;
+    }
+    return out;
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function mkProb(lv, E1, E2) {
+    const e1 = Object.assign({}, E1, { id: 1 }), e2 = Object.assign({}, E2, { id: 2 });
+    const sol = solveSys(e1, e2);
+    if (!sol) return null;
+    const st0 = { slots: [e1, e2], eqs: [e1, e2], nextId: 3, known: null, solved: false, sol };
+    const min = dist(st0);
+    if (min < LEVELS[lv].lo || min > LEVELS[lv].hi) return null;
+    return { level: lv, st0, sol, min };
+  }
+  const okCore = (a, b, c) => gcd3(a, b, c) === 1;
+
+  /* 基礎①：有一條是 x = …、y = … 可以直接代入 */
+  function genIsoStd() {
+    for (;;) {
+      const v = Math.random() < 0.5 ? 'x' : 'y';
+      const k = nz(-6, 6), m = Math.random() < 0.4 ? 0 : nz(-9, 9);
+      const w0 = R(-5, 6), v0 = k * w0 + m;
+      if (Math.abs(v0) > 12 || (w0 === 0 && v0 === 0)) continue;
+      const iso = isoEq(v, k, m, m > 0 && k < 0 && Math.random() < 0.7);
+      const x0 = v === 'x' ? v0 : w0, y0 = v === 'x' ? w0 : v0;
+      const a = nz(-6, 6), b = nz(-6, 6), c = a * x0 + b * y0;
+      if (Math.abs(c) > 60 || !okCore(a, b, c)) continue;
+      const std = stdEq(a, b, c);
+      const p = Math.random() < 0.5 ? mkProb('basic', iso, std) : mkProb('basic', std, iso);
+      if (p) return p;
+    }
+  }
+
+  /* 基礎②：有一個未知數的係數已經相同或相反 */
+  function genAligned() {
+    for (;;) {
+      const x0 = R(-5, 8), y0 = R(-5, 8);
+      if (x0 === 0 && y0 === 0) continue;
+      const p0 = pm(1, 6), c2 = Math.random() < 0.6 ? -p0 : p0;
+      const q1 = nz(-7, 7), q2 = nz(-7, 7);
+      if (Math.abs(q1) === Math.abs(q2)) continue;
+      const onX = Math.random() < 0.5;
+      const [a1, b1, a2, b2] = onX ? [p0, q1, c2, q2] : [q1, p0, q2, c2];
+      const k1 = a1 * x0 + b1 * y0, k2 = a2 * x0 + b2 * y0;
+      if (Math.abs(k1) > 60 || Math.abs(k2) > 60 || !okCore(a1, b1, k1) || !okCore(a2, b2, k2)) continue;
+      const p = mkProb('basic', stdEq(a1, b1, k1), stdEq(a2, b2, k2));
+      if (p) return p;
+    }
+  }
+
+  function genBasic() { return Math.random() < 0.5 ? genIsoStd() : genAligned(); }
+
+  /* 進階：係數都不是 ±1、也沒對齊，要先乘倍數；少數題的解是簡單分數 */
+  function genAdv() {
+    for (;;) {
+      const a1 = pm(2, 9), b1 = pm(2, 9), a2 = pm(2, 9), b2 = pm(2, 9);
+      if (Math.abs(a1) === Math.abs(a2) || Math.abs(b1) === Math.abs(b2)) continue;
+      if (a1 * b2 - a2 * b1 === 0) continue;
+      const div = (p, q) => (p % q === 0 || q % p === 0);
+      const dx = div(Math.abs(a1), Math.abs(a2)), dy = div(Math.abs(b1), Math.abs(b2));
+      const one = Math.random() < 0.4;
+      if (one ? !(dx || dy) : (dx || dy)) continue;
+      let k1, k2;
+      if (Math.random() < 0.2) {
+        k1 = R(-30, 30); k2 = R(-30, 30);
+        const s = solveSys(stdEq(a1, b1, k1), stdEq(a2, b2, k2));
+        if (!s || (qi(s.x) && qi(s.y)) || s.x.d > 4 || s.y.d > 4) continue;
+        if (Math.abs(s.x.n / s.x.d) > 8 || Math.abs(s.y.n / s.y.d) > 8) continue;
+      } else {
+        const x0 = R(-6, 8), y0 = R(-6, 8);
+        if (x0 === 0 && y0 === 0) continue;
+        k1 = a1 * x0 + b1 * y0; k2 = a2 * x0 + b2 * y0;
+        if (Math.abs(k1) > 80 || Math.abs(k2) > 80) continue;
+      }
+      if (!okCore(a1, b1, k1) || !okCore(a2, b2, k2)) continue;
+      const p = mkProb('adv', stdEq(a1, b1, k1), stdEq(a2, b2, k2));
+      if (p) return p;
+    }
+  }
+
+  /* 整理：未知數散在兩邊、等號右邊是 0、分數係數、小數係數 */
+  function rawScatter(a, b, c) {
+    if (a < 0) { a = -a; b = -b; c = -c; }
+    let u;
+    do { u = nz(-4, 4); } while (a + u === 0);
+    const yRight = Math.random() < 0.6;
+    const k = Math.random() < 0.5 ? 0 : nz(-6, 6);
+    const Lt = [{ c: a + u, v: 'x' }];
+    if (!yRight) Lt.push({ c: b, v: 'y' });
+    if (k) Lt.push({ c: k, v: '' });
+    let Rt = [{ c: u, v: 'x' }];
+    if (yRight) Rt.push({ c: -b, v: 'y' });
+    if (c + k !== 0) Rt.push({ c: c + k, v: '' });
+    Rt = Math.random() < 0.4 ? Rt.slice().reverse() : Rt;
+    return rawEq('scatter', Lt, Rt);
+  }
+  function rawZero(a, b, c) {
+    if (a < 0) { a = -a; b = -b; c = -c; }
+    return rawEq('zero', [{ c: a, v: 'x' }, { c: b, v: 'y' }, { c: -c, v: '' }], []);
+  }
+  function rawDec(a, b, c) {
+    return rawEq('dec', [{ c: Q(a, 10), v: 'x', dec: true }, { c: Q(b, 10), v: 'y', dec: true }],
+      [{ c: Q(c, 10), v: '', dec: true }], { mult: 10 });
+  }
+  function genFrac(x0, y0) {
+    for (;;) {
+      const q1 = pickOne([1, 2, 3, 4, 5, 6]), q2 = pickOne([1, 2, 3, 4, 6]);
+      if (q1 === 1 && q2 === 1) continue;
+      const p1 = nz(-5, 5), p2 = nz(-5, 5);
+      if (gcd(p1, q1) !== 1 || gcd(p2, q2) !== 1) continue;
+      const A = Q(p1, q1), B = Q(p2, q2);
+      const Cc = qa(qm(A, Q(x0)), qm(B, Q(y0)));
+      const L = lcm(lcm(q1, q2), Cc.d);
+      if (L > 12) continue;
+      const ca = A.n * L / A.d, cb = B.n * L / B.d, cc = Cc.n * L / Cc.d;
+      if (Math.max(Math.abs(ca), Math.abs(cb), Math.abs(cc)) > 40 || !okCore(ca, cb, cc)) continue;
+      const dens = [...new Set([q1, q2, Cc.d].filter(d => d > 1))].sort((m, n) => m - n);
+      return rawEq('frac', [{ c: A, v: 'x' }, { c: B, v: 'y' }], [{ c: Cc, v: '' }], { mult: L, dens });
+    }
+  }
+  function wrapKind(kind, a, b, c) {
+    if (kind === 'scatter') return rawScatter(a, b, c);
+    if (kind === 'zero') return c === 0 ? rawScatter(a, b, c) : rawZero(a, b, c);
+    if (kind === 'dec') return Math.abs(a) > 9 || Math.abs(b) > 9 ? rawScatter(a, b, c) : rawDec(a, b, c);
+    return stdEq(a, b, c);
+  }
+
+  function genTidy() {
+    for (;;) {
+      const x0 = R(-5, 7), y0 = R(-5, 7);
+      if (x0 === 0 && y0 === 0) continue;
+      const k1 =pickOne(['scatter', 'scatter', 'zero', 'frac', 'frac', 'dec']);
+      let E1;
+      if (k1 === 'frac') E1 = genFrac(x0, y0);
+      else {
+        const a = nz(-6, 6), b = nz(-6, 6), c = a * x0 + b * y0;
+        if (!okCore(a, b, c) || Math.abs(c) > 50) continue;
+        E1 = wrapKind(k1, a, b, c);
+      }
+      const c1 = tidyOf(E1);
+      /* 第二條：一半跟第一條對齊（係數相同、相反或倍數），一些有 ±1 可代入，其餘隨機 */
+      const r = Math.random();
+      let a2, b2;
+      if (r < 0.5) {
+        const onX = Math.random() < 0.5;
+        const base = qabsN(onX ? c1.a : c1.b);
+        const al = (base <= 3 && Math.random() < 0.4 ? base * 2 : base) * (Math.random() < 0.5 ? 1 : -1);
+        const ot = nz(-6, 6);
+        [a2, b2] = onX ? [al, ot] : [ot, al];
+      } else if (r < 0.7) {
+        [a2, b2] = Math.random() < 0.5 ? [pm(1, 1), nz(-6, 6)] : [nz(-6, 6), pm(1, 1)];
+      } else {
+        a2 = nz(-6, 6); b2 = nz(-6, 6);
+      }
+      const k2v = a2 * x0 + b2 * y0;
+      if (!okCore(a2, b2, k2v) || Math.abs(k2v) > 60 || Math.max(Math.abs(a2), Math.abs(b2)) > 12) continue;
+      const k2 = Math.random() < 0.45 ? 'std' : pickOne(['scatter', 'zero', 'dec']);
+      const E2 = wrapKind(k2, a2, b2, k2v);
+      const p = Math.random() < 0.5 ? mkProb('tidy', E1, E2) : mkProb('tidy', E2, E1);
+      if (p) return p;
+    }
+  }
+
+  const GEN = { basic: genBasic, adv: genAdv, tidy: genTidy };
+  let recent = [];
+  function nextProblem() {
+    for (let i = 0; i < 30; i++) {
+      const p = GEN[level]();
+      const key = eqHTML(p.st0.slots[0]) + '|' + eqHTML(p.st0.slots[1]);
+      if (recent.includes(key)) continue;
+      recent = recent.concat(key).slice(-12);
+      return p;
+    }
+    return GEN[level]();
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      ac = new Ctx();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxStep = () => { tone(587, 0.08, 0, 'triangle', 0.12); tone(784, 0.12, 0.06, 'triangle', 0.12); };
+  const sfxDetour = () => tone(440, 0.16, 0, 'triangle', 0.12);
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+
+  /* ── 狀態 ───────────────────────────── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, busy = false;
+
+  const optBtns = Array.from(document.querySelectorAll('.opt'));
+  const board = $('board');
+
+  function setView(v) { document.body.dataset.view = v; }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+  function paintLimit() {
+    const lim = limits[level];
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = lim; });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? lim <= LIMIT_MIN : lim >= LIMIT_MAX;
+    });
+  }
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.level === level));
+    });
+    paintLimit();
+  }
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+  function paintTag() {
+    $('rule').innerHTML = `${LEVELS[cur.level].name}　｜　已走 <b>${cur.steps}</b> 步 ／ 最少 <b>${cur.min}</b> 步`;
+  }
+
+  /* ── 黑板 ───────────────────────────── */
+  function lineEl(l, extra) {
+    const el = document.createElement('div');
+    el.className = `ln ${l.cls} ${extra || ''}`;
+    if (l.id) el.dataset.id = l.id;
+    el.innerHTML = `<span class="t">${l.html}</span><span class="no">${l.id ? CIR(l.id) : ''}</span>`;
+    return el;
+  }
+  function noteEl(text, kind, cls) {
+    const el = document.createElement('div');
+    const mark = kind === 'bad' ? '✗ ' : kind === 'detour' ? '⬇ （繞路）' : '⬇ ';
+    el.className = `note ${kind} ${cls || ''}`;
+    el.innerHTML = `<span>${mark}${text}</span>`;
+    return el;
+  }
+  const startLines = st => st.slots.map(e => ({ cls: 'eq', html: eqHTML(e), id: e.id }));
+  function fitBoard() {
+    board.style.setProperty('--k', '1');
+    const w = board.clientWidth, sw = board.scrollWidth;
+    if (sw > w + 1) board.style.setProperty('--k', String(Math.max(0.5, (w / sw) * 0.97)));
+  }
+  function clearTemp() { board.querySelectorAll('.tmp').forEach(el => el.remove()); }
+  function showFb(html, kind) {
+    const fb = $('fb');
+    fb.className = 'fb ' + (kind || '');
+    void fb.offsetWidth;
+    fb.innerHTML = `<span>${html}</span>`;
+  }
+  /* 目前還在用的式子放大：兩條 slot，或解出一個未知數的那一行 */
+  function markActive(newEls) {
+    board.querySelectorAll('.ln.act').forEach(el => el.classList.remove('act'));
+    if (cur.st.known || cur.st.solved) {
+      newEls.filter(el => !el.classList.contains('work')).forEach(el => el.classList.add('act'));
+      return;
+    }
+    cur.st.slots.forEach(e => {
+      const el = board.querySelector(`.ln[data-id="${e.id}"]`);
+      if (el) el.classList.add('act');
+    });
+  }
+
+  function dealButtons() {
+    cur.btns = pickButtons(movesFor(cur.st), cur.st);
+    optBtns.forEach((b, i) => {
+      const mv = cur.btns[i];
+      b.hidden = !mv;
+      b.disabled = !mv;
+      b.classList.remove('is-wrong', 'is-pick');
+      b.querySelector('.key').textContent = LBL[i];
+      b.querySelector('.txt').innerHTML = mv ? mv.label : '';
+    });
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function startQuestion() {
+    const p = nextProblem();
+    cur = Object.assign(p, { st: p.st0, steps: 0, wrongs: 0, detours: 0, hist: [] });
+    board.innerHTML = '';
+    const els = startLines(cur.st).map(l => lineEl(l, 'new'));
+    els.forEach(el => board.appendChild(el));
+    markActive(els);
+    showFb('目標：消去一個未知數，解出 <em>x = □、y = □</em>', '');
+    paintTag();
+    dealButtons();
+    locked = false;
+    busy = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    fitBoard();
+    deadline = performance.now() + limits[level] * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const total = limits[cur.level] * 1000;
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      $('bar').style.transform = `scaleX(${left / total})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 3 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { finish(false); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  function choose(i) {
+    if (locked || busy || !cur) return;
+    const mv = cur.btns[i];
+    const btn = optBtns[i];
+    if (!mv || btn.disabled) return;
+    clearTemp();
+
+    if (mv.kind === 'bad') {
+      cur.wrongs += 1;
+      const lines = mv.wrong ? [{ cls: 'bad', html: mv.wrong }] : [];
+      cur.hist.push({ kind: 'bad', label: mv.label, lines });
+      board.appendChild(noteEl(mv.label, 'bad', 'tmp new'));
+      lines.forEach(l => board.appendChild(lineEl(l, 'tmp')));
+      btn.classList.add('is-wrong');
+      btn.disabled = true;
+      showFb('✗ ' + mv.why, 'bad');
+      sfxNg();
+      fitBoard();
+      busy = true;
+      setTimeout(() => { busy = false; }, 300);
+      return;
+    }
+
+    cur.steps += 1;
+    if (mv.kind === 'detour') cur.detours += 1;
+    cur.st = mv.next;
+    cur.hist.push({ kind: mv.kind, label: mv.label, lines: mv.lines });
+    board.querySelectorAll('.ln.new').forEach(el => el.classList.remove('new'));
+    board.appendChild(noteEl(mv.label, mv.kind, 'new'));
+    const els = mv.lines.map(l => lineEl(l, 'new'));
+    els.forEach(el => board.appendChild(el));
+    markActive(els);
+    const solved = !!cur.st.solved;
+    showFb((mv.kind === 'detour' ? '△ ' : '✓ ') + mv.why, mv.kind);
+    btn.classList.add('is-pick');
+    paintTag();
+    fitBoard();
+
+    if (solved) {
+      locked = true;
+      cancelAnimationFrame(raf);
+      document.body.classList.remove('urgent');
+      optBtns.forEach(b => { b.disabled = true; });
+      sfxOk();
+      setTimeout(() => finish(true), 1100);
+      return;
+    }
+    if (mv.kind === 'detour') sfxDetour(); else sfxStep();
+    busy = true;
+    optBtns.forEach(b => { b.disabled = true; });
+    setTimeout(() => {
+      if (locked) return;
+      dealButtons();
+      busy = false;
+    }, 320);
+  }
+
+  /* ── 結算 ───────────────────────────── */
+  function miniBoard(start, entries) {
+    const box = document.createElement('div');
+    box.className = 'mini';
+    start.forEach(l => box.appendChild(lineEl(l)));
+    entries.forEach(h => {
+      box.appendChild(noteEl(h.label, h.kind, ''));
+      h.lines.forEach(l => box.appendChild(lineEl(l)));
+    });
+    return box;
+  }
+
+  function checkHTML(p) {
+    const s = p.sol;
+    const parts = p.st0.slots.map(e => {
+      let l, r;
+      if (e.form === 'std') { l = qa(qm(e.a, s.x), qm(e.b, s.y)); r = e.c; }
+      else if (e.form === 'iso') { l = s[e.v]; r = qa(qm(e.k, s[e.w]), e.m); }
+      else { l = evalTerms(e.Lt, s); r = evalTerms(e.Rt, s); }
+      const f = q => (e.kind === 'dec' && 10 % q.d === 0 ? decNum(q) : fmtNum(q));
+      return `${CIR(e.id)} 左邊 = ${f(l)}、右邊 = ${f(r)} ${qeq(l, r) ? '✓' : '✗'}`;
+    });
+    return `驗算：把 ${doneHTML(s)} 代回<strong>兩條原式</strong><br>${parts.join('；')}`;
+  }
+
+  function finish(win) {
+    if (!win && locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    document.body.classList.remove('urgent');
+    clearTemp();
+
+    total += 1;
+    const perfect = win && cur.steps === cur.min && cur.wrongs === 0;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = !win ? '時間到！' : perfect ? '🌟 完美過關！' : '過關！';
+    $('sol-tag').textContent = LEVELS[cur.level].name;
+
+    if (win) {
+      $('sol-sum').innerHTML = `你用了 <b>${cur.steps}</b> 步，最少 <b>${cur.min}</b> 步`;
+      const bits = [];
+      if (cur.wrongs) bits.push(`走錯 ${cur.wrongs} 次`);
+      if (cur.detours) bits.push(`繞路 ${cur.detours} 次`);
+      $('sol-sub').textContent = bits.length ? `（${bits.join('、')}）` : '一步都沒有浪費！';
+    } else {
+      $('sol-sum').innerHTML = `時間內沒解出 <b>x、y</b>`;
+      $('sol-sub').textContent = `已走 ${cur.steps} 步，最少只要 ${cur.min} 步。看看最短的走法：`;
+    }
+
+    const start = startLines(cur.st0);
+    const mine = $('sol-mine'), best = $('sol-best');
+    mine.innerHTML = ''; best.innerHTML = '';
+    if (cur.hist.length) {
+      if (!win) mine.insertAdjacentHTML('beforeend', '<h3>你的過程</h3>');
+      mine.appendChild(miniBoard(start, cur.hist));
+    }
+    if (!win || cur.detours > 0) {   // 只走錯過的話，自己的過程扣掉紅線就是最短走法
+      best.insertAdjacentHTML('beforeend', '<h3>最短走法</h3>');
+      best.appendChild(miniBoard(start, bestPath(cur.st0)));
+    }
+    $('sol-check').innerHTML = checkHTML(cur);
+
+    if (win) { if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    v.scrollTop = 0;
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+
+  optBtns.forEach(b => b.addEventListener('click', () => choose(Number(b.dataset.i))));
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limits[level] = clampLimit(limits[level] + Number(b.dataset.step));
+      store('elim-limit-' + level, String(limits[level]));
+      paintLimit();
+    });
+  });
+
+  document.querySelectorAll('#level button').forEach(b => {
+    b.addEventListener('click', () => {
+      level = b.dataset.level;
+      store('elim-level', level);
+      recent = [];
+      paintLevel();
+    });
+  });
+
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    store('elim-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      const n = '1234'.indexOf(e.key);
+      const i = n >= 0 ? n : LBL.indexOf(e.key.toUpperCase());
+      if (i >= 0 && e.key.length === 1) { e.preventDefault(); choose(i); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); audio(); startQuestion(); }
+    }
+  });
+
+  window.addEventListener('resize', () => { if (document.body.dataset.view !== 'menu') fitBoard(); });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        if (locked) return;
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）─────── */
+  const BAD_TXT = /undefined|NaN|Infinity|\[object/;
+  window.__eliminationSteps = {
+    GEN, movesFor, validSteps, dist, idsMin, pickButtons, bestPath, eqHTML,
+    ui: { lineEl, noteEl, fitBoard, startLines },
+    state: () => cur,
+    /* 用指定的兩條標準式造起始狀態，例：fromStd([[2, 1, 1], [4, -1, 5]]) */
+    fromStd(list) {
+      const [e1, e2] = list.map((r, i) => Object.assign(stdEq(r[0], r[1], r[2]), { id: i + 1 }));
+      return { slots: [e1, e2], eqs: [e1, e2], nextId: 3, known: null, solved: false, sol: solveSys(e1, e2) };
+    },
+    /* 每級出 n 題，沿隨機最短路徑（偶爾走繞路）一步步檢查：
+       每題可解、最少步數＝BFS＝逐層加深 DFS、正解都在最短路徑上、按鈕恰 4 個不重複、誘答真的錯 */
+    selfTest(n = 2000) {
+      const report = {}, errors = [];
+      const err = (lv, msg, p) => errors.push([lv, msg, p ? eqHTML(p.st0.slots[0]).replace(/<[^>]+>/g, '') + ' ｜ ' + eqHTML(p.st0.slots[1]).replace(/<[^>]+>/g, '') : '']);
+      Object.keys(GEN).forEach(lv => {
+        const mins = {}, t0 = performance.now();
+        let states = 0, detourWalks = 0;
+        for (let t = 0; t < n; t++) {
+          let p;
+          try { p = GEN[lv](); } catch (e) { err(lv, 'throw ' + e.message); continue; }
+          mins[p.min] = (mins[p.min] || 0) + 1;
+          if (!p.st0.slots.every(e => sat(e, p.sol))) err(lv, '解不滿足原式', p);
+          if (!solveSys(p.st0.slots[0], p.st0.slots[1])) err(lv, '不是唯一解', p);
+          if (t % 4 === 0 && idsMin(p.st0) !== p.min) err(lv, `最少步數不符：BFS ${p.min}／DFS ${idsMin(p.st0)}`, p);
+          const takeDetour = t % 5 === 0;
+          let st = p.st0, steps = 0, extra = 0;
+          while (!st.solved && steps < 14) {
+            states++;
+            const d = dist(st), M = movesFor(st);
+            const goods = M.filter(m => m.kind === 'good'), dets = M.filter(m => m.kind === 'detour'), bads = M.filter(m => m.kind === 'bad');
+            if (!goods.length) { err(lv, '沒有正解操作', p); break; }
+            goods.forEach(g => { if (dist(g.next) !== d - 1) err(lv, '正解不在最短路徑上：' + g.label, p); });
+            dets.forEach(g => { if (dist(g.next) !== d) err(lv, '繞路步數不對：' + g.label, p); });
+            const validLabels = new Set(goods.concat(dets).map(m => m.label));
+            bads.forEach(b => {
+              if (validLabels.has(b.label)) err(lv, '誘答和正解同字：' + b.label, p);
+              if (!b.check()) err(lv, '誘答其實沒錯：' + b.label.replace(/<[^>]+>/g, ''), p);
+            });
+            M.forEach(m => { if (BAD_TXT.test(m.label + m.why + (m.wrong || ''))) err(lv, '字串有壞值：' + m.label, p); });
+            for (let r = 0; r < 3; r++) {
+              const btns = pickButtons(M, st);
+              if (btns.length !== 4) err(lv, `按鈕 ${btns.length} 個`, p);
+              if (new Set(btns.map(b => b.label)).size !== btns.length) err(lv, '按鈕重複', p);
+              if (!btns.some(b => b.kind === 'good')) err(lv, '按鈕裡沒有正解', p);
+            }
+            let mv = pickOne(goods);
+            if (takeDetour && dets.length && extra < 2) { mv = pickOne(dets); extra++; detourWalks++; }
+            st = mv.next;
+            steps++;
+          }
+          if (!st.solved) { err(lv, '走不到終點', p); continue; }
+          if (!takeDetour || extra === 0) { if (steps !== p.min) err(lv, `最短路徑走了 ${steps} 步，顯示最少 ${p.min}`, p); }
+          else if (steps !== p.min + extra) err(lv, `繞路 ${extra} 次走了 ${steps} 步`, p);
+          if (!qeq(st.sol.x, p.sol.x) || !qeq(st.sol.y, p.sol.y)) err(lv, '解出來的答案不對', p);
+        }
+        report[lv] = { 題數: n, 最少步數分布: JSON.stringify(mins), 檢查狀態數: states, 含繞路的題: detourWalks, 秒: ((performance.now() - t0) / 1000).toFixed(1) };
+      });
+      return { report, errorCount: errors.length, errors: errors.slice(0, 20) };
+    }
+  };
+
+  /* ── 初始 ───────────────────────────── */
+  paintScore();
+  paintLevel();
+  paintMute();
+})();
+</script>
+</body>
+</html>
