@@ -77,4 +77,7 @@
 - 所有回應與文件使用繁體中文；Windows 優先用 PowerShell
 - 修改前先確認計畫，優先保留原有資料結構
 - commit／push 必須有使用者明確授權；只 stage 本次相關檔案
+- PowerShell 下多行 commit 訊息先寫進暫存檔，再 `git commit -F <檔案>`；不要用 `-F -` 搭配 here-string（會被當成路徑而失敗）
+- 遊戲 HTML 裡要顯示的 `<`、`>` 一律寫成 `&lt;`、`&gt;`
+- 讀康軒備課 PDF 不要用 Git Bash 內建的 `pdftotext`（缺 `Adobe-CNS1`，中文全變空白）；改用 `uv run --with pypdf` 把需要的頁拆成小 PDF，再用 Read 工具直接讀
 - **產出一律放 `output/`**：本專案產生的檔案或資料夾（成品、匯出、報表、生成圖、渲染等）預設放專案根目錄的 `output/`，不另開 `outputs/`、`exports/`、`generated/`、`out/` 之類的資料夾，方便找；`output/` 不進 git。部署工具指定的建置目錄（`dist/`、`build/`）不在此限
