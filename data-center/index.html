@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>代表值快判 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="螢幕出一小群資料或一張次數分配表，限時內選出平均數、中位數或眾數；也比一比哪個代表值最大，看懂極端值的影響。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --violet: #a78bfa;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .unit { margin: 0 0 8px; opacity: 0.75; font-size: 0.95rem; }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 38ch;
+      line-height: 1.7;
+    }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; flex-wrap: wrap; justify-content: center; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+
+    .level-note { margin: -6px 0 0; color: var(--muted); font-size: 0.9rem; max-width: 42ch; line-height: 1.6; }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys {
+      color: var(--muted);
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer {
+      flex: 0 0 auto;
+      height: 10px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(10px, 2.4vh, 28px);
+      padding: 16px;
+      min-height: 0;
+    }
+
+    .rule-tag {
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+      background: var(--panel);
+    }
+
+    .ctx {
+      color: var(--muted);
+      font-size: clamp(1rem, 2.6vw, 1.5rem);
+      text-align: center;
+    }
+
+    /* 一群資料：一個數字一顆 */
+    .data {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: clamp(8px, 1.6vw, 18px);
+      max-width: min(1100px, 100%);
+    }
+    .chip {
+      min-width: 2.2em;
+      padding: 0.12em 0.36em;
+      border: 2px solid var(--line);
+      border-radius: 0.32em;
+      background: rgba(15, 23, 42, 0.55);
+      font-size: clamp(1.9rem, 6.4vw, 4.4rem);
+      font-weight: 800;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    }
+    .chip.hit { border-color: var(--accent-2); color: var(--accent-2); background: rgba(245, 158, 11, 0.14); }
+    .chip.ext { border-color: var(--lose); color: #fca5a5; background: rgba(239, 68, 68, 0.14); }
+    .chip.dim { opacity: 0.55; }
+
+    /* 次數分配表 */
+    .tbl {
+      border-collapse: collapse;
+      font-size: clamp(1.4rem, 4.6vw, 3rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .tbl th, .tbl td {
+      border: 2px solid var(--line);
+      padding: 0.16em 0.5em;
+      text-align: center;
+      min-width: 1.8em;
+    }
+    .tbl th { color: var(--accent-2); background: rgba(245, 158, 11, 0.08); font-size: 0.55em; font-weight: 700; white-space: nowrap; }
+    .tbl td { background: rgba(15, 23, 42, 0.45); }
+    .tbl tr.calc th { color: var(--muted); }
+    .tbl tr.calc td { font-size: 0.72em; color: var(--muted); }
+    .tbl td.hit { color: var(--accent-2); background: rgba(245, 158, 11, 0.16); }
+    .tbl-wrap { max-width: 100%; overflow-x: auto; }
+
+    .ask {
+      font-size: clamp(1.25rem, 3.6vw, 2.4rem);
+      font-weight: 700;
+      text-align: center;
+    }
+    .ask em { font-style: normal; color: var(--accent-2); }
+
+    .count {
+      position: absolute;
+      top: 54px;
+      right: 18px;
+      font-size: clamp(2.4rem, 7vw, 4.4rem);
+      font-weight: 800;
+      color: var(--accent-2);
+      opacity: 0.85;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    .answers {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: clamp(10px, 2vw, 22px);
+      width: min(1040px, 100%);
+      padding: 0 4px 8px;
+    }
+
+    .ans {
+      position: relative;
+      padding: clamp(14px, 3.2vh, 28px) 6px;
+      border: 2px solid var(--line);
+      border-radius: 20px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: clamp(1.4rem, 4.2vw, 2.6rem);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s, background 0.15s;
+    }
+    .ans.word { font-size: clamp(1.15rem, 3.2vw, 2rem); }
+    .ans .k {
+      position: absolute;
+      top: 6px;
+      left: 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .ans:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--cyan); background: rgba(34, 211, 238, 0.1); }
+    .ans:disabled { opacity: 0.45; cursor: default; }
+
+    /* ── 結果 ───────────────────────────────── */
+    .verdict {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 24px 16px;
+      background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.78), rgba(2, 6, 23, 0.95));
+      backdrop-filter: blur(3px);
+      overflow-y: auto;
+    }
+    body[data-view="result"] .verdict { display: flex; }
+
+    .verdict h2 {
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 4.6rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .solution {
+      width: min(900px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: clamp(14px, 3vw, 24px);
+      text-align: center;
+    }
+    .solution .q {
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .solution .q .ctx { font-size: clamp(0.95rem, 2.2vw, 1.2rem); }
+    .solution .q .chip { font-size: clamp(1.2rem, 3.6vw, 2.2rem); }
+    .solution .q .data { gap: clamp(6px, 1.2vw, 12px); }
+    .solution .q .tbl { font-size: clamp(1.05rem, 3.2vw, 1.9rem); }
+    .solution .q .sorted-tag { color: var(--muted); font-size: 0.9rem; }
+    .solution .answer-chip {
+      display: inline-block;
+      margin-bottom: 12px;
+      padding: 4px 18px;
+      border-radius: 999px;
+      font-size: clamp(1.05rem, 2.8vw, 1.5rem);
+      font-weight: 800;
+      color: var(--win);
+      border: 2px solid currentColor;
+    }
+    .solution .picked { color: var(--muted); font-size: 0.95rem; margin: -4px 0 10px; }
+    .solution .why {
+      color: var(--text);
+      font-size: clamp(1rem, 2.5vw, 1.3rem);
+      line-height: 1.9;
+      opacity: 0.95;
+    }
+    .solution .why em {
+      font-style: normal;
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+    .solution .why .warn { color: #fca5a5; }
+
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    .nw { white-space: nowrap; }
+
+    @media (max-width: 640px) {
+      .answers { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; }
+      .chip { font-size: clamp(1.5rem, 8vw, 2.2rem); }
+      .tbl { font-size: clamp(1.05rem, 4.6vw, 1.5rem); }
+    }
+
+    @media (max-height: 560px) {
+      .chip { font-size: clamp(1.3rem, 5vw, 2.4rem); }
+      .tbl { font-size: clamp(1.1rem, 3.6vw, 2rem); }
+      .ans { padding: 10px 6px; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">代表值快判</h1>
+      <p class="unit">📘 第2冊・第5章 統計・第1節 統計圖表與資料分析</p>
+      <p class="hint">螢幕出一小群資料或一張次數分配表，<span class="limit-val">15</span> 秒內從四個答案裡選出<strong>平均數</strong>、<strong>中位數</strong>或<strong>眾數</strong>。</p>
+
+      <div class="ctl-row">
+        <div class="seg" id="level" role="group" aria-label="題型">
+          <button type="button" data-level="mean" aria-pressed="false">平均數</button>
+          <button type="button" data-level="median" aria-pressed="false">中位數</button>
+          <button type="button" data-level="mode" aria-pressed="false">眾數</button>
+          <button type="button" data-level="table" aria-pressed="false">次數表</button>
+          <button type="button" data-level="cmp" aria-pressed="false">比大小</button>
+          <button type="button" data-level="all" aria-pressed="true">混合</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-1" aria-label="減少 1 秒">−</button>
+          <b class="limit-val">15</b>秒
+          <button type="button" data-step="1" aria-label="增加 1 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+
+      <button type="button" class="big-btn" id="start">🎲 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看代表值小抄</a>
+      <p class="keys">鍵盤：<kbd>1</kbd>～<kbd>4</kbd> 選答案　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <!-- ── 作答 ───────────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="count" id="count">15</div>
+
+    <div class="play-body">
+      <div class="rule-tag" id="rule">平均數</div>
+      <div class="ctx" id="ctx"></div>
+      <div id="expr"></div>
+      <div class="ask" id="ask"></div>
+      <div class="answers" id="answers"></div>
+    </div>
+  </section>
+
+  <!-- ── 判定 ───────────────────────────── -->
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="q" id="sol-q"></div>
+      <div class="answer-chip" id="sol-ans"></div>
+      <div class="picked" id="sol-picked"></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器，限時依題型各自記）── */
+  const LEVELS = ['mean', 'median', 'mode', 'table', 'cmp', 'all'];
+  const LIMIT_DEFAULT = { mean: 15, median: 15, mode: 10, table: 20, cmp: 15, all: 15 };
+  const LIMIT_MIN = 4, LIMIT_MAX = 60;
+  const LEVEL_NOTE = {
+    mean: '平均數 ＝ 總和 ÷ 個數。數字大的時候，先找一個基準，用「削高補低」比較快。',
+    median: '中位數要先由小到大排好再取中間；個數是偶數時，取中間兩個的平均。題目故意不排序！',
+    mode: '眾數是出現最多次的那個值；並列最多的有兩個，兩個都是眾數。',
+    table: '看次數分配表：眾數看「次數最多的那一欄的值」；中位數一欄一欄累加找位置；平均數用「值 × 次數」加總再除以總次數。',
+    cmp: '一群資料裡有一個特別大或特別小的值（極端值）時，平均數、中位數、眾數哪一個最大或最小？',
+    all: '五種題型混在一起出。'
+  };
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 私密視窗等情況：不記也能玩 */ } }
+  };
+
+  function clampLimit(v) { return Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v)); }
+
+  let level = LEVELS.includes(store.get('dc-level')) ? store.get('dc-level') : 'all';
+  const limits = {};
+  LEVELS.forEach(l => {
+    const v = parseInt(store.get(`dc-limit-${l}`), 10);
+    limits[l] = clampLimit(Number.isFinite(v) ? v : LIMIT_DEFAULT[l]);
+  });
+  let muted = store.get('dc-muted') === '1';
+  const limit = () => limits[level];
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const coin = (p = 0.5) => Math.random() < p;
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  const asc = arr => arr.slice().sort((a, b) => a - b);
+  const sum = arr => arr.reduce((s, v) => s + v, 0);
+  const MINUS = '−';
+  // 答案只會是整數或 .5
+  const nice = v => Number.isFinite(v) && v >= 0 && Math.abs(v * 2 - Math.round(v * 2)) < 1e-9;
+  const fmt = v => (Number.isInteger(v) ? String(v) : (Math.round(v * 10) / 10).toFixed(1));
+  const signed = d => (d > 0 ? `+${d}` : d < 0 ? `${MINUS}${-d}` : '0');
+
+  /* ── 統計量（自動檢查也用這幾個）────────── */
+  function meanOf(arr) { return sum(arr) / arr.length; }
+  function medianOf(arr) {
+    const s = asc(arr), n = s.length;
+    return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+  }
+  function counts(arr) {
+    const m = new Map();
+    arr.forEach(v => m.set(v, (m.get(v) || 0) + 1));
+    return m;
+  }
+  // 回傳所有眾數（由小到大）與最多的次數；最多次只有 1 次時視為沒有重複
+  function modesOf(arr) {
+    const m = counts(arr);
+    const top = Math.max(...m.values());
+    return { modes: asc([...m.keys()].filter(k => m.get(k) === top)), top };
+  }
+  const expand = (vals, freq) => vals.flatMap((v, i) => Array(freq[i]).fill(v));
+
+  /* ── 排版 ───────────────────────────── */
+  const chipsHtml = (arr, cls = () => '') =>
+    `<div class="data">${arr.map((v, i) => `<span class="chip ${cls(v, i)}">${fmt(v)}</span>`).join('')}</div>`;
+
+  function tableHtml(t, extra = null, hitCol = -1) {
+    const row = (head, cells, rowCls = '') =>
+      `<tr class="${rowCls}"><th>${head}</th>${cells.map((c, i) => `<td class="${i === hitCol ? 'hit' : ''}">${c}</td>`).join('')}</tr>`;
+    let h = '<div class="tbl-wrap"><table class="tbl">' +
+      row(t.vh, t.vals.map(fmt)) +
+      row(t.fh, t.freq.map(String));
+    if (extra) h += row(extra.head, extra.cells, 'calc');
+    return h + '</table></div>';
+  }
+
+  /* ══ 情境（數值範圍以 step 為單位產生）══════════════ */
+  const RAW = [
+    { t: n => `${n} 位同學的數學小考分數`, u: '分', lo: 60, hi: 100, step: 1 },
+    { t: n => `${n} 天每天的閱讀時間`, u: '分鐘', lo: 10, hi: 60, step: 5 },
+    { t: n => `${n} 位同學的身高`, u: '公分', lo: 148, hi: 172, step: 1 },
+    { t: n => `${n} 場籃球比賽的得分`, u: '分', lo: 4, hi: 30, step: 1 },
+    { t: n => `${n} 位同學一分鐘仰臥起坐的次數`, u: '次', lo: 20, hi: 50, step: 1 },
+    { t: n => `${n} 位同學的鞋子尺寸`, u: '號', lo: 22, hi: 28, step: 1 }
+  ];
+  const units = c => Math.round((c.hi - c.lo) / c.step); // 範圍裡有幾格
+  const toVal = (c, k) => c.lo + k * c.step;
+
+  /* ── 選項：答案＋最多兩個「概念型」誘答，不夠再補鄰近值 ── */
+  // range：概念型誘答要落在資料的最小值～最大值之間，太離譜的一眼就刪掉了
+  function numOpts(ans, concept, step, range = null) {
+    const out = [ans];
+    const ok = v => nice(v) && !out.some(o => Math.abs(o - v) < 1e-9);
+    const inRange = v => !range || (v >= range[0] && v <= range[1]);
+    shuffle(concept).forEach(v => { if (out.length < 3 && ok(v) && inRange(v)) out.push(v); });
+    const near = shuffle([1, -1, 2, -2]).map(d => ans + d * step)
+      .concat([3, -3, 4, 5].map(d => ans + d * step));
+    near.forEach(v => { if (out.length < 4 && ok(v)) out.push(v); });
+    return asc(out).map(v => ({ key: fmt(v), html: fmt(v) }));
+  }
+
+  /* ══ ① 平均數（課本 P.174～P.176）══════════════════
+     以平均數 m 為基準，偏差加起來是 0（削高補低），保證平均數是整數。 */
+  function makeMean() {
+    const c = pickOf(RAW.filter(c => units(c) >= 6));
+    const n = R(3, 6);
+    const kMax = Math.min(8, Math.floor(units(c) / 2));
+    let devs;
+    do {
+      devs = Array.from({ length: n - 1 }, () => R(-kMax, kMax));
+      devs.push(-sum(devs));
+    } while (Math.abs(devs[n - 1]) > kMax || devs.every(d => d === 0));
+    const mU = R(kMax, units(c) - kMax);
+    const m = toVal(c, mU);
+    const data = shuffle(devs.map(d => toVal(c, mU + d)));
+    const S = sum(data);
+    const lo = Math.min(...data), hi = Math.max(...data);
+    // 誘答：中位數、最大最小的平均、寫在正中間的數、眾數
+    const concept = [medianOf(data), (lo + hi) / 2, data[Math.floor(n / 2)], modesOf(data).modes[0]];
+    const devTxt = data.map(v => signed((v - m))).join('、');
+    const why = `總和 <span class="nw">${data.join(' + ')} = ${S}</span>，共 ${n} 個，平均數 <span class="nw">= ${S} ÷ ${n} = <em>${m}</em></span>。<br>` +
+      `削高補低：以 ${m} 為基準，差距是 ${devTxt}，加起來剛好是 0。`;
+    return {
+      type: 'mean', rule: '平均數',
+      ctx: `${c.t(n)}（單位：${c.u}）`,
+      html: chipsHtml(data),
+      ask: `平均數是多少${c.u}？`,
+      opts: numOpts(m, concept, c.step, [lo, hi]),
+      ans: fmt(m),
+      solHtml: chipsHtml(data),
+      why,
+      check: { data }
+    };
+  }
+
+  /* ══ ② 中位數（課本 P.179～P.181）══════════════════
+     題目不排序，而且沒排序取中間會得到不一樣的數。 */
+  function makeMedian() {
+    const c = pickOf(RAW);
+    const n = R(5, 8);
+    let data, med, rawMid;
+    for (;;) {
+      data = Array.from({ length: n }, () => toVal(c, R(0, units(c))));
+      med = medianOf(data);
+      rawMid = n % 2 ? data[(n - 1) / 2] : (data[n / 2 - 1] + data[n / 2]) / 2;
+      if (nice(med) && rawMid !== med && new Set(data).size >= n - 1) break;
+    }
+    const s = asc(data);
+    const concept = [rawMid, meanOf(data), Math.round(meanOf(data))];
+    if (n % 2 === 0) concept.push(s[n / 2 - 1], s[n / 2]);
+    else concept.push((s[(n - 1) / 2 - 1] + s[(n - 1) / 2]) / 2);
+    const midIdx = n % 2 ? [(n - 1) / 2] : [n / 2 - 1, n / 2];
+    let why;
+    if (n % 2) {
+      why = `先由小到大排好。共 ${n} 個（奇數），中位數是第 <span class="nw">(${n} + 1) ÷ 2 = ${(n + 1) / 2}</span> 個：<em>${fmt(med)}</em>。`;
+    } else {
+      why = `先由小到大排好。共 ${n} 個（偶數），取第 ${n / 2} 個和第 ${n / 2 + 1} 個的平均：<span class="nw">(${s[n / 2 - 1]} + ${s[n / 2]}) ÷ 2 = <em>${fmt(med)}</em></span>。`;
+    }
+    why += `<br><span class="warn">沒排序就取中間，會得到 ${fmt(rawMid)}。</span>`;
+    return {
+      type: 'median', rule: '中位數',
+      ctx: `${c.t(n)}（單位：${c.u}）`,
+      html: chipsHtml(data),
+      ask: `中位數是多少${c.u}？`,
+      opts: numOpts(med, concept, c.step, [s[0], s[n - 1]]),
+      ans: fmt(med),
+      solHtml: `<span class="sorted-tag">由小到大排好</span>` + chipsHtml(s, (v, i) => (midIdx.includes(i) ? 'hit' : '')),
+      why,
+      check: { data }
+    };
+  }
+
+  /* ══ ③ 眾數（課本 P.183）════════════════════════
+     七成一個眾數、三成兩個並列（課本：出現最多次的有 2 種以上，這幾種都是眾數）。 */
+  function makeMode() {
+    const c = pickOf(RAW);
+    const two = coin(0.3);
+    let data;
+    for (;;) {
+      const top = R(2, 3);
+      const pool = shuffle(Array.from({ length: units(c) + 1 }, (_, k) => toVal(c, k)));
+      const modes = pool.slice(0, two ? 2 : 1);
+      data = modes.flatMap(v => Array(top).fill(v));
+      const others = pool.slice(modes.length);
+      let oi = 0;
+      const target = R(6, 9);
+      while (data.length < target && oi < others.length) {
+        const cnt = Math.min(R(1, top - 1), target - data.length);
+        data.push(...Array(cnt).fill(others[oi++]));
+      }
+      // 至少 4 種不同的值，選項才湊得滿；兩個眾數時也要有別的值
+      if (data.length >= 6 && new Set(data).size >= 4) break;
+    }
+    data = shuffle(data);
+    const { modes, top } = modesOf(data);
+    const cnt = counts(data);
+    const n = data.length;
+    const ansKey = modes.map(fmt).join(',');
+    const label = ms => ms.map(fmt).join(' 和 ');
+    let opts;
+    if (modes.length === 1) {
+      const m = modes[0];
+      const second = asc([...cnt.keys()].filter(k => k !== m)).sort((a, b) => cnt.get(b) - cnt.get(a))[0];
+      // 選項全用資料裡真的有的值：次多的值、寫在正中間的、最大、最小，不夠再隨機補
+      // （次數 top 只在次數表題當誘答；這裡的值和次數差太多，一眼就看穿）
+      const pick = [m];
+      [second, data[Math.floor(n / 2)], Math.max(...data), Math.min(...data)]
+        .concat(shuffle([...cnt.keys()]))
+        .forEach(v => { if (pick.length < 4 && !pick.includes(v)) pick.push(v); });
+      opts = asc(pick).map(v => ({ key: fmt(v), html: fmt(v) }));
+    } else {
+      // 兩個眾數：正解「a 和 b」，誘答只寫一個，或拿次多的值湊一對
+      const [a, b] = modes;
+      const rest = shuffle([...cnt.keys()].filter(k => !modes.includes(k)));
+      const cand = [[a, b], [a], [b]];
+      if (rest.length) cand.push(asc([coin() ? a : b, rest[0]]));
+      else cand.push([top]);
+      opts = cand.map(ms => ({ key: ms.map(fmt).join(','), html: label(ms) }));
+      opts.sort((p, q) => parseFloat(p.key) - parseFloat(q.key) || p.key.length - q.key.length);
+    }
+    const s = asc(data);
+    const why = modes.length === 1
+      ? `${fmt(modes[0])} 出現 <em>${top} 次</em>，比其他值都多，所以眾數是 <em>${fmt(modes[0])}</em>。` +
+        `<br><span class="warn">眾數是「值」，不是次數 ${top}。</span>`
+      : `${label(modes)} 都出現 <em>${top} 次</em>，並列最多，<em>兩個都是眾數</em>。`;
+    return {
+      type: 'mode', rule: '眾數',
+      ctx: `${c.t(n)}（單位：${c.u}）`,
+      html: chipsHtml(data),
+      ask: `眾數是多少${c.u}？`,
+      opts,
+      ans: ansKey,
+      solHtml: `<span class="sorted-tag">由小到大排好</span>` + chipsHtml(s, v => (modes.includes(v) ? 'hit' : 'dim')),
+      why,
+      check: { data }
+    };
+  }
+
+  /* ══ ④ 次數表（課本 P.175 例、P.181 例、P.183 例）══════
+     值是連續的小整數；問眾數、中位數或平均數。 */
+  const TABLES = [
+    { title: '某班同學投籃 5 次的進球數', vh: '進球數（球）', fh: '人數（人）', u: '球', starts: [0], k: 6 },
+    { title: '某班同學看過的課外書', vh: '書（本）', fh: '人數（人）', u: '本', starts: [0, 1], k: 6 },
+    { title: '某班同學一週運動的天數', vh: '天數（天）', fh: '人數（人）', u: '天', starts: [0, 1, 2], k: 6 },
+    { title: '某社區家庭的人口數', vh: '人口數（人）', fh: '家庭數（戶）', u: '人', starts: [2, 3], k: 5 },
+    { title: '同時擲四枚硬幣，出現正面的枚數', vh: '正面（枚）', fh: '次數（次）', u: '枚', starts: [0], k: 5 }
+  ];
+
+  function makeTable() {
+    const t = pickOf(TABLES);
+    const ask = pickOf(['mode', 'median', 'mean']);
+    const v0 = pickOf(t.starts);
+    const vals = Array.from({ length: t.k }, (_, i) => v0 + i);
+    let freq, data, N;
+    for (;;) {
+      freq = vals.map(() => R(0, 7));
+      N = sum(freq);
+      if (N < 10 || N > 26) continue;
+      if (freq.filter(f => f > 0).length < 4) continue;
+      data = expand(vals, freq);
+      const { modes } = modesOf(data);
+      if (modes.length !== 1) continue;          // 次數表題一律只有一個眾數
+      if (ask === 'mean' && sum(data) % N !== 0) continue;
+      if (ask === 'median' && !nice(medianOf(data))) continue;
+      break;
+    }
+    const tb = { vh: t.vh, fh: t.fh, vals, freq };
+    const mode = modesOf(data).modes[0];
+    const top = Math.max(...freq);
+    const med = medianOf(data);
+    const S = sum(data);
+    let ans, opts, solHtml, why, askTxt, rule;
+    if (ask === 'mode') {
+      rule = '次數表・眾數';
+      ans = mode;
+      askTxt = `眾數是多少${t.u}？`;
+      opts = numOpts(mode, [top, med, vals[vals.length - 1], vals[freq.indexOf(asc(freq.filter((f, i) => vals[i] !== mode)).pop())]], 1);
+      solHtml = tableHtml(tb, null, vals.indexOf(mode));
+      why = `次數最多的是 <em>${top}</em>，對應的值是 <em>${mode}</em>，所以眾數是 <em>${mode} ${t.u}</em>。` +
+        (top !== mode ? `<br><span class="warn">眾數是「值」，不是次數 ${top}。</span>` : '');
+    } else if (ask === 'median') {
+      rule = '次數表・中位數';
+      ans = med;
+      askTxt = `中位數是多少${t.u}？`;
+      const cum = [];
+      freq.reduce((s, f, i) => (cum[i] = s + f), 0);
+      const pos = N % 2 ? [(N + 1) / 2] : [N / 2, N / 2 + 1];
+      const colOf = p => cum.findIndex(c => c >= p);
+      opts = numOpts(med, [(N + 1) / 2, mode, vals[Math.floor(vals.length / 2)], meanOf(data)], 1);
+      solHtml = tableHtml(tb, { head: '累積', cells: cum.map(String) }, colOf(pos[0]));
+      if (N % 2) {
+        why = `共 ${N} 個（奇數），中位數是第 <span class="nw">(${N} + 1) ÷ 2 = ${pos[0]}</span> 個。一欄一欄累加：累積到 ${cum[colOf(pos[0])]} 才包含第 ${pos[0]} 個，所以第 ${pos[0]} 個是 <em>${med}</em>。`;
+      } else {
+        const a = data[pos[0] - 1], b = data[pos[1] - 1];
+        why = `共 ${N} 個（偶數），中位數是第 ${pos[0]} 個和第 ${pos[1]} 個的平均。一欄一欄累加：第 ${pos[0]} 個是 ${a}、第 ${pos[1]} 個是 ${b}，<span class="nw">(${a} + ${b}) ÷ 2 = <em>${fmt(med)}</em></span>。`;
+      }
+      why += `<br><span class="warn">${fmt((N + 1) / 2)} 是「第幾個」的位置，不是中位數。</span>`;
+    } else {
+      rule = '次數表・平均數';
+      const m = S / N;
+      ans = m;
+      askTxt = `平均數是多少${t.u}？`;
+      const colMean = meanOf(vals);
+      opts = numOpts(m, [colMean, S / vals.length, med, mode], 1, [vals[0], vals[vals.length - 1]]);
+      const prods = vals.map((v, i) => v * freq[i]);
+      solHtml = tableHtml(tb, { head: '值 × 次數', cells: prods.map(String) });
+      why = `每一欄算「值 × 次數」再加總：<span class="nw">${prods.join(' + ')} = ${S}</span>；總次數 ${N}，平均數 <span class="nw">= ${S} ÷ ${N} = <em>${fmt(m)}</em></span>。` +
+        `<br><span class="warn">不能只把表上的值 ${vals.join('、')} 直接平均（${fmt(colMean)}），要乘上次數。</span>`;
+    }
+    return {
+      type: `table-${ask}`, rule,
+      ctx: `${t.title}（共 ${N} ${t.fh.includes('戶') ? '戶' : t.fh.includes('次數') ? '次' : '人'}）`,
+      html: tableHtml(tb),
+      ask: askTxt,
+      opts,
+      ans: fmt(ans),
+      solHtml,
+      why,
+      check: { data, ask }
+    };
+  }
+
+  /* ══ ⑤ 比大小：極端值的影響（課本 P.179 甲群 52 歲的例子）══
+     一群集中的資料加一個極端值，問平均數、中位數、眾數哪一個最大（或最小）。
+     兩成題目是左右對稱、三個一樣大的資料。 */
+  const CMP = [
+    { t: n => `${n} 位遊客的年齡`, u: '歲', lo: 8, hi: 16, step: 1, ext: 'hi', eLo: 45, eHi: 65 },
+    { t: n => `${n} 位同學一週的零用錢`, u: '元', lo: 100, hi: 400, step: 50, ext: 'hi', eLo: 1500, eHi: 3000 },
+    { t: n => `${n} 位同學的數學小考分數`, u: '分', lo: 72, hi: 96, step: 1, ext: 'lo', eLo: 8, eHi: 30 },
+    { t: n => `${n} 位同學到學校的通勤時間`, u: '分鐘', lo: 5, hi: 30, step: 5, ext: 'hi', eLo: 70, eHi: 95 },
+    { t: n => `${n} 位同學一分鐘的跳繩次數`, u: '下', lo: 100, hi: 130, step: 1, ext: 'lo', eLo: 10, eHi: 30 }
+  ];
+  const CMP_NAME = { mean: '平均數', median: '中位數', mode: '眾數', same: '三個一樣大' };
+
+  function makeCmp() {
+    const c = pickOf(CMP);
+    const same = coin(0.2);
+    let data, ext = null, st, dir;
+    for (;;) {
+      dir = coin() ? 'max' : 'min';
+      if (same) {
+        const dMax = Math.min(4, Math.floor(units(c) / 2));
+        const ds = shuffle(Array.from({ length: dMax }, (_, i) => i + 1)).slice(0, R(1, Math.min(3, dMax)));
+        const cU = R(dMax, units(c) - dMax);
+        data = Array(R(2, 3)).fill(cU);
+        ds.forEach(d => data.push(cU - d, cU + d));
+        data = data.map(k => toVal(c, k));
+      } else {
+        const M = R(0, units(c));
+        const base = Array(R(2, 3)).fill(M);
+        const others = shuffle(Array.from({ length: units(c) + 1 }, (_, k) => k).filter(k => k !== M)).slice(0, R(3, 4));
+        data = base.concat(others).map(k => toVal(c, k));
+        const eStep = c.step === 1 ? 1 : c.step;
+        ext = c.eLo + eStep * R(0, Math.floor((c.eHi - c.eLo) / eStep));
+        data.push(ext);
+      }
+      const md = modesOf(data);
+      if (md.modes.length !== 1) continue;
+      st = { mean: meanOf(data), median: medianOf(data), mode: md.modes[0] };
+      if (same) {
+        if (st.mean === st.median && st.median === st.mode) break;
+        continue;
+      }
+      const gap = Math.max(0.5, c.step / 2);
+      const keys = ['mean', 'median', 'mode'];
+      const sorted = keys.slice().sort((a, b) => st[a] - st[b]);
+      const target = dir === 'max' ? sorted[2] : sorted[0];
+      const runner = dir === 'max' ? sorted[1] : sorted[1];
+      if (Math.abs(st[target] - st[runner]) < gap) continue;
+      // 平均數被極端值拉偏，天生最常是答案；擋掉一部分，免得閉眼選平均數也能贏
+      if (target === 'mean' && coin(0.6)) continue;
+      break;
+    }
+    data = shuffle(data);
+    let ans;
+    if (same) ans = 'same';
+    else {
+      const keys = ['mean', 'median', 'mode'];
+      ans = keys.reduce((best, k) => (dir === 'max' ? (st[k] > st[best] ? k : best) : (st[k] < st[best] ? k : best)), 'mean');
+    }
+    const n = data.length;
+    const S = sum(data);
+    const meanTxt = Number.isInteger(st.mean) ? `${st.mean}` : (Math.abs(st.mean * 10 - Math.round(st.mean * 10)) < 1e-9 ? fmt(st.mean) : `約 ${(Math.round(st.mean * 10) / 10).toFixed(1)}`);
+    let why = `平均數 <span class="nw">= ${S} ÷ ${n} ${meanTxt.startsWith('約') ? '≈ ' + meanTxt.slice(2) : '= ' + meanTxt}</span>、中位數 = ${fmt(st.median)}、眾數 = ${fmt(st.mode)}。<br>`;
+    if (same) {
+      why += `資料以 ${fmt(st.mode)} 為中心左右對稱，三個代表值<em>一樣大</em>，都是 ${fmt(st.mode)}。`;
+    } else {
+      const up = c.ext === 'hi';
+      why += `極端值 <em>${ext}</em> 特別${up ? '大' : '小'}，把<em>平均數</em>${up ? '拉高' : '拉低'}了；中位數和眾數幾乎不受影響。` +
+        `所以${dir === 'max' ? '最大' : '最小'}的是<em>${CMP_NAME[ans]}</em>。`;
+    }
+    const opts = ['mean', 'median', 'mode', 'same'].map(k => ({ key: k, html: CMP_NAME[k], word: true }));
+    return {
+      type: 'cmp', rule: '比大小',
+      ctx: `${c.t(n)}（單位：${c.u}）`,
+      html: chipsHtml(data),
+      ask: `平均數、中位數、眾數，哪一個<em>${dir === 'max' ? '最大' : '最小'}</em>？`,
+      opts,
+      ans,
+      ansLabel: CMP_NAME[ans],
+      solHtml: `<span class="sorted-tag">由小到大排好</span>` + chipsHtml(asc(data), v => (v === ext ? 'ext' : '')),
+      why,
+      check: { data, dir }
+    };
+  }
+
+  const GENS = [
+    { key: 'mean', make: makeMean },
+    { key: 'median', make: makeMedian },
+    { key: 'mode', make: makeMode },
+    { key: 'table', make: makeTable },
+    { key: 'cmp', make: makeCmp }
+  ];
+
+  function pool() {
+    return level === 'all' ? GENS : GENS.filter(g => g.key === level);
+  }
+
+  const plain = html => html.replace(/<[^>]+>/g, '');
+
+  let lastHtml = '';
+  function nextQuestion() {
+    const list = pool();
+    let q;
+    for (let i = 0; i < 12; i++) {
+      q = pickOf(list).make();
+      if (q.html !== lastHtml) break;
+    }
+    lastHtml = q.html;
+    return q;
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+
+  /* ── 狀態 ───────────────────────────── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, curLimit = 15;
+  let ansBtns = [];
+
+  function setView(v) { document.body.dataset.view = v; }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.level === level));
+    });
+    $('level-note').textContent = LEVEL_NOTE[level];
+    paintLimit();
+  }
+
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function startQuestion() {
+    cur = nextQuestion();
+    curLimit = limit();
+    $('rule').textContent = cur.rule;
+    $('ctx').textContent = cur.ctx;
+    $('expr').innerHTML = cur.html;
+    $('ask').innerHTML = cur.ask;
+    $('answers').innerHTML = cur.opts.map((o, i) =>
+      `<button type="button" class="ans${o.word ? ' word' : ''}" data-key="${o.key}"><span class="k">${i + 1}</span>${o.html}</button>`).join('');
+    ansBtns = Array.from(document.querySelectorAll('.ans'));
+    ansBtns.forEach(b => b.addEventListener('click', () => judge(b.dataset.key)));
+    locked = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + curLimit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      const ratio = left / (curLimit * 1000);
+      $('bar').style.transform = `scaleX(${ratio})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 3 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { judge(null); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 判定 ───────────────────────────── */
+  const optLabel = key => {
+    const o = cur.opts.find(o => o.key === key);
+    return o ? plain(o.html) : key;
+  };
+
+  function judge(answer) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    ansBtns.forEach(b => { b.disabled = true; });
+    document.body.classList.remove('urgent');
+
+    const timeout = answer === null;
+    const win = !timeout && answer === cur.ans;
+
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+
+    $('sol-q').innerHTML = `<div class="ctx">${cur.ctx}</div>` + cur.solHtml;
+    $('sol-ans').textContent = `答案：${optLabel(cur.ans)}`;
+    $('sol-picked').textContent = (!timeout && !win) ? `你選的是「${optLabel(answer)}」` : '';
+    $('sol-why').innerHTML = cur.why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limits[level] = clampLimit(limits[level] + Number(b.dataset.step));
+      store.set(`dc-limit-${level}`, String(limits[level]));
+      paintLimit();
+    });
+  });
+
+  document.querySelectorAll('#level button').forEach(b => {
+    b.addEventListener('click', () => {
+      level = b.dataset.level;
+      store.set('dc-level', level);
+      paintLevel();
+    });
+  });
+
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    store.set('dc-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      const i = ['1', '2', '3', '4'].indexOf(e.key);
+      if (i >= 0 && ansBtns[i]) { e.preventDefault(); judge(ansBtns[i].dataset.key); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (document.activeElement && document.activeElement.closest('button, a') && document.activeElement !== $('start')) return;
+        e.preventDefault(); audio(); startQuestion();
+      }
+    }
+  });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）───────
+     用題目資料重新算一次正解，和標的答案比對；並檢查四個選項不重複、正解恰好一個。 */
+  function recompute(q) {
+    const d = q.check.data;
+    const kind = q.type.startsWith('table-') ? q.check.ask : q.type;
+    if (kind === 'mean') return fmt(meanOf(d));
+    if (kind === 'median') return fmt(medianOf(d));
+    if (kind === 'mode') return modesOf(d).modes.map(fmt).join(',');
+    // cmp
+    const st = { mean: meanOf(d), median: medianOf(d), mode: modesOf(d).modes[0] };
+    if (st.mean === st.median && st.median === st.mode) return 'same';
+    const ks = Object.keys(st).sort((a, b) => st[a] - st[b]);
+    const pick = q.check.dir === 'max' ? ks[2] : ks[0];
+    const other = q.check.dir === 'max' ? ks[1] : ks[1];
+    return st[pick] === st[other] ? 'tie?' : pick;
+  }
+
+  window.__dataCenter = {
+    GENS, meanOf, medianOf, modesOf,
+    selfTest(n = 3000) {
+      const report = {};
+      const errors = [];
+      GENS.forEach(g => {
+        const t0 = performance.now();
+        for (let i = 0; i < n; i++) {
+          let q;
+          try { q = g.make(); } catch (e) { errors.push([g.key, 'throw', e.message]); continue; }
+          const txt = q.html + q.solHtml + q.why + q.ask + q.ctx + q.opts.map(o => o.html).join('|');
+          if (/undefined|NaN|Infinity|\[object|null/.test(txt)) errors.push([g.key, '字串有壞值', plain(txt)]);
+          if (q.opts.length !== 4) errors.push([g.key, `選項 ${q.opts.length} 個`, plain(q.html)]);
+          const keys = q.opts.map(o => o.key);
+          if (new Set(keys).size !== keys.length) errors.push([g.key, '選項重複', keys.join(' | ')]);
+          if (keys.filter(k => k === q.ans).length !== 1) errors.push([g.key, '正解不在選項裡', `${q.ans} / ${keys.join(' | ')}`]);
+          const got = recompute(q);
+          if (got !== q.ans) errors.push([g.key, `標 ${q.ans} 但重算 ${got}`, plain(q.html)]);
+          if (q.type === 'mode' && modesOf(q.check.data).top < 2) errors.push([g.key, '眾數題沒有重複值', plain(q.html)]);
+        }
+        report[g.key] = `${n} 題，${(performance.now() - t0).toFixed(0)} ms`;
+      });
+      return { report, errors: errors.slice(0, 20), errorCount: errors.length };
+    }
+  };
+
+  paintLevel();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>
