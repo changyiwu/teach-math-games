@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>正比反比小抄 - 正比反比快分類</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="正比 y = kx、反比 xy = k 的意義與判斷方法：看表格、看關係式、看生活情境，加上一張常見迷思對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --violet: #a78bfa;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    var { font-family: "Times New Roman", "Cambria", serif; font-style: italic; padding: 0 0.04em; }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 8px 0 16px;
+    }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+
+    .btn {
+      padding: 9px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.98rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn-play {
+      border: 0;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-weight: 800;
+    }
+    .btn-play:hover { filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 1.3rem;
+      color: var(--accent-2);
+      border-left: 4px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      padding: 18px;
+    }
+    .card.direct { border-top: 4px solid var(--cyan); }
+    .card.inverse { border-top: 4px solid var(--violet); }
+    .card.neither { border-top: 4px solid var(--muted); }
+    .card .law {
+      font-size: clamp(1.15rem, 3.2vw, 1.5rem);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .card.direct .law { color: var(--cyan); }
+    .card.inverse .law { color: var(--violet); }
+    .card .say { color: var(--muted); font-size: 0.96rem; margin: 0 0 10px; }
+    .card .say strong { color: var(--text); }
+    .card .eg {
+      border-top: 1px dashed var(--line);
+      padding-top: 10px;
+      font-size: 1.05rem;
+      line-height: 1.9;
+    }
+
+    sup { font-size: 0.6em; }
+
+    .note {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 14px 18px;
+      margin: 14px 0;
+    }
+    .note b { color: var(--accent-2); }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+    }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+
+    /* x、y 對照小表 */
+    .mini { width: auto; margin: 6px 0; font-size: 1rem; font-variant-numeric: tabular-nums; }
+    .mini th, .mini td { padding: 4px 10px; text-align: center; }
+    .mini tr.ok td, .mini tr.ok th { color: #86efac; }
+
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.82em;
+      margin: 0 0.06em;
+    }
+    .fr > span { padding: 0 0.24em; white-space: nowrap; }
+    .fr > span:first-child { border-bottom: 0.09em solid currentColor; }
+
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions">
+        <a class="btn btn-play" href="./">🎮 開始挑戰</a>
+      </div>
+    </header>
+
+    <h1>正比反比小抄</h1>
+    <p class="lead">康軒 1 下 3-2 正比與反比。判斷的關鍵只有一句：<strong>看哪一個量固定</strong>。比值 <var>y</var> ÷ <var>x</var> 固定是正比，乘積 <var>x</var> × <var>y</var> 固定是反比，兩個都不固定就都不是。</p>
+
+    <h2>兩種關係</h2>
+    <div class="grid">
+      <div class="card direct">
+        <div class="law">正比：<var>y</var> = <var>k</var><var>x</var>（<var>k</var> ≠ 0）</div>
+        <p class="say"><var>x</var> 變成 2 倍、3 倍，<var>y</var> 也變成 2 倍、3 倍。<strong><var>y</var> ÷ <var>x</var> 固定是 <var>k</var></strong>。<var>k</var> 可以是負數、分數。</p>
+        <div class="eg">
+          <table class="mini">
+            <tr><th>行駛時間 <var>x</var></th><td>1</td><td>2</td><td>3</td><td>4</td></tr>
+            <tr><th>行駛距離 <var>y</var></th><td>60</td><td>120</td><td>180</td><td>240</td></tr>
+            <tr class="ok"><th><var>y</var> ÷ <var>x</var></th><td>60</td><td>60</td><td>60</td><td>60</td></tr>
+          </table>
+          關係式 <var>y</var> = 60<var>x</var>
+        </div>
+      </div>
+
+      <div class="card inverse">
+        <div class="law">反比：<var>x</var><var>y</var> = <var>k</var>（<var>k</var> ≠ 0）</div>
+        <p class="say"><var>x</var> 變成 2 倍、3 倍，<var>y</var> 變成 <span class="fr"><span>1</span><span>2</span></span> 倍、<span class="fr"><span>1</span><span>3</span></span> 倍。<strong><var>x</var> × <var>y</var> 固定是 <var>k</var></strong>。</p>
+        <div class="eg">
+          <table class="mini">
+            <tr><th>速率 <var>x</var></th><td>10</td><td>20</td><td>30</td><td>40</td></tr>
+            <tr><th>時間 <var>y</var></th><td>24</td><td>12</td><td>8</td><td>6</td></tr>
+            <tr class="ok"><th><var>x</var> × <var>y</var></th><td>240</td><td>240</td><td>240</td><td>240</td></tr>
+          </table>
+          關係式 <var>x</var><var>y</var> = 240
+        </div>
+      </div>
+    </div>
+
+    <h2>三種題目怎麼看</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">① 看表格</div>
+        <p class="say"><strong>每一組都要算</strong> <var>y</var> ÷ <var>x</var> 和 <var>x</var> × <var>y</var>。只要有一組不一樣，就不成正比（或反比）。</p>
+        <div class="eg">
+          <table class="mini">
+            <tr><th><var>x</var></th><td>10</td><td>20</td><td>30</td><td>60</td></tr>
+            <tr><th><var>y</var></th><td>63</td><td>31</td><td>21</td><td>10</td></tr>
+          </table>
+          10 × 63 ＝ 630，20 × 31 ＝ 620，乘積不同 → <b>都不是</b>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="law">② 看關係式</div>
+        <p class="say">先<strong>化成</strong> <var>y</var> = <var>k</var><var>x</var> 或 <var>x</var><var>y</var> = <var>k</var> 的樣子再判斷。</p>
+        <div class="eg">
+          <span class="fr"><span><var>y</var></span><span><var>x</var></span></span> = 3、3<var>y</var> = 2<var>x</var>、<var>y</var> + 2<var>x</var> = 0 → <b>正比</b><br>
+          <var>y</var> = <span class="fr"><span>5</span><span><var>x</var></span></span>、<var>x</var><var>y</var> + 3 = 15 → <b>反比</b><br>
+          <var>y</var> = 2<var>x</var> + 1、<var>x</var> + <var>y</var> = 10、<var>y</var> = <var>x</var><sup>2</sup> → <b>都不是</b>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="law">③ 看生活情境</div>
+        <p class="say">先<strong>自己列出關係式</strong>，再用 ② 判斷。找出情境裡「固定不變的量」是什麼。</p>
+        <div class="eg">
+          單價固定：總價 ＝ 單價 × 數量 → <b>正比</b><br>
+          總價固定：單價 × 數量 ＝ 總價 → <b>反比</b><br>
+          有基本費、原本就有：<var>y</var> ＝ <var>a</var><var>x</var> ＋ <var>b</var> → <b>都不是</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>同一條乘法式，固定哪一個量決定是正比還是反比。</b>以「距離 ＝ 速率 × 時間」為例：<br>
+      速率固定 → 距離和時間<b>成正比</b>；距離固定 → 速率和時間<b>成反比</b>。<br>
+      長方形「面積 ＝ 長 × 寬」也一樣：寬固定 → 面積和長成正比；面積固定 → 長和寬成反比；<b>周長</b>固定 → 長和寬<b>都不是</b>（固定的是長 + 寬）。
+    </div>
+
+    <h2>常見迷思對照表</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>出自課本自我檢核與挑錯題。遊戲裡「都不是」的題目大多是左邊這種。</caption>
+        <thead>
+          <tr><th style="width:46%">常見的想法</th><th>正確</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="bad"><var>x</var> 變大 <var>y</var> 也變大，所以成正比</td>
+            <td class="good">一起變大不夠，要 <var>y</var> ÷ <var>x</var> 固定。<var>y</var> = 2<var>x</var> + 1 一起變大，卻不是正比</td>
+          </tr>
+          <tr>
+            <td class="bad"><var>x</var> 變大 <var>y</var> 就變小，所以成反比</td>
+            <td class="good">一增一減不夠，要 <var>x</var> × <var>y</var> 固定。<var>x</var> + <var>y</var> = 10 一增一減，卻不是反比</td>
+          </tr>
+          <tr>
+            <td class="bad">成正比的話，<var>x</var> 愈大 <var>y</var> 一定愈大</td>
+            <td class="good"><var>k</var> 可以是負數：<var>y</var> = −<span class="fr"><span>1</span><span>2</span></span><var>x</var> 成正比，但 <var>x</var> 愈大 <var>y</var> 愈小</td>
+          </tr>
+          <tr>
+            <td class="bad"><var>y</var> = <span class="fr"><span>5</span><span><var>x</var></span></span> 有除法，看不出來是什麼關係</td>
+            <td class="good">兩邊同乘 <var>x</var>：<var>x</var><var>y</var> = 5，成反比</td>
+          </tr>
+          <tr>
+            <td class="bad">表格前三組都符合，就是正比</td>
+            <td class="good"><b>每一組</b>都要檢查，只要一組不同就不是</td>
+          </tr>
+          <tr>
+            <td class="bad">我的年齡增加，爸爸的年齡也增加，所以成正比</td>
+            <td class="good">年齡比值會變，固定的是相差的歲數 → 都不是</td>
+          </tr>
+          <tr>
+            <td class="bad">正方形邊長變大，面積也變大，所以成正比</td>
+            <td class="good">邊長變 2 倍，面積變 4 倍（<var>y</var> = <var>x</var><sup>2</sup>）→ 都不是；周長 <var>y</var> = 4<var>x</var> 才是正比</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a>
+    </footer>
+  </div>
+</body>
+</html>

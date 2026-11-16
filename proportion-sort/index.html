@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>正比反比快分類 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="螢幕出一張表格、一個關係式或一段生活情境，限時內判斷 y 與 x 成正比、成反比，還是都不是。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --violet: #a78bfa;
+      --grey: #cbd5e1;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    var { font-family: "Times New Roman", "Cambria", serif; font-style: italic; padding: 0 0.04em; }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .unit { margin: 0 0 8px; opacity: 0.75; font-size: 0.95rem; }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 38ch;
+      line-height: 1.7;
+    }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; flex-wrap: wrap; justify-content: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+
+    .level-note { margin: -6px 0 0; color: var(--muted); font-size: 0.9rem; max-width: 40ch; line-height: 1.6; }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys {
+      color: var(--muted);
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer {
+      flex: 0 0 auto;
+      height: 10px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(12px, 2.6vh, 30px);
+      padding: 16px;
+      min-height: 0;
+    }
+
+    .rule-tag {
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+      background: var(--panel);
+    }
+
+    .expr {
+      font-size: clamp(2rem, 7.4vw, 5rem);
+      font-weight: 700;
+      line-height: 1.45;
+      text-align: center;
+      padding: 0 8px;
+      text-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+      max-width: 100%;
+    }
+    .expr sup { font-size: 0.55em; }
+    .nw { white-space: nowrap; }
+
+    /* 生活情境：句子比較長，字縮小、行寬收窄 */
+    .scene {
+      font-size: clamp(1.25rem, 3.6vw, 2.5rem);
+      font-weight: 600;
+      line-height: 1.7;
+      max-width: 30em;
+      text-align: left;
+    }
+    .scene .def { display: block; margin-top: 0.35em; color: var(--muted); font-size: 0.82em; font-weight: 500; }
+
+    .ask {
+      color: var(--muted);
+      font-size: clamp(1rem, 2.4vw, 1.4rem);
+      margin-top: -4px;
+    }
+
+    /* x、y 對照表 */
+    .tbl {
+      border-collapse: collapse;
+      font-size: clamp(1.5rem, 5.4vw, 3.4rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-shadow: none;
+    }
+    .tbl th, .tbl td {
+      border: 2px solid var(--line);
+      padding: 0.18em 0.5em;
+      text-align: center;
+      min-width: 1.9em;
+    }
+    .tbl th { color: var(--accent-2); background: rgba(245, 158, 11, 0.08); font-weight: 700; }
+    .tbl td { background: rgba(15, 23, 42, 0.45); }
+    .tbl tr.calc th { color: var(--muted); font-size: 0.62em; font-weight: 600; white-space: nowrap; }
+    .tbl tr.calc td { font-size: 0.8em; color: var(--muted); }
+    .tbl tr.calc.const th, .tbl tr.calc.const td { color: var(--win); background: rgba(34, 197, 94, 0.12); }
+    .tbl tr.calc td.odd { color: var(--lose); background: rgba(239, 68, 68, 0.16); }
+
+    .count {
+      position: absolute;
+      top: 54px;
+      right: 18px;
+      font-size: clamp(2.4rem, 7vw, 4.4rem);
+      font-weight: 800;
+      color: var(--accent-2);
+      opacity: 0.85;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    .answers {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(10px, 2.2vw, 24px);
+      width: min(980px, 100%);
+      padding: 0 4px 8px;
+    }
+
+    .ans {
+      padding: clamp(14px, 3.4vh, 30px) 6px;
+      border: 2px solid var(--line);
+      border-radius: 20px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: clamp(1.25rem, 3.8vw, 2.2rem);
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s, background 0.15s;
+    }
+    .ans small {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.5em;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .ans.direct { color: var(--cyan); }
+    .ans.inverse { color: var(--violet); }
+    .ans.neither { color: var(--grey); }
+    .ans:hover:not(:disabled) { transform: translateY(-3px); }
+    .ans.direct:hover:not(:disabled) { border-color: var(--cyan); background: rgba(34, 211, 238, 0.12); }
+    .ans.inverse:hover:not(:disabled) { border-color: var(--violet); background: rgba(167, 139, 250, 0.14); }
+    .ans.neither:hover:not(:disabled) { border-color: var(--grey); background: rgba(203, 213, 225, 0.1); }
+    .ans:disabled { opacity: 0.45; cursor: default; }
+
+    /* ── 結果 ───────────────────────────────── */
+    .verdict {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 24px 16px;
+      background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.78), rgba(2, 6, 23, 0.95));
+      backdrop-filter: blur(3px);
+      overflow-y: auto;
+    }
+    body[data-view="result"] .verdict { display: flex; }
+
+    .verdict h2 {
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 4.6rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .solution {
+      width: min(860px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: clamp(14px, 3vw, 24px);
+      text-align: center;
+    }
+    .solution .q {
+      font-size: clamp(1.2rem, 4vw, 2.2rem);
+      font-weight: 700;
+      line-height: 1.5;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+    }
+    .solution .q .scene { font-size: clamp(1rem, 2.6vw, 1.45rem); }
+    .solution .q .tbl { font-size: clamp(1.05rem, 3.6vw, 2rem); }
+    .solution .answer-chip {
+      display: inline-block;
+      margin-bottom: 12px;
+      padding: 4px 18px;
+      border-radius: 999px;
+      font-size: clamp(1.05rem, 2.8vw, 1.5rem);
+      font-weight: 800;
+      border: 2px solid currentColor;
+    }
+    .answer-chip.direct { color: var(--cyan); }
+    .answer-chip.inverse { color: var(--violet); }
+    .answer-chip.neither { color: var(--grey); }
+    .solution .picked { color: var(--muted); font-size: 0.95rem; margin: -4px 0 10px; }
+    .solution .why {
+      color: var(--text);
+      font-size: clamp(1rem, 2.6vw, 1.35rem);
+      line-height: 1.9;
+      opacity: 0.95;
+    }
+    .solution .why em {
+      font-style: normal;
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── 堆疊分數 ───────────────────────────── */
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.74em;
+      margin: 0 0.06em;
+    }
+    .fr > span { padding: 0 0.24em; white-space: nowrap; }
+    .fr > span:first-child { border-bottom: 0.09em solid currentColor; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; }
+      .ans small { font-size: 0.46em; }
+    }
+
+    @media (max-height: 560px) {
+      .expr { font-size: clamp(1.5rem, 6vw, 2.8rem); }
+      .scene { font-size: clamp(1.05rem, 2.8vw, 1.6rem); }
+      .tbl { font-size: clamp(1.2rem, 4vw, 2.2rem); }
+      .ans { padding: 10px 6px; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">正比反比快分類</h1>
+      <p class="unit">📘 第2冊・第3章 比與比例式・第2節 正比與反比</p>
+      <p class="hint">螢幕出一張表格、一個關係式或一段生活情境，<span class="limit-val">15</span> 秒內判斷 <var>y</var> 與 <var>x</var> 是<strong>正比</strong>、<strong>反比</strong>，還是<strong>都不是</strong>。</p>
+
+      <div class="ctl-row">
+        <div class="seg" id="level" role="group" aria-label="題型">
+          <button type="button" data-level="table" aria-pressed="false">表格</button>
+          <button type="button" data-level="formula" aria-pressed="false">關係式</button>
+          <button type="button" data-level="scene" aria-pressed="false">生活情境</button>
+          <button type="button" data-level="all" aria-pressed="true">混合</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-1" aria-label="減少 1 秒">−</button>
+          <b class="limit-val">15</b>秒
+          <button type="button" data-step="1" aria-label="增加 1 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+
+      <button type="button" class="big-btn" id="start">🎲 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看正比反比小抄</a>
+      <p class="keys">鍵盤：<kbd>1</kbd> 正比　<kbd>2</kbd> 反比　<kbd>3</kbd> 都不是　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <!-- ── 作答 ───────────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="count" id="count">15</div>
+
+    <div class="play-body">
+      <div class="rule-tag" id="rule">表格</div>
+      <div class="expr" id="expr"></div>
+      <div class="ask"><var>y</var> 與 <var>x</var> 是？</div>
+      <div class="answers">
+        <button type="button" class="ans direct" data-ans="direct">正比<small><var>y</var> ÷ <var>x</var> 固定</small></button>
+        <button type="button" class="ans inverse" data-ans="inverse">反比<small><var>x</var> × <var>y</var> 固定</small></button>
+        <button type="button" class="ans neither" data-ans="neither">都不是<small>兩個都不固定</small></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 判定 ───────────────────────────── -->
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="q" id="sol-q"></div>
+      <div class="answer-chip" id="sol-ans">正比</div>
+      <div class="picked" id="sol-picked"></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器，限時依題型各自記）── */
+  const LEVELS = ['table', 'formula', 'scene', 'all'];
+  const LEVEL_NAME = { table: '表格', formula: '關係式', scene: '生活情境', all: '混合' };
+  const LIMIT_DEFAULT = { table: 15, formula: 10, scene: 15, all: 15 };
+  const LIMIT_MIN = 4, LIMIT_MAX = 40;
+  const LEVEL_NOTE = {
+    table: '看 x、y 對照表：每一組都算 y ÷ x 和 x × y，看哪一個固定。小心只有一組不一樣的表。',
+    formula: '看關係式：先化成 y = kx 或 xy = k 的樣子再判斷，例如 3y = 2x、y + 2x = 0、xy + 3 = 15。',
+    scene: '看生活情境：先自己列出 y 與 x 的關係式。「一起變大」不一定是正比，「一增一減」不一定是反比。',
+    all: '表格、關係式、生活情境混在一起出。'
+  };
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 私密視窗等情況：不記也能玩 */ } }
+  };
+
+  function clampLimit(v) { return Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v)); }
+
+  let level = LEVELS.includes(store.get('prop-level')) ? store.get('prop-level') : 'all';
+  const limits = {};
+  LEVELS.forEach(l => {
+    const v = parseInt(store.get(`prop-limit-${l}`), 10);
+    limits[l] = clampLimit(Number.isFinite(v) ? v : LIMIT_DEFAULT[l]);
+  });
+  let muted = store.get('prop-muted') === '1';
+  const limit = () => limits[level];
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const coin = (p = 0.5) => Math.random() < p;
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  const nz = (lo, hi) => (coin() ? 1 : -1) * R(lo, hi);
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  // 從 arr 挑 n 個不重複，由小到大
+  const pickSorted = (arr, n) => shuffle(arr).slice(0, n).sort((a, b) => a - b);
+
+  const MINUS = '−';
+  const X = '<var>x</var>', Y = '<var>y</var>', K = '<var>k</var>';
+  const ANS_NAME = { direct: '正比', inverse: '反比', neither: '都不是' };
+  const ANS_FULL = { direct: `${Y} 與 ${X} 成正比`, inverse: `${Y} 與 ${X} 成反比`, neither: '既不是正比，也不是反比' };
+
+  /* ── 有理數 ─────────────────────────── */
+  const gcd = (a, b) => (b ? gcd(b, a % b) : Math.abs(a));
+  function Q(n, d = 1) {
+    if (d === 0) throw new Error('分母為 0');
+    if (d < 0) { n = -n; d = -d; }
+    const k = gcd(Math.abs(n), d) || 1;
+    return { n: n / k, d: d / k };
+  }
+  const qmul = (a, b) => Q(a.n * b.n, a.d * b.d);
+  const qdiv = (a, b) => Q(a.n * b.d, a.d * b.n);
+  const qeq = (a, b) => a.n === b.n && a.d === b.d;
+  const qval = a => a.n / a.d;
+
+  /* ── 排版 ───────────────────────────── */
+  const fr = (n, d) => `<span class="fr"><span>${n}</span><span>${d}</span></span>`;
+  const intHtml = n => (n < 0 ? `${MINUS}${-n}` : String(n));
+  const qHtml = a => (a.n < 0 ? MINUS : '') + (a.d === 1 ? String(Math.abs(a.n)) : fr(Math.abs(a.n), a.d));
+  // 係數接文字：1 省略、−1 只留負號
+  function coefHtml(q, v) {
+    if (q.d === 1 && Math.abs(q.n) === 1) return (q.n < 0 ? MINUS : '') + v;
+    return qHtml(q) + v;
+  }
+  // 「+ b」「− b」
+  const tailHtml = b => (b < 0 ? ` ${MINUS} ${-b}` : ` + ${b}`);
+  const eqHtml = s => `<span class="nw">${s}</span>`;
+
+  /* ── 判定：由一組 (x, y) 數對算出是正比、反比還是都不是 ──
+     自動檢查用浮點加容許誤差（情境題有 π）。 */
+  const close = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+  function classify(pairs) {
+    const ratio = pairs.map(([x, y]) => y / x);
+    const prod = pairs.map(([x, y]) => x * y);
+    const allSame = arr => arr.every(v => close(v, arr[0]));
+    const d = allSame(ratio) && !close(ratio[0], 0);
+    const i = allSame(prod) && !close(prod[0], 0);
+    if (d && i) return 'both?';
+    return d ? 'direct' : i ? 'inverse' : 'neither';
+  }
+
+  /* ══ ① 表格題（課本例 1、例 5；重新布題）══════════════
+     題目給 4 組 x、y。判定結果另外附 rows（x、y、y÷x、x×y）供結果畫面畫表。 */
+
+  function tableDirect() {
+    const k = pickOf([Q(2), Q(3), Q(4), Q(5), Q(6), Q(2), Q(3), Q(1, 2), Q(1, 3), Q(3, 2), Q(-2), Q(-3)]);
+    const xs = pickSorted(Array.from({ length: 12 }, (_, i) => i + 1).filter(v => v % k.d === 0), 4);
+    return { xs, ys: xs.map(x => qval(qmul(k, Q(x)))), k };
+  }
+  function tableInverse() {
+    let k = pickOf([12, 18, 24, 30, 36, 48, 60, 72, 120]);
+    if (k <= 60 && coin(0.25)) k *= 10;
+    const divs = [];
+    for (let v = 1; v <= k; v++) if (k % v === 0 && v !== 1 && v !== k) divs.push(v);
+    const xs = pickSorted(divs, 4);
+    return { xs, ys: xs.map(x => k / x), k: Q(k) };
+  }
+
+  function makeTable() {
+    const ans = pickOf(['direct', 'inverse', 'neither']);
+    let xs, ys, why;
+    if (ans === 'direct') {
+      const t = tableDirect(); xs = t.xs; ys = t.ys;
+      why = `每一組的 ${Y} ÷ ${X} 都是 <em>${qHtml(t.k)}</em>，比值固定，所以${ANS_FULL.direct}，關係式是 <span class="nw">${Y} = ${coefHtml(t.k, X)}</span>。`;
+    } else if (ans === 'inverse') {
+      const t = tableInverse(); xs = t.xs; ys = t.ys;
+      why = `每一組的 ${X} × ${Y} 都是 <em>${qHtml(t.k)}</em>，乘積固定，所以${ANS_FULL.inverse}，關係式是 <span class="nw">${X}${Y} = ${qHtml(t.k)}</span>。`;
+    } else {
+      const kind = pickOf(['linear', 'sum', 'nearD', 'nearI']);
+      if (kind === 'linear') {
+        // y = ax + b：一起變大，卻不是正比
+        let a, b;
+        do {
+          a = R(1, 5); b = nz(1, 6);
+          xs = pickSorted([1, 2, 3, 4, 5, 6, 7, 8], 4);
+          ys = xs.map(x => a * x + b);
+        } while (ys.some(y => y <= 0));
+        why = `${X} 變大、${Y} 也變大，但 ${Y} ÷ ${X} <em>不固定</em>，${X} × ${Y} 也不固定。<em>一起變大不等於正比</em>（其實是 <span class="nw">${Y} = ${coefHtml(Q(a), X)}${tailHtml(b)}</span>）。`;
+      } else if (kind === 'sum') {
+        // x + y = c：一增一減，卻不是反比
+        const c = R(10, 24);
+        xs = pickSorted(Array.from({ length: c - 1 }, (_, i) => i + 1), 4);
+        ys = xs.map(x => c - x);
+        why = `${X} 變大、${Y} 變小，但 ${X} × ${Y} <em>不固定</em>；固定的是 <span class="nw">${X} + ${Y} = ${c}</span>（和），不是乘積。<em>一增一減不等於反比</em>。`;
+      } else {
+        // 差一組：照正比或反比做表，再改掉其中一格（課本例 5 表 2）
+        const base = kind === 'nearD' ? tableDirect() : tableInverse();
+        xs = base.xs; ys = base.ys.slice();
+        const idx = R(1, 3);
+        let delta;
+        do { delta = nz(1, 2); } while (ys[idx] + delta === 0);
+        ys[idx] += delta;
+        const what = kind === 'nearD' ? `${Y} ÷ ${X}` : `${X} × ${Y}`;
+        why = `前面幾組的 ${what} 都是 ${qHtml(base.k)}，但 ${X} = ${intHtml(xs[idx])} 那一組<em>不一樣</em>。<em>只要有一組不同</em>，就不是${kind === 'nearD' ? '正比' : '反比'}。`;
+      }
+    }
+    const pairs = xs.map((x, i) => [x, ys[i]]);
+    return {
+      ans,
+      html: tableHtml(xs, ys),
+      solHtml: tableHtml(xs, ys, true),
+      why,
+      check: pairs
+    };
+  }
+
+  // calc=true 時多加 y÷x、x×y 兩列；固定的那列標綠，「只有一格不同」的那格標紅
+  function tableHtml(xs, ys, calc = false) {
+    const row = (head, cells, cls = '') =>
+      `<tr class="${cls}"><th>${head}</th>${cells.map(c => `<td class="${c.cls || ''}">${c.h}</td>`).join('')}</tr>`;
+    let html = '<table class="tbl">' +
+      row(X, xs.map(v => ({ h: intHtml(v) }))) +
+      row(Y, ys.map(v => ({ h: intHtml(v) })));
+    if (calc) {
+      const ratios = xs.map((x, i) => Q(ys[i], x));
+      const prods = xs.map((x, i) => Q(x * ys[i]));
+      const calcRow = (head, qs) => {
+        const same = qs.every(q => qeq(q, qs[0]));
+        let odd = -1;
+        if (!same) {
+          // 4 格裡有 3 格一樣，標出不一樣的那一格
+          for (let i = 0; i < qs.length; i++) {
+            const others = qs.filter((_, j) => j !== i);
+            if (others.every(q => qeq(q, others[0])) && !qeq(qs[i], others[0])) { odd = i; break; }
+          }
+        }
+        return row(head, qs.map((q, i) => ({ h: qHtml(q), cls: i === odd ? 'odd' : '' })), `calc${same ? ' const' : ''}`);
+      };
+      html += calcRow(`${Y} ÷ ${X}`, ratios) + calcRow(`${X} × ${Y}`, prods);
+    }
+    return html + '</table>';
+  }
+
+  /* ══ ② 關係式題（課本 P.108～P.119；自我檢核 1～5）════════
+     每題附 f(x) 給自動檢查取樣用。 */
+
+  const FORMULAS = {
+    direct: [
+      () => { // y = kx（k 可為負數、分數）
+        const k = pickOf([Q(nz(2, 9)), Q(nz(2, 9)), Q(nz(1, 3), pickOf([2, 3, 4, 5]))]);
+        if (k.d === 1 && Math.abs(k.n) === 1) return null;
+        return {
+          html: eqHtml(`${Y} = ${coefHtml(k, X)}`),
+          f: x => qval(k) * x,
+          why: `已經是 <span class="nw">${Y} = ${K}${X}</span> 的樣子，${K} = ${qHtml(k)}${k.n < 0 ? '（<em>k 是負數也可以</em>）' : k.d > 1 ? '（<em>k 是分數也可以</em>）' : ''}，所以${ANS_FULL.direct}。`
+        };
+      },
+      () => { // y = x / k
+        const k = R(2, 9);
+        return {
+          html: eqHtml(`${Y} = ${fr(X, k)}`),
+          f: x => x / k,
+          why: `${fr(X, k)} 就是 ${fr(1, k)}${X}，可寫成 <span class="nw">${Y} = ${fr(1, k)}${X}</span>，${K} = ${fr(1, k)}，所以${ANS_FULL.direct}。`
+        };
+      },
+      () => { // y / x = k（自我檢核 3）
+        const k = nz(2, 9);
+        return {
+          html: eqHtml(`${fr(Y, X)} = ${intHtml(k)}`),
+          f: x => k * x,
+          why: `${Y} ÷ ${X} 固定是 ${intHtml(k)}，兩邊同乘 ${X} 得 <span class="nw">${Y} = ${coefHtml(Q(k), X)}</span>，所以${ANS_FULL.direct}。`
+        };
+      },
+      () => { // ay = bx
+        let a, b;
+        do { a = R(2, 9); b = R(1, 9); } while (a === b || gcd(a, b) !== 1);
+        const k = Q(b, a);
+        return {
+          html: eqHtml(`${a}${Y} = ${coefHtml(Q(b), X)}`),
+          f: x => b * x / a,
+          why: `兩邊同除以 ${a}：<span class="nw">${Y} = ${coefHtml(k, X)}</span>，${K} = ${qHtml(k)}，所以${ANS_FULL.direct}。`
+        };
+      },
+      () => { // x = ky
+        const k = R(2, 9);
+        return {
+          html: eqHtml(`${X} = ${k}${Y}`),
+          f: x => x / k,
+          why: `兩邊同除以 ${k}：<span class="nw">${Y} = ${fr(1, k)}${X}</span>，所以${ANS_FULL.direct}。`
+        };
+      },
+      () => { // y + kx = 0 → y = −kx
+        const k = R(2, 9);
+        return {
+          html: eqHtml(`${Y} + ${k}${X} = 0`),
+          f: x => -k * x,
+          why: `移項得 <span class="nw">${Y} = ${MINUS}${k}${X}</span>，${K} = ${MINUS}${k}，<em>k 是負數也是正比</em>。`
+        };
+      },
+      () => ({ // x − y = 0 → y = x
+        html: eqHtml(`${X} ${MINUS} ${Y} = 0`),
+        f: x => x,
+        why: `移項得 <span class="nw">${Y} = ${X}</span>，也就是 ${K} = 1，${Y} ÷ ${X} 固定是 1，所以${ANS_FULL.direct}。`
+      })
+    ],
+    inverse: [
+      () => { // xy = k
+        const k = coin(0.8) ? R(2, 60) : -R(2, 30);
+        return {
+          html: eqHtml(`${X}${Y} = ${intHtml(k)}`),
+          f: x => k / x,
+          why: `已經是 <span class="nw">${X}${Y} = ${K}</span> 的樣子，${K} = ${intHtml(k)}${k < 0 ? '（<em>k 是負數也可以</em>）' : ''}，所以${ANS_FULL.inverse}。`
+        };
+      },
+      () => { // y = k / x（自我檢核 5）
+        const k = R(2, 48);
+        return {
+          html: eqHtml(`${Y} = ${fr(k, X)}`),
+          f: x => k / x,
+          why: `兩邊同乘 ${X}：<span class="nw">${X}${Y} = ${k}</span>，乘積固定，所以${ANS_FULL.inverse}。<em>${Y} = ${fr(K, X)} 是反比</em>，不是正比。`
+        };
+      },
+      () => { // x = k / y
+        const k = R(2, 48);
+        return {
+          html: eqHtml(`${X} = ${fr(k, Y)}`),
+          f: x => k / x,
+          why: `兩邊同乘 ${Y}：<span class="nw">${X}${Y} = ${k}</span>，所以${ANS_FULL.inverse}。`
+        };
+      },
+      () => { // a·xy = b
+        const a = R(2, 5), m = R(2, 12);
+        return {
+          html: eqHtml(`${a}${X}${Y} = ${a * m}`),
+          f: x => m / x,
+          why: `兩邊同除以 ${a}：<span class="nw">${X}${Y} = ${m}</span>，乘積固定，所以${ANS_FULL.inverse}。`
+        };
+      },
+      () => { // xy + b = c → xy = c − b
+        const b = R(1, 9);
+        let c; do { c = R(2, 30); } while (c === b);
+        return {
+          html: eqHtml(`${X}${Y} + ${b} = ${c}`),
+          f: x => (c - b) / x,
+          why: `把 ${b} 移項：<span class="nw">${X}${Y} = ${intHtml(c - b)}</span>，乘積還是固定的，所以${ANS_FULL.inverse}。`
+        };
+      }
+    ],
+    neither: [
+      () => { // y = kx + b（自我檢核 2）
+        const k = nz(2, 6), b = nz(1, 9);
+        return {
+          html: eqHtml(`${Y} = ${coefHtml(Q(k), X)}${tailHtml(b)}`),
+          f: x => k * x + b,
+          why: `多了常數 ${intHtml(b)}，${Y} ÷ ${X} 不固定，不是 ${Y} = ${K}${X} 的樣子。`
+        };
+      },
+      () => { // x + y = c（自我檢核 4）
+        const c = R(5, 30);
+        return {
+          html: eqHtml(`${X} + ${Y} = ${c}`),
+          f: x => c - x,
+          why: `${X} 變大 ${Y} 就變小，但固定的是<em>和</em>，不是乘積。<em>一增一減不等於反比</em>。`
+        };
+      },
+      () => { // y − x = c
+        const c = R(2, 15);
+        return {
+          html: eqHtml(`${Y} ${MINUS} ${X} = ${c}`),
+          f: x => x + c,
+          why: `移項得 <span class="nw">${Y} = ${X} + ${c}</span>，固定的是<em>差</em>，不是比值。<em>一起變大不等於正比</em>。`
+        };
+      },
+      () => { // y = k/x + b
+        const k = R(2, 24), b = nz(1, 6);
+        return {
+          html: eqHtml(`${Y} = ${fr(k, X)}${tailHtml(b)}`),
+          f: x => k / x + b,
+          why: `多了常數 ${intHtml(b)}，${X}${Y} 不固定，不是 ${X}${Y} = ${K} 的樣子。`
+        };
+      },
+      () => { // y = k(x + b)
+        const k = R(2, 6), b = nz(1, 6);
+        return {
+          html: eqHtml(`${Y} = ${k}(${X}${tailHtml(b)})`),
+          f: x => k * (x + b),
+          why: `展開是 <span class="nw">${Y} = ${k}${X}${tailHtml(k * b)}</span>，多了常數，${Y} ÷ ${X} 不固定。`
+        };
+      },
+      () => { // y = kx²
+        const k = coin() ? 1 : R(2, 5);
+        return {
+          html: eqHtml(`${Y} = ${k === 1 ? '' : k}${X}<sup>2</sup>`),
+          f: x => k * x * x,
+          why: `${X} 變 2 倍時，${Y} 變成 <em>4 倍</em>，不是 2 倍；${Y} ÷ ${X} = ${k === 1 ? '' : k}${X} 會跟著變，不固定。`
+        };
+      }
+    ]
+  };
+
+  function makeFormula() {
+    const ans = pickOf(['direct', 'inverse', 'neither']);
+    let q = null;
+    while (!q) q = pickOf(FORMULAS[ans])();
+    let why = q.why;
+    if (ans === 'neither') {
+      // 補一個代數字的例子：x 從 1 變 2，y 不是變 2 倍也不是變一半
+      const show = v => (Number.isInteger(v) ? intHtml(v) : qHtml(Q(Math.round(v * 2), 2)));
+      const y1 = q.f(1), y2 = q.f(2);
+      why += `<br>例如 ${X} 從 1 變成 2（2 倍），${Y} 從 ${show(y1)} 變成 ${show(y2)}，既不是 2 倍也不是 ${fr(1, 2)} 倍，所以<em>都不是</em>。`;
+    }
+    return { ans, html: q.html, solHtml: q.html, why, f: q.f };
+  }
+
+  /* ══ ③ 生活情境題（課本例 2、例 5～例 8、自我評量挑錯題）══
+     text：情境；rel：關係式；note：都不是的題目說明陷阱在哪。 */
+
+  const SCENES = {
+    direct: [
+      () => { const a = pickOf([5, 10, 12, 15, 20, 25]); return {
+        text: `每枝筆 ${a} 元，買 ${X} 枝筆共要付 ${Y} 元。`, rel: `${Y} = ${a}${X}`, f: x => a * x }; },
+      () => { const a = pickOf([40, 50, 60, 70, 80, 90]); return {
+        text: `汽車以每小時 ${a} 公里的速率等速前進，${X} 小時共行駛 ${Y} 公里。`, rel: `${Y} = ${a}${X}`, f: x => a * x }; },
+      () => ({ text: `正方形的邊長是 ${X} 公分，周長是 ${Y} 公分。`, rel: `${Y} = 4${X}`, f: x => 4 * x }),
+      () => ({ text: `正三角形的邊長是 ${X} 公分，周長是 ${Y} 公分。`, rel: `${Y} = 3${X}`, f: x => 3 * x }),
+      () => ({ text: `圓的半徑是 ${X} 公分，圓周長是 ${Y} 公分（圓周率以 π 表示）。`, rel: `${Y} = 2π${X}`, f: x => 2 * Math.PI * x }),
+      () => { const a = R(2, 9); return {
+        text: `水龍頭每分鐘固定流出 ${a} 公升的水，${X} 分鐘共流出 ${Y} 公升。`, rel: `${Y} = ${a}${X}`, f: x => a * x }; },
+      () => { const a = R(3, 9); return {
+        text: `長方形的寬固定是 ${a} 公分，長是 ${X} 公分，面積是 ${Y} 平方公分。`, rel: `${Y} = ${a}${X}`, f: x => a * x }; },
+      () => { const a = pickOf([2, 3, 4, 5]); return {
+        text: `調泡泡水時，清水和洗碗精的重量比固定是 ${a} : 1。洗碗精 ${X} 公克，清水 ${Y} 公克。`, rel: `${Y} = ${a}${X}`, f: x => a * x }; },
+      () => { const a = pickOf([50, 100, 200]); return {
+        text: `小翊原本沒有存錢，之後每個月存 ${a} 元，存了 ${X} 個月共存 ${Y} 元。`, rel: `${Y} = ${a}${X}`, f: x => a * x }; }
+    ],
+    inverse: [
+      () => { const a = pickOf([24, 36, 48, 60]); return {
+        text: `用色紙剪出面積 ${a} 平方公分的長方形，長是 ${X} 公分、寬是 ${Y} 公分。`, rel: `${X}${Y} = ${a}`, f: x => a / x }; },
+      () => { const a = pickOf([120, 180, 240, 300]); return {
+        text: `從甲地到乙地共 ${a} 公里，以每小時 ${X} 公里的速率行駛，要 ${Y} 小時才到。`, rel: `${X}${Y} = ${a}`, f: x => a / x }; },
+      () => { const a = pickOf([600, 1000, 1200]); return {
+        text: `用 ${a} 元買每本 ${X} 元的筆記本，剛好可以買 ${Y} 本。`, rel: `${X}${Y} = ${a}`, f: x => a / x }; },
+      () => { const a = pickOf([600, 720, 960, 1080]); return {
+        text: `一個 ${a} 元的生日蛋糕由 ${X} 個人平分費用，每人要付 ${Y} 元。`, rel: `${X}${Y} = ${a}`, f: x => a / x }; },
+      () => { const a = pickOf([1200, 2400, 3200]); return {
+        text: `把 ${a} 立方公分的水全部倒進長方體容器，容器底面積是 ${X} 平方公分，水高 ${Y} 公分。`, rel: `${X}${Y} = ${a}`, f: x => a / x }; },
+      () => { const a = pickOf([6, 8, 10]), b = pickOf([10, 12, 15]); return {
+        text: `一件工程 ${a} 個人做 ${b} 天可以完成。每人每天工作量都一樣，改成 ${X} 個人做，要 ${Y} 天完成。`, rel: `${X}${Y} = ${a * b}`, f: x => a * b / x }; },
+      () => { const a = pickOf([12, 18, 24, 36]); return {
+        text: `三角形的面積固定是 ${a} 平方公分，底是 ${X} 公分，高是 ${Y} 公分。`, rel: `${X}${Y} = ${2 * a}`, f: x => 2 * a / x }; },
+      () => { const a = pickOf([60, 72, 96, 120]); return {
+        text: `一盒 ${a} 顆糖果平分給 ${X} 個人，剛好分完，每人分到 ${Y} 顆。`, rel: `${X}${Y} = ${a}`, f: x => a / x }; },
+      () => { const a = pickOf([1000, 1200, 3000]); return {
+        text: `小妍每個月存 ${X} 元，存了 ${Y} 個月剛好存到 ${a} 元。`, rel: `${X}${Y} = ${a}`, f: x => a / x }; },
+      () => { const a = pickOf([60, 120, 180]); return {
+        text: `水桶裡有 ${a} 公升的水，每分鐘流出 ${X} 公升，${Y} 分鐘剛好流完。`, rel: `${X}${Y} = ${a}`, f: x => a / x }; }
+    ],
+    neither: [
+      () => { const a = pickOf([10, 12, 15, 20]), b = pickOf([1, 2]); return {
+        text: `一根 ${a} 公分長的蠟燭，點燃後每分鐘燒掉 ${b} 公分。點燃 ${X} 分鐘後，蠟燭剩下 ${Y} 公分。`,
+        rel: `${Y} = ${a} ${MINUS} ${b === 1 ? '' : b}${X}`, f: x => a - b * x,
+        note: `${X} 變大 ${Y} 變小，但 ${X} × ${Y} 不固定。<em>一增一減不等於反比</em>。` }; },
+      () => ({
+        text: `一天有 24 小時，某天白天是 ${X} 小時，夜晚是 ${Y} 小時。`,
+        rel: `${X} + ${Y} = 24`, f: x => 24 - x,
+        note: `白天變長夜晚就變短，但固定的是<em>和</em>，不是乘積。<em>一增一減不等於反比</em>。` }),
+      () => { const a = R(25, 35); return {
+        text: `爸爸比小妍大 ${a} 歲。小妍 ${X} 歲時，爸爸 ${Y} 歲。`,
+        rel: `${Y} = ${X} + ${a}`, f: x => x + a,
+        note: `年齡一起變大，但固定的是<em>相差的歲數</em>，${Y} ÷ ${X} 不固定。<em>一起變大不等於正比</em>。` }; },
+      () => { const a = pickOf([20, 30, 50]), b = pickOf([10, 15, 20]); return {
+        text: `租腳踏車先付基本費 ${a} 元，每騎 1 小時再加 ${b} 元。騎 ${X} 小時共付 ${Y} 元。`,
+        rel: `${Y} = ${b}${X} + ${a}`, f: x => b * x + a,
+        note: `多了基本費 ${a} 元，${Y} ÷ ${X} 不固定。<em>一起變大不等於正比</em>。` }; },
+      () => { const a = pickOf([100, 200, 500]), b = pickOf([10, 20, 50]); return {
+        text: `撲滿裡原本有 ${a} 元，之後每天存 ${b} 元。${X} 天後撲滿裡共有 ${Y} 元。`,
+        rel: `${Y} = ${b}${X} + ${a}`, f: x => b * x + a,
+        note: `原本就有 ${a} 元，${Y} ÷ ${X} 不固定。<em>一起變大不等於正比</em>。` }; },
+      () => ({
+        text: `正方形的邊長是 ${X} 公分，面積是 ${Y} 平方公分。`,
+        rel: `${Y} = ${X}<sup>2</sup>`, f: x => x * x,
+        note: `邊長變 2 倍，面積變 <em>4 倍</em>，不是 2 倍。` }),
+      () => ({
+        text: `圓的半徑是 ${X} 公分，面積是 ${Y} 平方公分（圓周率以 π 表示）。`,
+        rel: `${Y} = π${X}<sup>2</sup>`, f: x => Math.PI * x * x,
+        note: `半徑變 2 倍，面積變 <em>4 倍</em>，不是 2 倍。（圓周長才和半徑成正比）` }),
+      () => { const a = pickOf([20, 24, 30, 40]); return {
+        text: `長方形的周長固定是 ${a} 公分，長是 ${X} 公分、寬是 ${Y} 公分。`,
+        rel: `${X} + ${Y} = ${a / 2}`, f: x => a / 2 - x,
+        note: `長變大寬就變小，但周長固定時，固定的是<em>長 + 寬</em>，不是乘積。（面積固定時才是反比）` }; },
+      () => { const a = pickOf([50, 60, 80]), b = pickOf([3, 4, 5]); return {
+        text: `一袋 ${a} 顆糖果，分給 ${X} 個小朋友每人 ${b} 顆，袋子裡剩下 ${Y} 顆。`,
+        rel: `${Y} = ${a} ${MINUS} ${b}${X}`, f: x => a - b * x,
+        note: `人數變多剩下的變少，但 ${X} × ${Y} 不固定。<em>一增一減不等於反比</em>。` }; },
+      () => { const a = pickOf([5, 10, 20]), b = pickOf([2, 3, 4]); return {
+        text: `水桶裡原本有 ${a} 公升的水，再打開水龍頭每分鐘注入 ${b} 公升。${X} 分鐘後桶裡共有 ${Y} 公升。`,
+        rel: `${Y} = ${b}${X} + ${a}`, f: x => b * x + a,
+        note: `桶裡原本就有水，${Y} ÷ ${X} 不固定。<em>一起變大不等於正比</em>。` }; }
+    ]
+  };
+
+  function makeScene() {
+    const ans = pickOf(['direct', 'inverse', 'neither']);
+    const s = pickOf(SCENES[ans])();
+    const html = `<div class="scene">${s.text}</div>`;
+    let why;
+    if (ans === 'direct') why = `關係式 <span class="nw"><em>${s.rel}</em></span>，${Y} ÷ ${X} 固定，所以${ANS_FULL.direct}。`;
+    else if (ans === 'inverse') why = `關係式 <span class="nw"><em>${s.rel}</em></span>，${X} × ${Y} 固定，所以${ANS_FULL.inverse}。`;
+    else why = `關係式 <span class="nw"><em>${s.rel}</em></span>。${s.note}`;
+    return { ans, html, solHtml: html, why, f: s.f };
+  }
+
+  const GENS = [
+    { key: 'table', level: 'table', rule: '表格', make: makeTable },
+    { key: 'formula', level: 'formula', rule: '關係式', make: makeFormula },
+    { key: 'scene', level: 'scene', rule: '生活情境', make: makeScene }
+  ];
+
+  function pool() {
+    return level === 'all' ? GENS : GENS.filter(g => g.level === level);
+  }
+
+  const plain = html => html.replace(/<[^>]+>/g, '');
+
+  let lastHtml = '';
+  function nextQuestion() {
+    const list = pool();
+    let q;
+    for (let i = 0; i < 12; i++) {
+      const g = pickOf(list);
+      q = g.make();
+      q.rule = g.rule;
+      q.key = g.key;
+      if (q.html !== lastHtml) break;
+    }
+    lastHtml = q.html;
+    return q;
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+
+  /* ── 狀態 ───────────────────────────── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, curLimit = 15;
+  const ansBtns = Array.from(document.querySelectorAll('.ans'));
+
+  function setView(v) { document.body.dataset.view = v; }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.level === level));
+    });
+    $('level-note').textContent = LEVEL_NOTE[level];
+    paintLimit();
+  }
+
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function startQuestion() {
+    cur = nextQuestion();
+    curLimit = limit();
+    $('rule').textContent = cur.rule;
+    $('expr').innerHTML = cur.html;
+    ansBtns.forEach(b => { b.disabled = false; });
+    locked = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + curLimit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      const ratio = left / (curLimit * 1000);
+      $('bar').style.transform = `scaleX(${ratio})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 3 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { judge(null); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 判定 ───────────────────────────── */
+  function judge(answer) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    ansBtns.forEach(b => { b.disabled = true; });
+    document.body.classList.remove('urgent');
+
+    const timeout = answer === null;
+    const win = !timeout && answer === cur.ans;
+
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+
+    $('sol-q').innerHTML = cur.solHtml;
+    const chip = $('sol-ans');
+    chip.className = `answer-chip ${cur.ans}`;
+    chip.textContent = `答案：${ANS_NAME[cur.ans]}`;
+    $('sol-picked').textContent = (!timeout && !win) ? `你選的是「${ANS_NAME[answer]}」` : '';
+    $('sol-why').innerHTML = cur.why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+
+  ansBtns.forEach(b => b.addEventListener('click', () => judge(b.dataset.ans)));
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limits[level] = clampLimit(limits[level] + Number(b.dataset.step));
+      store.set(`prop-limit-${level}`, String(limits[level]));
+      paintLimit();
+    });
+  });
+
+  document.querySelectorAll('#level button').forEach(b => {
+    b.addEventListener('click', () => {
+      level = b.dataset.level;
+      store.set('prop-level', level);
+      paintLevel();
+    });
+  });
+
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    store.set('prop-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  const KEY_ANS = { '1': 'direct', '2': 'inverse', '3': 'neither', ArrowLeft: 'direct', ArrowDown: 'inverse', ArrowRight: 'neither' };
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      if (KEY_ANS[e.key]) { e.preventDefault(); judge(KEY_ANS[e.key]); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (document.activeElement && document.activeElement.closest('button, a') && document.activeElement !== $('start')) return;
+        e.preventDefault(); audio(); startQuestion();
+      }
+    }
+  });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）───────
+     表格題：用表上的數對重新判定；關係式與情境題：用 f(x) 在 x = 1, 2, 3, 5, 8 取樣判定。
+     兩者都要和題目標的答案一致。 */
+  window.__proportionSort = {
+    GENS, classify, plain,
+    selfTest(n = 3000) {
+      const report = {};
+      const errors = [];
+      GENS.forEach(g => {
+        const cnt = { direct: 0, inverse: 0, neither: 0 };
+        for (let i = 0; i < n; i++) {
+          let q;
+          try { q = g.make(); } catch (e) { errors.push([g.key, 'throw', e.message]); continue; }
+          cnt[q.ans] = (cnt[q.ans] || 0) + 1;
+          const txt = q.html + q.solHtml + q.why;
+          if (/undefined|NaN|Infinity|\[object|null/.test(txt)) errors.push([g.key, '字串有壞值', plain(txt)]);
+          const pairs = q.check || [1, 2, 3, 5, 8].map(x => [x, q.f(x)]);
+          if (pairs.some(([, y]) => !Number.isFinite(y))) errors.push([g.key, '取樣有壞值', plain(q.html)]);
+          if (q.check && q.check.some(([, y]) => y === 0)) errors.push([g.key, '表格出現 0', plain(q.html)]);
+          const got = classify(pairs);
+          if (got !== q.ans) errors.push([g.key, `標 ${q.ans} 但算出 ${got}`, plain(q.html)]);
+        }
+        report[g.key] = Object.entries(cnt).map(([k, v]) => `${ANS_NAME[k]} ${(v / n * 100).toFixed(0)}%`).join('、');
+      });
+      return { report, errors: errors.slice(0, 20), errorCount: errors.length };
+    }
+  };
+
+  paintLevel();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>
