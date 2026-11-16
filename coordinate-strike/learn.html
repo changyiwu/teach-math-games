@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>坐標小抄 - 坐標點點打擊</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="怎麼在坐標平面上找點、軸上的點、到兩軸的距離、平移正推與倒推，加上一張常見錯誤對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 8px 0 16px;
+    }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+
+    .btn {
+      padding: 9px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.98rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .btn-play {
+      border: 0;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-weight: 800;
+    }
+    .btn-play:hover { color: #231a05; filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 1.3rem;
+      color: var(--accent-2);
+      border-left: 4px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+    @media (max-width: 720px) { .split { grid-template-columns: 1fr; } }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      padding: 18px;
+    }
+    .card .no {
+      display: inline-block;
+      width: 26px;
+      height: 26px;
+      line-height: 26px;
+      text-align: center;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--accent-2);
+      font-weight: 800;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+    .card .law {
+      font-size: clamp(1.2rem, 3.4vw, 1.55rem);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .card .say { color: var(--muted); font-size: 0.96rem; margin: 0 0 10px; }
+    .card .eg {
+      border-top: 1px dashed var(--line);
+      padding-top: 10px;
+      font-size: 1.05rem;
+      color: var(--cyan);
+    }
+
+    .fig {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      padding: 10px;
+    }
+    .fig svg { display: block; width: 100%; height: auto; max-width: 440px; margin: 0 auto; font-family: inherit; }
+    .fig figcaption { text-align: center; color: var(--muted); font-size: 0.92rem; margin-top: 4px; }
+
+    .g-line { stroke: rgba(148, 163, 184, 0.28); stroke-width: 0.03; }
+    .axis { stroke: #cbd5e1; stroke-width: 0.06; }
+    .axis-arrow { fill: #cbd5e1; }
+    .tick { fill: var(--muted); font-size: 0.42px; }
+    .axis-name { fill: #e2e8f0; font-size: 0.55px; font-style: italic; font-family: "Times New Roman", serif; }
+    .guide { stroke: var(--win); stroke-width: 0.05; stroke-dasharray: 0.16 0.12; }
+    .guide2 { stroke: var(--cyan); stroke-width: 0.05; stroke-dasharray: 0.16 0.12; }
+    .dot-a { fill: var(--win); }
+    .dot-b { fill: var(--cyan); }
+    .dot-c { fill: var(--accent-2); }
+    .path { stroke: var(--accent); stroke-width: 0.08; stroke-dasharray: 0.22 0.12; fill: none; }
+    .path-head { fill: var(--accent); }
+    .lbl { font-size: 0.55px; font-weight: 700; paint-order: stroke; stroke: #0b1020; stroke-width: 0.16px; stroke-linejoin: round; }
+    .lbl.a { fill: #86efac; }
+    .lbl.b { fill: #67e8f9; }
+    .lbl.c { fill: var(--accent-2); }
+    .lbl.q { fill: #fdba74; font-size: 0.48px; }
+
+    .steps { margin: 0; padding-left: 1.3em; }
+    .steps li { margin: 6px 0; }
+    .steps b, .note b { color: var(--accent-2); }
+
+    .note {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 14px 18px;
+      margin: 14px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+    }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+    .move-tbl td:first-child { font-weight: 700; white-space: nowrap; }
+
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.7em;
+      margin: 0 0.04em;
+    }
+    .fr i { font-style: normal; padding: 0 0.2em; }
+    .fr i:first-child { border-bottom: 0.09em solid currentColor; }
+
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+    .nw { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions">
+        <a class="btn btn-play" href="./">🎮 開始挑戰</a>
+      </div>
+    </header>
+
+    <h1>坐標小抄</h1>
+    <p class="lead">康軒 1 下 2-1 直角坐標平面。坐標 <span class="nw">( m , n )</span>：<b>m 是 x 坐標</b>（左右），<b>n 是 y 坐標</b>（上下）。</p>
+
+    <h2>怎麼找到一個點</h2>
+    <div class="split">
+      <div>
+        <ol class="steps">
+          <li>從<b>原點 <span class="nw">O ( 0 , 0 )</span></b> 出發。</li>
+          <li>看 <b>x 坐標</b>：正的往<b>右</b>、負的往<b>左</b>，走幾格。</li>
+          <li>再看 <b>y 坐標</b>：正的往<b>上</b>、負的往<b>下</b>，走幾格。</li>
+          <li>反過來讀點：從點畫<b>鉛垂線</b>到 x 軸讀 x 坐標，畫<b>水平線</b>到 y 軸讀 y 坐標。</li>
+        </ol>
+        <div class="note">
+          <b>( m , n ) 和 <span class="nw">( n , m )</span> 不一樣</b>（m ≠ n 時）：圖中的 <span class="nw">A ( 5 , 2 )</span> 是「右 5、上 2」，<span class="nw">( 2 , 5 )</span> 卻是「右 2、上 5」，兩個點不同。
+        </div>
+        <div class="note">
+          <b>½ 的坐標</b>：例如 2<span class="fr"><i>1</i><i>2</i></span>（也寫成 2.5）要點在 2 和 3 兩條格線的<b>正中間</b>。
+        </div>
+      </div>
+      <figure class="fig" style="margin:0">
+        <svg viewBox="-6.4 -6.5 12.9 12.9" role="img" aria-label="坐標平面上的點 A(5, 2) 與 B(−2, −4)">
+          <g id="grid1"></g>
+          <line class="guide" x1="5" y1="-2" x2="5" y2="0"/>
+          <line class="guide" x1="5" y1="-2" x2="0" y2="-2"/>
+          <line class="guide2" x1="-2" y1="4" x2="-2" y2="0"/>
+          <line class="guide2" x1="-2" y1="4" x2="0" y2="4"/>
+          <circle class="dot-a" cx="5" cy="-2" r="0.2"/>
+          <circle class="dot-b" cx="-2" cy="4" r="0.2"/>
+          <text class="lbl a" x="4.9" y="-2.4" text-anchor="end">A(5, 2)</text>
+          <text class="lbl b" x="-2.3" y="4.75" text-anchor="end">B(−2, −4)</text>
+        </svg>
+        <figcaption>虛線：從點往兩軸畫鉛垂線、水平線</figcaption>
+      </figure>
+    </div>
+
+    <h2>軸上的點、到兩軸的距離</h2>
+    <div class="grid">
+      <div class="card">
+        <span class="no">x</span>
+        <div class="law">( m , 0 ) 在 x 軸上</div>
+        <p class="say">y 坐標是 0 → 不用上下移，點落在<strong>橫的</strong>那條軸上。</p>
+        <div class="eg">( −4 , 0 )：原點左邊 4 單位</div>
+      </div>
+      <div class="card">
+        <span class="no">y</span>
+        <div class="law">( 0 , n ) 在 y 軸上</div>
+        <p class="say">x 坐標是 0 → 不用左右移，點落在<strong>直的</strong>那條軸上。</p>
+        <div class="eg">( 0 , 3 )：原點上方 3 單位</div>
+      </div>
+      <div class="card">
+        <span class="no">↕</span>
+        <div class="law">到 x 軸的距離 = |y|</div>
+        <p class="say">到 x 軸是<strong>上下</strong>量，看 y 坐標。</p>
+        <div class="eg">( −5 , 3 ) 到 x 軸距離 3</div>
+      </div>
+      <div class="card">
+        <span class="no">↔</span>
+        <div class="law">到 y 軸的距離 = |x|</div>
+        <p class="say">到 y 軸是<strong>左右</strong>量，看 x 坐標。</p>
+        <div class="eg">( −5 , 3 ) 到 y 軸距離 5</div>
+      </div>
+    </div>
+    <div class="note">
+      <b>四個象限的符號</b>：第一象限 <span class="nw">( ＋ , ＋ )</span>、第二象限 <span class="nw">( − , ＋ )</span>、第三象限 <span class="nw">( − , − )</span>、第四象限 <span class="nw">( ＋ , − )</span>；<b>坐標軸上的點不屬於任何象限</b>。<br>
+      例：P 在第三象限，到 x 軸距離 2、到 y 軸距離 6 → |y| = 2、|x| = 6，符號 <span class="nw">( − , − )</span>，所以 <span class="nw">P ( −6 , −2 )</span>。
+    </div>
+
+    <h2>點的平移</h2>
+    <div class="split">
+      <div>
+        <table class="move-tbl">
+          <caption>往哪裡走，就改哪個坐標</caption>
+          <thead><tr><th>移動</th><th>改的坐標</th></tr></thead>
+          <tbody>
+            <tr><td>向右 k 單位</td><td>x 坐標 <b>＋ k</b>，y 不變</td></tr>
+            <tr><td>向左 k 單位</td><td>x 坐標 <b>− k</b>，y 不變</td></tr>
+            <tr><td>向上 k 單位</td><td>y 坐標 <b>＋ k</b>，x 不變</td></tr>
+            <tr><td>向下 k 單位</td><td>y 坐標 <b>− k</b>，x 不變</td></tr>
+          </tbody>
+        </table>
+        <div class="note">
+          <b>正推</b>：從 <span class="nw">C ( −4 , −1 )</span> 先向右 6、再向上 4 → x：−4 + 6 = 2，y：−1 + 4 = 3 → <span class="nw">D ( 2 , 3 )</span>。<br>
+          <b>倒推</b>：E 點先向下 5、再向左 3，到達 <span class="nw">F ( −1 , −2 )</span>。從 F <b>反方向走回去</b>：向右 3、向上 5 → x：−1 + 3 = 2，y：−2 + 5 = 3 → <span class="nw">E ( 2 , 3 )</span>。也可以設 <span class="nw">E ( a , b )</span>，列 a − 3 = −1、b − 5 = −2 來解。
+        </div>
+      </div>
+      <figure class="fig" style="margin:0">
+        <svg viewBox="-6.4 -6.5 12.9 12.9" role="img" aria-label="點 C(−4, −1) 向右 6、向上 4 平移到 D(2, 3)">
+          <g id="grid2"></g>
+          <line class="path" x1="-4" y1="1" x2="1.72" y2="1"/>
+          <polygon class="path-head" points="1.92,1 1.62,0.83 1.62,1.17"/>
+          <line class="path" x1="2" y1="1" x2="2" y2="-2.72"/>
+          <polygon class="path-head" points="2,-2.92 1.83,-2.62 2.17,-2.62"/>
+          <circle class="dot-c" cx="-4" cy="1" r="0.2"/>
+          <circle class="dot-a" cx="2" cy="-3" r="0.2"/>
+          <text class="lbl c" x="-4.3" y="1.75" text-anchor="start">C(−4, −1)</text>
+          <text class="lbl a" x="2.3" y="-3.3" text-anchor="start">D(2, 3)</text>
+          <text class="lbl q" x="-1" y="1.65" text-anchor="middle">右 6</text>
+          <text class="lbl q" x="2.25" y="-1" text-anchor="start">上 4</text>
+        </svg>
+        <figcaption>平移：先左右改 x，再上下改 y</figcaption>
+      </figure>
+    </div>
+
+    <h2>常見錯誤對照表</h2>
+    <table>
+      <caption>遊戲會認出這些錯法，點錯時直接告訴你錯在哪。</caption>
+      <thead>
+        <tr><th style="width:44%">常見的錯</th><th>正確</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="bad">( 3 , −2 ) 點在「右 2、下 3」</td>
+          <td class="good">先 x 後 y：右 3、下 2（x、y 不能對調）</td>
+        </tr>
+        <tr>
+          <td class="bad">( 0 , 4 ) 點在 x 軸上</td>
+          <td class="good">x 坐標是 0 → 在 <b>y 軸</b>上，原點上方 4</td>
+        </tr>
+        <tr>
+          <td class="bad">( −3 , 2 ) 點在原點右邊</td>
+          <td class="good">x 是負的 → 往<b>左</b>走 3</td>
+        </tr>
+        <tr>
+          <td class="bad">數格子時把原點 O 也算成一格</td>
+          <td class="good">從 O 出發，走過一條格線才算 1 格</td>
+        </tr>
+        <tr>
+          <td class="bad">1<span class="fr"><i>1</i><i>2</i></span> 點在格線 1 上</td>
+          <td class="good">點在 1 和 2 的正中間</td>
+        </tr>
+        <tr>
+          <td class="bad">到 x 軸的距離看 |x|</td>
+          <td class="good">到 x 軸是上下量，看 <b>|y|</b></td>
+        </tr>
+        <tr>
+          <td class="bad">向左 4 單位：x 坐標 ＋ 4</td>
+          <td class="good">向左是 x 坐標 <b>− 4</b>；向右才是 ＋</td>
+        </tr>
+        <tr>
+          <td class="bad">向上 3 單位：x 坐標 ＋ 3</td>
+          <td class="good">上下移動改的是 <b>y</b> 坐標</td>
+        </tr>
+        <tr>
+          <td class="bad">倒推時照題目的方向再走一次</td>
+          <td class="good">倒推要往<b>反方向</b>走回去（上↔下、左↔右）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <footer>
+      <a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a>
+    </footer>
+  </div>
+
+<script>
+  // 兩張示意圖共用的 −5 ~ 5 坐標格線（坐標軸只在正向端畫箭頭）
+  (() => {
+    const N = 5;
+    let s = '';
+    for (let i = -N; i <= N; i++) {
+      if (i === 0) continue;
+      s += `<line class="g-line" x1="${i}" y1="-${N}" x2="${i}" y2="${N}"/>`;
+      s += `<line class="g-line" x1="-${N}" y1="${i}" x2="${N}" y2="${i}"/>`;
+    }
+    s += `<line class="axis" x1="-5.5" y1="0" x2="5.7" y2="0"/><polygon class="axis-arrow" points="6,0 5.62,-0.18 5.62,0.18"/>`;
+    s += `<line class="axis" x1="0" y1="5.5" x2="0" y2="-5.7"/><polygon class="axis-arrow" points="0,-6 -0.18,-5.62 0.18,-5.62"/>`;
+    for (let i = -N; i <= N; i++) {
+      if (i === 0) continue;
+      const t = i < 0 ? '−' + (-i) : String(i);
+      s += `<text class="tick" x="${i}" y="0.52" text-anchor="middle">${t}</text>`;
+      s += `<text class="tick" x="-0.2" y="${-i + 0.14}" text-anchor="end">${t}</text>`;
+    }
+    s += `<text class="tick" x="-0.2" y="0.52" text-anchor="end">O</text>`;
+    s += `<text class="axis-name" x="5.85" y="-0.32" text-anchor="middle">x</text>`;
+    s += `<text class="axis-name" x="0.38" y="-5.75" text-anchor="middle">y</text>`;
+    document.getElementById('grid1').innerHTML = s;
+    document.getElementById('grid2').innerHTML = s;
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>坐標點點打擊 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="螢幕出一個坐標，限時內在坐標平面上點出正確位置；還有平移正推與倒推。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 36ch;
+      line-height: 1.7;
+    }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+
+    .level-note { margin: -6px 0 0; color: var(--muted); font-size: 0.95rem; min-height: 1.5em; }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover:not(:disabled) { filter: brightness(1.06); }
+    .big-btn:active:not(:disabled) { transform: translateY(2px); }
+    .big-btn:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys {
+      color: var(--muted);
+      font-size: 0.85rem;
+      opacity: 0.8;
+      line-height: 1.9;
+    }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer {
+      flex: 0 0 auto;
+      height: 10px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+    body[data-view="result"] .timer > i { opacity: 0.25; }
+
+    /* 直式（手機）：題目 → 坐標平面 → 按鈕；橫式（白板）：左欄題目＋按鈕、右邊坐標平面 */
+    .play-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-areas: "head" "board" "actions";
+      gap: 10px;
+      padding: 10px 12px 12px;
+    }
+    @media (min-aspect-ratio: 1/1) and (min-width: 700px) {
+      .play-body {
+        grid-template-columns: minmax(280px, 36%) minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) auto;
+        grid-template-areas: "head board" "actions board";
+        gap: 14px 22px;
+        padding: 16px 22px 18px;
+      }
+      .head { align-self: center; }
+    }
+
+    .head {
+      grid-area: head;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .head-row { display: flex; align-items: center; gap: 12px; }
+
+    .rule-tag {
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+      background: var(--panel);
+      white-space: nowrap;
+    }
+
+    .count {
+      margin-left: auto;
+      font-size: clamp(2rem, 5vw, 3.6rem);
+      line-height: 1;
+      font-weight: 800;
+      color: var(--accent-2);
+      font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    .q {
+      font-size: clamp(1.25rem, 3.2vw, 2.3rem);
+      font-weight: 700;
+      line-height: 1.55;
+    }
+    .q.big { font-size: clamp(2rem, 5.6vw, 4rem); line-height: 1.3; }
+    .q em { font-style: normal; color: var(--accent-2); }
+    .pt { white-space: nowrap; color: var(--accent-2); }
+    .q.big .pt { color: var(--text); }
+
+    .tip { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    body[data-view="result"] .tip,
+    body[data-view="result"] .q-wrap { display: none; }
+    body[data-view="play"] .res { display: none; }
+
+    .res h2 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3.6rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .res.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .res.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .res .ask {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2vw, 1.15rem);
+      line-height: 1.6;
+    }
+    .res .why {
+      margin-top: 10px;
+      padding: 12px 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      font-size: clamp(1rem, 2.2vw, 1.3rem);
+      line-height: 1.75;
+    }
+    .res .why p { margin: 0; }
+    .res .why p + p { margin-top: 6px; }
+    .res .why em { font-style: normal; color: var(--accent-2); font-weight: 700; }
+    .res .why .oops { color: #fca5a5; }
+
+    .actions {
+      grid-area: actions;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+    .actions .big-btn { margin: 0; padding: 14px 40px; }
+    body[data-view="play"] .act-res,
+    body[data-view="result"] .act-play { display: none; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── 坐標平面 ───────────────────────────── */
+    .board {
+      grid-area: board;
+      min-height: 0;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .board svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: crosshair;
+      font-family: inherit;
+    }
+    body[data-view="result"] .board svg { cursor: default; }
+
+    .plate { fill: rgba(20, 27, 52, 0.6); stroke: var(--line); stroke-width: 0.03; }
+    .g-line { stroke: rgba(148, 163, 184, 0.3); stroke-width: 0.03; }
+    .g-half { stroke: rgba(148, 163, 184, 0.16); stroke-width: 0.02; stroke-dasharray: 0.08 0.08; }
+    .axis { stroke: #cbd5e1; stroke-width: 0.06; }
+    .axis-arrow { fill: #cbd5e1; }
+    .tick { fill: var(--muted); font-size: 0.4px; }
+    .axis-name { fill: #e2e8f0; font-size: 0.55px; font-style: italic; font-family: "Times New Roman", serif; }
+
+    .lbl {
+      font-size: 0.56px;
+      font-weight: 700;
+      paint-order: stroke;
+      stroke: #0b1020;
+      stroke-width: 0.16px;
+      stroke-linejoin: round;
+    }
+    .lbl.given { fill: var(--accent-2); }
+    .lbl.target { fill: #86efac; }
+    .lbl.wrong { fill: #fca5a5; }
+
+    .pick-ring { fill: rgba(34, 211, 238, 0.22); stroke: var(--cyan); stroke-width: 0.08; }
+    .pick-dot { fill: var(--cyan); }
+    .pick-cross { stroke: var(--cyan); stroke-width: 0.03; opacity: 0.5; }
+    .given-dot { fill: var(--accent-2); stroke: #0b1020; stroke-width: 0.05; }
+    .target-dot { fill: var(--win); stroke: #0b1020; stroke-width: 0.05; }
+    .target-ring { fill: none; stroke: var(--win); stroke-width: 0.06; animation: ring 1.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+    @keyframes ring {
+      from { transform: scale(0.6); opacity: 1; }
+      to { transform: scale(2.2); opacity: 0; }
+    }
+    .wrong-x { stroke: var(--lose); stroke-width: 0.1; stroke-linecap: round; }
+    .guide { stroke: var(--win); stroke-width: 0.05; stroke-dasharray: 0.16 0.12; opacity: 0.85; }
+    .path { stroke: var(--accent); stroke-width: 0.08; stroke-dasharray: 0.22 0.12; fill: none; }
+    .path-head { fill: var(--accent); }
+
+    /* ── 堆疊分數 ───────────────────────────── */
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.62em;
+      margin: 0 0.04em;
+    }
+    .fr i { font-style: normal; padding: 0 0.2em; }
+    .fr i:first-child { border-bottom: 0.09em solid currentColor; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .actions .big-btn { padding: 12px 30px; }
+      .ghost-btn { padding: 10px 18px; }
+    }
+
+    @media (max-height: 560px) {
+      .q.big { font-size: clamp(1.4rem, 4vw, 2.4rem); }
+      .tip { display: none; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">坐標點點打擊</h1>
+      <p class="unit" style="margin:0 0 8px;opacity:.75;font-size:.95rem">📘 第2冊・第2章 直角坐標與二元一次方程式的圖形・第1節 直角坐標平面</p>
+      <p class="hint">螢幕出一個點，<span class="limit-val">10</span> 秒內在坐標平面上<strong>點出它的位置</strong>，再按「確定」。點錯會告訴你錯在哪裡。</p>
+
+      <div class="ctl-row">
+        <div class="seg" id="level" role="group" aria-label="題組">
+          <button type="button" data-level="basic" aria-pressed="true">基礎</button>
+          <button type="button" data-level="adv" aria-pressed="false">進階</button>
+          <button type="button" data-level="move" aria-pressed="false">平移</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-1" aria-label="減少 1 秒">−</button>
+          <b class="limit-val">10</b>秒
+          <button type="button" data-step="1" aria-label="增加 1 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+
+      <button type="button" class="big-btn" id="start">🎯 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看坐標小抄</a>
+      <p class="keys">也能用鍵盤：<kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 移動標記　<kbd>Enter</kbd> 確定　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <!-- ── 作答／判定 ─────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="play-body">
+      <div class="head">
+        <div class="head-row">
+          <div class="rule-tag" id="rule">坐標</div>
+          <div class="count" id="count">10</div>
+        </div>
+        <div class="q-wrap"><div class="q" id="q"></div></div>
+        <p class="tip" id="tip">在坐標平面上點一下放標記，可以再點別的地方修改。</p>
+        <div class="res" id="res" aria-live="polite">
+          <h2 id="res-title">答對了！</h2>
+          <div class="ask" id="res-ask"></div>
+          <div class="why" id="res-why"></div>
+        </div>
+      </div>
+
+      <div class="board">
+        <svg id="svg" viewBox="-7.15 -7.35 14.5 14.5" role="img" aria-label="直角坐標平面">
+          <g id="g-grid"></g>
+          <g id="g-marks"></g>
+        </svg>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="big-btn act-play" id="confirm" disabled>✔ 確定</button>
+        <button type="button" class="big-btn act-res" id="next">▸ 下一題</button>
+        <button type="button" class="ghost-btn act-res" id="back">結束這輪</button>
+      </div>
+    </div>
+  </section>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+  const SVGNS = 'http://www.w3.org/2000/svg';
+
+  /* ── 坐標一律用「半格」為單位的整數存：3 → 6、2½ → 5，避免小數誤差 ── */
+  const N = 6;            // 坐標平面範圍 −6 ~ 6
+  const H = N * 2;        // 半格單位的範圍
+
+  /* ── 設定（記在這台瀏覽器）────────────── */
+  const LEVELS = {
+    basic: { name: '基礎', def: 10, note: '整數坐標，含 x 軸、y 軸上的點。' },
+    adv:   { name: '進階', def: 15, note: '½ 與 .5 的坐標、用文字描述的點、到兩軸的距離。' },
+    move:  { name: '平移', def: 15, note: '從一點往上下左右移動，點出終點；或由終點倒推回起點。' }
+  };
+  const LIMIT_MIN = 4, LIMIT_MAX = 40;
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 無痕模式等情況就不記 */ } }
+  };
+  const clampLimit = v => Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v));
+  let level = LEVELS[store.get('coord-level')] ? store.get('coord-level') : 'basic';
+  const limits = {};
+  Object.keys(LEVELS).forEach(k => {
+    limits[k] = clampLimit(parseInt(store.get('coord-limit-' + k), 10) || LEVELS[k].def);
+  });
+  let muted = store.get('coord-muted') === '1';
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const coin = () => Math.random() < 0.5;
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  const nz = (a, b) => (coin() ? 1 : -1) * R(a, b);          // ±a ~ ±b，不含 0
+  const MINUS = '−';
+  const same = (p, q) => p[0] === q[0] && p[1] === q[1];
+  const inRange = p => Math.abs(p[0]) <= H && Math.abs(p[1]) <= H;
+
+  const fr = (n, d) => `<span class="fr"><i>${n}</i><i>${d}</i></span>`;
+
+  // 半格整數 → 顯示字串；style：'mixed' 帶分數（1½ 疊成分數）、'dec' 小數（1.5）
+  function num(h, style = 'mixed', svg = false) {
+    const s = h < 0 ? MINUS : '';
+    const a = Math.abs(h);
+    if (a % 2 === 0) return s + (a / 2);
+    if (style === 'dec') return s + (a / 2).toFixed(1);
+    const w = (a - 1) / 2;
+    return s + (w ? w : '') + (svg ? '½' : fr(1, 2));
+  }
+  const absNum = (h, style) => num(Math.abs(h), style);
+  const pt = (name, p, style) => `<span class="pt">${name} ( ${num(p[0], style)} , ${num(p[1], style)} )</span>`;
+  const ptSvg = (name, p, style) => `${name}(${num(p[0], style, true)}, ${num(p[1], style, true)})`;
+
+  // 從原點出發怎麼找到這個點（課本「先左右、再上下」）
+  function howFromOrigin(p, style) {
+    const [x, y] = p;
+    const xs = x === 0
+      ? `x 坐標是 0，<em>不用左右移</em>（點在 y 軸上）`
+      : `x 坐標 ${num(x, style)}：從原點 O 向<em>${x > 0 ? '右' : '左'}</em> ${absNum(x, style)} 格`;
+    const ys = y === 0
+      ? `y 坐標是 0，<em>不用上下移</em>（點在 x 軸上）`
+      : `y 坐標 ${num(y, style)}：再向<em>${y > 0 ? '上' : '下'}</em> ${absNum(y, style)} 格`;
+    if (x === 0 && y === 0) return `x、y 坐標都是 0，就是<em>原點 O</em>。`;
+    return `${xs}；${ys}。`;
+  }
+
+  /* ── 題目產生器 ─────────────────────────
+     每題回傳：
+       rule   標籤
+       html   題目（作答時顯示）
+       big    題目是否只有一個坐標（用大字）
+       target 正解（半格整數）
+       given  已知點 { p, label }（平移題才有）
+       path   平移路徑（結果畫箭頭用）
+       style  數字樣式
+       traps  [{ p, msg }] 常見錯誤的位置與說明，先比對這些
+       generic 是否套用通用錯誤判斷（對調、正負號、½、差一格）
+       how    怎麼找到正解
+  ─────────────────────────────────────── */
+  const NAMES = ['A', 'B', 'C', 'D', 'P', 'Q', 'R', 'M', 'N'];
+  const PAIRS = [['A', 'B'], ['P', 'Q'], ['M', 'N'], ['C', 'D']];
+
+  // 兩坐標都不為 0 的整數點；mostlyDistinct 時 |x| ≠ |y| 的機率高，讓「對調」和「正負號」錯得不一樣
+  function intPoint() {
+    for (;;) {
+      const x = nz(1, N), y = nz(1, N);
+      if (x === y) continue;
+      if (Math.abs(x) === Math.abs(y) && Math.random() < 0.85) continue;
+      return [x * 2, y * 2];
+    }
+  }
+
+  function genBasic() {
+    const name = pickOf(NAMES);
+    const r = Math.random();
+    let p, rule;
+    if (r < 0.03) {
+      p = [0, 0]; rule = '原點';
+    } else if (r < 0.27) {
+      const v = nz(1, N) * 2;
+      p = coin() ? [v, 0] : [0, v];
+      rule = p[1] === 0 ? 'x 軸上的點' : 'y 軸上的點';
+    } else {
+      p = intPoint(); rule = '點的坐標';
+    }
+    const traps = [];
+    if (p[0] === 0 && p[1] !== 0) {
+      traps.push({ p: [p[1], 0], msg: `x 坐標是 0、y 坐標是 ${num(p[1])}，點在 <em>y 軸</em>上。你點成 ( ${num(p[1])} , 0 )，跑到 x 軸去了：坐標一定是<em>先寫 x、後寫 y</em>。` });
+    } else if (p[1] === 0 && p[0] !== 0) {
+      traps.push({ p: [0, p[0]], msg: `y 坐標是 0，點在 <em>x 軸</em>上。你點成 ( 0 , ${num(p[0])} )，跑到 y 軸去了：坐標一定是<em>先寫 x、後寫 y</em>。` });
+    }
+    return {
+      rule, big: true, style: 'mixed',
+      html: `點出 ${pt(name, p)}`,
+      target: p, name, traps, generic: true,
+      how: howFromOrigin(p)
+    };
+  }
+
+  // 進階 ①：含 ½ 的坐標
+  function genHalf() {
+    const name = pickOf(NAMES);
+    const style = coin() ? 'mixed' : 'dec';
+    let p;
+    for (;;) {
+      const onAxis = Math.random() < 0.2;
+      const odd = () => (coin() ? 1 : -1) * (2 * R(0, N - 1) + 1);      // ±½、±1½ … ±5½
+      const any = () => R(-H, H);
+      if (onAxis) {
+        p = coin() ? [odd(), 0] : [0, odd()];
+      } else {
+        p = [any(), any()];
+        if (p[0] === 0 || p[1] === 0) continue;
+        if (p[0] % 2 === 0 && p[1] % 2 === 0) continue;               // 至少一個是半格
+        if (p[0] === p[1]) continue;
+      }
+      break;
+    }
+    return {
+      rule: style === 'dec' ? '小數坐標' : '分數坐標', big: true, style,
+      html: `點出 ${pt(name, p, style)}`,
+      target: p, name, traps: [], generic: true,
+      how: howFromOrigin(p, style)
+    };
+  }
+
+  // 進階 ②：用文字說出 x、y 坐標（故意先講 y）
+  function genDescXY() {
+    const name = pickOf(NAMES);
+    const p = intPoint();
+    const yFirst = Math.random() < 0.7;
+    const xs = `x 坐標是 <em>${num(p[0])}</em>`, ys = `y 坐標是 <em>${num(p[1])}</em>`;
+    return {
+      rule: '用文字描述的點', big: false, style: 'mixed',
+      html: `${name} 點的${yFirst ? ys + '，' + xs : xs + '，' + ys}。<br>點出 ${name} 點。`,
+      target: p, name, generic: true,
+      traps: [{ p: [p[1], p[0]], msg: `${yFirst ? '題目先講 y 坐標，但' : ''}寫成坐標時一定是 <em>( x 坐標 , y 坐標 )</em>，所以是 ( ${num(p[0])} , ${num(p[1])} )，你把兩個數對調了。` }],
+      how: `${name} ( ${num(p[0])} , ${num(p[1])} )。${howFromOrigin(p)}`
+    };
+  }
+
+  // 進階 ③：在哪一軸上、原點的哪一邊
+  function genDescAxis() {
+    const name = pickOf(NAMES);
+    const k = R(1, N);
+    const dir = pickOf(['左', '右', '上', '下']);
+    const onX = dir === '左' || dir === '右';
+    const v = (dir === '右' || dir === '上' ? 1 : -1) * k * 2;
+    const p = onX ? [v, 0] : [0, v];
+    const wrongAxis = onX ? [0, v] : [v, 0];
+    return {
+      rule: '軸上的點', big: false, style: 'mixed',
+      html: `${name} 點在 <em>${onX ? 'x' : 'y'} 軸</em>上，位在原點的<em>${dir}</em>方 ${k} 個單位。<br>點出 ${name} 點。`,
+      target: p, name, generic: true,
+      traps: [{ p: wrongAxis, msg: `${onX ? 'x 軸是<em>橫</em>的那條，在原點左右兩邊' : 'y 軸是<em>直</em>的那條，在原點上下兩邊'}；你點到另一條軸上了。` }],
+      how: `${onX ? 'x' : 'y'} 軸上的點，${onX ? 'y' : 'x'} 坐標是 0；在原點${dir}方 ${k} 單位，所以是 ${pt(name, p)}。`
+    };
+  }
+
+  // 進階 ④：象限＋到兩軸的距離（到 x 軸量上下 → |y|；到 y 軸量左右 → |x|）
+  const QUAD = { 1: [1, 1], 2: [-1, 1], 3: [-1, -1], 4: [1, -1] };
+  const QNAME = { 1: '一', 2: '二', 3: '三', 4: '四' };
+  function genDist() {
+    const name = pickOf(NAMES);
+    const q = R(1, 4);
+    let a, b;
+    do { a = R(1, N); b = R(1, N); } while (a === b);      // a：到 x 軸距離（|y|）；b：到 y 軸距離（|x|）
+    const [sx, sy] = QUAD[q];
+    const p = [sx * b * 2, sy * a * 2];
+    const sg = s => (s > 0 ? '＋' : MINUS);
+    return {
+      rule: '象限與距離', big: false, style: 'mixed',
+      html: `${name} 點在<em>第${QNAME[q]}象限</em>，到 x 軸的距離是 ${a}，到 y 軸的距離是 ${b}。<br>點出 ${name} 點。`,
+      target: p, name, generic: true,
+      traps: [{ p: [sx * a * 2, sy * b * 2], msg: `距離放反了。到 <em>x 軸</em>的距離是往上下量，看的是 <em>|y|</em>；到 <em>y 軸</em>的距離是往左右量，看的是 <em>|x|</em>。` }],
+      how: `到 x 軸距離 ${a} → |y| = ${a}；到 y 軸距離 ${b} → |x| = ${b}；第${QNAME[q]}象限是 ( ${sg(sx)} , ${sg(sy)} )，所以是 ${pt(name, p)}。`
+    };
+  }
+
+  // 平移：moves = [{ ax: 0|1, d }]，d 以整格計
+  const DIR = (ax, d) => (ax === 0 ? (d > 0 ? '右' : '左') : (d > 0 ? '上' : '下'));
+  const moveText = m => `向${DIR(m.ax, m.d)} ${Math.abs(m.d)} 單位`;
+  const movesText = ms => (ms.length === 1 ? moveText(ms[0]) : `先${moveText(ms[0])}，再${moveText(ms[1])}`);
+  function makeMoves() {
+    if (Math.random() < 0.25) return [{ ax: R(0, 1), d: nz(1, N) }];
+    const ms = [{ ax: 0, d: nz(1, N) }, { ax: 1, d: nz(1, N) }];
+    return coin() ? ms : [ms[1], ms[0]];
+  }
+  const sumMoves = ms => {
+    const s = [0, 0];
+    ms.forEach(m => { s[m.ax] += m.d * 2; });
+    return s;
+  };
+  const add = (p, v, k = 1) => [p[0] + k * v[0], p[1] + k * v[1]];
+  function walk(start, ms) {               // 每一步之後的點（畫路徑用）
+    const pts = [start];
+    let cur = start;
+    ms.forEach(m => { cur = m.ax === 0 ? [cur[0] + m.d * 2, cur[1]] : [cur[0], cur[1] + m.d * 2]; pts.push(cur); });
+    return pts;
+  }
+  const randInt = () => [R(-N + 1, N - 1) * 2, R(-N + 1, N - 1) * 2];
+
+  function genMoveForward() {
+    const [sName, tName] = pickOf(PAIRS);
+    let S, ms, T;
+    do { S = randInt(); ms = makeMoves(); T = add(S, sumMoves(ms)); } while (!inRange(T) || same(S, T));
+    const v = sumMoves(ms);
+    const [dx, dy] = v;
+    const traps = [];
+    const xMsg = d => `向${d > 0 ? '右' : '左'}移動，x 坐標要<em>${d > 0 ? '加' : '減'}</em> ${absNum(d)}；你往反方向走了。`;
+    const yMsg = d => `向${d > 0 ? '上' : '下'}移動，y 坐標要<em>${d > 0 ? '加' : '減'}</em> ${absNum(d)}；你往反方向走了。`;
+    if (dx && dy) traps.push({ p: add(S, [-dx, -dy]), msg: `左右、上下兩個方向都走反了。右、上是<em>加</em>，左、下是<em>減</em>。` });
+    if (dx) traps.push({ p: add(S, [-dx, dy]), msg: xMsg(dx) });
+    if (dy) traps.push({ p: add(S, [dx, -dy]), msg: yMsg(dy) });
+    traps.push({ p: add(S, [dy, dx]), msg: `<em>左右</em>移動改的是 <em>x</em> 坐標，<em>上下</em>移動改的是 <em>y</em> 坐標；你把移動的格數放錯坐標了。` });
+    traps.push({ p: S, msg: `那是出發點 ${sName}，要從 ${sName} 開始移動。` });
+    const sgn = d => (d >= 0 ? '+' : MINUS);
+    const parts = [];
+    if (dx) parts.push(`x 坐標：${num(S[0])} ${sgn(dx)} ${absNum(dx)} = ${num(T[0])}`);
+    else parts.push(`沒有左右移動，x 坐標不變（${num(T[0])}）`);
+    if (dy) parts.push(`y 坐標：${num(S[1])} ${sgn(dy)} ${absNum(dy)} = ${num(T[1])}`);
+    else parts.push(`沒有上下移動，y 坐標不變（${num(T[1])}）`);
+    return {
+      rule: '點的平移', big: false, style: 'mixed',
+      html: `從 ${pt(sName, S)} 出發，${movesText(ms)}，到達 ${tName} 點。<br>點出 ${tName} 點。`,
+      target: T, name: tName, given: { p: S, label: sName }, path: walk(S, ms),
+      traps, generic: false,
+      how: `${parts.join('；')}，所以 ${pt(tName, T)}。`
+    };
+  }
+
+  function genMoveBack() {
+    const [tName, sName] = pickOf([['R', 'S'], ['P', 'Q'], ['A', 'B'], ['M', 'N']]);
+    let T, ms, S;
+    do { T = randInt(); ms = makeMoves(); S = add(T, sumMoves(ms)); } while (!inRange(S) || same(S, T));
+    const v = sumMoves(ms);
+    const [dx, dy] = v;
+    const traps = [];
+    traps.push({ p: add(S, v), msg: `這題要<em>倒推</em>：${tName} 點移動之後才到 ${sName}，所以要從 ${sName} 往<em>反方向</em>走回去，你順著題目的方向又走了一次。` });
+    if (dx && dy) {
+      traps.push({ p: add(S, [dx, -dy]), msg: `只倒推了上下，<em>左右</em>也要反過來走。` });
+      traps.push({ p: add(S, [-dx, dy]), msg: `只倒推了左右，<em>上下</em>也要反過來走。` });
+    }
+    traps.push({ p: add(S, [-dy, -dx]), msg: `<em>左右</em>移動改的是 <em>x</em> 坐標，<em>上下</em>移動改的是 <em>y</em> 坐標；你把移動的格數放錯坐標了。` });
+    traps.push({ p: S, msg: `那是終點 ${sName}，要從 ${sName} 倒推回 ${tName}。` });
+    const back = ms.slice().reverse().map(m => {
+      const opp = { ax: m.ax, d: -m.d };
+      const c = m.ax === 0 ? 'x' : 'y';
+      const from = S[m.ax], to = T[m.ax];
+      const op = opp.d > 0 ? '+' : MINUS;
+      return `「${moveText(m)}」倒回去是${moveText(opp)}，${c}：${num(from)} ${op} ${Math.abs(m.d)} = ${num(to)}`;
+    });
+    const fixed = [];
+    if (!dx) fixed.push(`沒有左右移動，x 坐標不變`);
+    if (!dy) fixed.push(`沒有上下移動，y 坐標不變`);
+    return {
+      rule: '平移倒推', big: false, style: 'mixed',
+      html: `${tName} 點${movesText(ms)}，到達 ${pt(sName, S)}。<br>點出 ${tName} 點。`,
+      target: T, name: tName, given: { p: S, label: sName }, path: walk(T, ms),
+      traps, generic: false,
+      how: `${back.concat(fixed).join('；')}，所以 ${pt(tName, T)}。`
+    };
+  }
+
+  const POOLS = {
+    basic: [[genBasic, 1]],
+    adv: [[genHalf, 0.45], [genDescXY, 0.15], [genDescAxis, 0.12], [genDist, 0.28]],
+    move: [[genMoveForward, 0.6], [genMoveBack, 0.4]]
+  };
+
+  function finalize(q) {
+    // 陷阱去重：不能和正解重疊、不能出界、同一位置只留第一個說明
+    const seen = [];
+    q.traps = q.traps.filter(t => {
+      if (same(t.p, q.target) || !inRange(t.p) || seen.some(s => same(s, t.p))) return false;
+      seen.push(t.p);
+      return true;
+    });
+    return q;
+  }
+
+  function makeQuestion(lv) {
+    const pool = POOLS[lv];
+    let r = Math.random(), gen = pool[pool.length - 1][0];
+    for (const [g, w] of pool) { if (r < w) { gen = g; break; } r -= w; }
+    return finalize(gen());
+  }
+
+  let lastKey = '';
+  function nextQuestion() {
+    let q;
+    for (let i = 0; i < 12; i++) {
+      q = makeQuestion(level);
+      const key = q.html;
+      if (key !== lastKey) { lastKey = key; break; }
+    }
+    return q;
+  }
+
+  /* ── 判斷點錯的原因 ─────────────────── */
+  function diagnose(q, p) {
+    if (same(p, q.target)) return null;
+    const trap = q.traps.find(t => same(t.p, p));
+    if (trap) return trap.msg;
+    const [tx, ty] = q.target, [px, py] = p;
+    if (q.generic) {
+      if (tx !== ty && px === ty && py === tx) {
+        return `x、y 坐標<em>對調</em>了。( ${num(tx, q.style)} , ${num(ty, q.style)} ) 和 ( ${num(ty, q.style)} , ${num(tx, q.style)} ) 是不同的點：<em>先 x（左右）、後 y（上下）</em>。`;
+      }
+      if (tx !== 0 && px === -tx && py === ty && ty !== 0) {
+        return `x 坐標的<em>正負號</em>弄反了：x 是${tx < 0 ? '負' : '正'}的，要往原點<em>${tx < 0 ? '左' : '右'}</em>邊走。`;
+      }
+      if (ty !== 0 && py === -ty && px === tx && tx !== 0) {
+        return `y 坐標的<em>正負號</em>弄反了：y 是${ty < 0 ? '負' : '正'}的，要往原點<em>${ty < 0 ? '下' : '上'}</em>面走。`;
+      }
+      if (tx !== 0 && px === -tx && py === ty) {
+        return `方向弄反了：x 坐標是${tx < 0 ? '負' : '正'}的，在原點<em>${tx < 0 ? '左' : '右'}</em>邊。`;
+      }
+      if (ty !== 0 && py === -ty && px === tx) {
+        return `方向弄反了：y 坐標是${ty < 0 ? '負' : '正'}的，在原點<em>${ty < 0 ? '下' : '上'}</em>面。`;
+      }
+      if (tx !== 0 && ty !== 0 && px === -tx && py === -ty) {
+        return `x、y 的<em>正負號都</em>弄反了，點跑到對面的象限去了。`;
+      }
+      const halfMiss = [0, 1].every(i => p[i] === q.target[i] || (q.target[i] % 2 !== 0 && Math.abs(p[i] - q.target[i]) === 1));
+      if (halfMiss) {
+        return `差半格：<em>½</em> 要點在兩條格線的<em>正中間</em>。`;
+      }
+    }
+    const d = Math.abs(px - tx) + Math.abs(py - ty);
+    if (d === 2 && (px === tx || py === ty)) {
+      return q.generic
+        ? `差了一格。數格子要<em>從原點 O 開始數</em>，O 本身不算一格。`
+        : `差了一格，再數一次移動的格數。`;
+    }
+    return '';
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+  const sfxPlace = () => tone(760, 0.05, 0, 'triangle', 0.08);
+
+  /* ── 坐標平面 ───────────────────────── */
+  const S = v => +(v / 2).toFixed(3);              // 半格 → SVG 的 x
+  const SY = v => +(-v / 2).toFixed(3);            // 半格 → SVG 的 y（向上為正）
+
+  let gridHalf = null;
+  function drawGrid(half) {
+    if (gridHalf === half) return;
+    gridHalf = half;
+    let s = `<rect class="plate" x="-6.6" y="-6.6" width="13.2" height="13.2" rx="0.25"/>`;
+    if (half) {
+      for (let k = -H + 1; k < H; k += 2) {
+        s += `<line class="g-half" x1="${k / 2}" y1="-${N}" x2="${k / 2}" y2="${N}"/>`;
+        s += `<line class="g-half" x1="-${N}" y1="${k / 2}" x2="${N}" y2="${k / 2}"/>`;
+      }
+    }
+    for (let i = -N; i <= N; i++) {
+      if (i === 0) continue;
+      s += `<line class="g-line" x1="${i}" y1="-${N}" x2="${i}" y2="${N}"/>`;
+      s += `<line class="g-line" x1="-${N}" y1="${i}" x2="${N}" y2="${i}"/>`;
+    }
+    // 坐標軸：只在正向端畫箭頭，負向端平切
+    s += `<line class="axis" x1="-6.5" y1="0" x2="6.7" y2="0"/>`;
+    s += `<polygon class="axis-arrow" points="7,0 6.62,-0.18 6.62,0.18"/>`;
+    s += `<line class="axis" x1="0" y1="6.5" x2="0" y2="-6.7"/>`;
+    s += `<polygon class="axis-arrow" points="0,-7 -0.18,-6.62 0.18,-6.62"/>`;
+    for (let i = -N; i <= N; i++) {
+      if (i === 0) continue;
+      const t = i < 0 ? MINUS + (-i) : String(i);
+      s += `<text class="tick" x="${i}" y="0.52" text-anchor="middle">${t}</text>`;
+      s += `<text class="tick" x="-0.2" y="${-i + 0.14}" text-anchor="end">${t}</text>`;
+    }
+    s += `<text class="tick" x="-0.2" y="0.52" text-anchor="end">O</text>`;
+    s += `<text class="axis-name" x="6.85" y="-0.32" text-anchor="middle">x</text>`;
+    s += `<text class="axis-name" x="0.38" y="-6.75" text-anchor="middle">y</text>`;
+    $('g-grid').innerHTML = s;
+  }
+
+  function label(p, text, cls, below) {
+    const x = S(p[0]), y = SY(p[1]);
+    const end = x > 2.6;
+    let dy = below ? 0.78 : -0.34;
+    if (!below && y < -5.6) dy = 0.78;
+    if (below && y > 5.6) dy = -0.34;
+    return `<text class="lbl ${cls}" x="${(x + (end ? -0.3 : 0.3)).toFixed(3)}" y="${(y + dy).toFixed(3)}" text-anchor="${end ? 'end' : 'start'}">${text}</text>`;
+  }
+
+  function arrowHead(a, b) {
+    const x1 = S(a[0]), y1 = SY(a[1]), x2 = S(b[0]), y2 = SY(b[1]);
+    const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+    const ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+    const bx = x2 - ux * 0.3, by = y2 - uy * 0.3;
+    const px = -uy * 0.17, py = ux * 0.17;
+    return `<polygon class="path-head" points="${x2 - ux * 0.08},${y2 - uy * 0.08} ${bx + px},${by + py} ${bx - px},${by - py}"/>`;
+  }
+
+  function drawMarks() {
+    let s = '';
+    const q = cur;
+    if (!q) { $('g-marks').innerHTML = ''; return; }
+    const showRes = document.body.dataset.view === 'result';
+    if (showRes) {
+      // 平移路徑
+      if (q.path) {
+        for (let i = 1; i < q.path.length; i++) {
+          const a = q.path[i - 1], b = q.path[i];
+          s += `<line class="path" x1="${S(a[0])}" y1="${SY(a[1])}" x2="${S(b[0])}" y2="${SY(b[1])}"/>`;
+          s += arrowHead(a, b);
+        }
+      } else {
+        // 由點畫鉛垂線到 x 軸、水平線到 y 軸
+        const [tx, ty] = q.target;
+        if (tx !== 0 && ty !== 0) {
+          s += `<line class="guide" x1="${S(tx)}" y1="${SY(ty)}" x2="${S(tx)}" y2="0"/>`;
+          s += `<line class="guide" x1="${S(tx)}" y1="${SY(ty)}" x2="0" y2="${SY(ty)}"/>`;
+        }
+      }
+    }
+    if (q.given) {
+      s += `<circle class="given-dot" cx="${S(q.given.p[0])}" cy="${SY(q.given.p[1])}" r="0.2"/>`;
+      s += label(q.given.p, ptSvg(q.given.label, q.given.p, q.style), 'given', showRes && !!pick && !same(pick, q.target));
+    }
+    if (showRes) {
+      const t = q.target;
+      if (pick && !same(pick, t)) {
+        const x = S(pick[0]), y = SY(pick[1]), k = 0.24;
+        s += `<line class="wrong-x" x1="${x - k}" y1="${y - k}" x2="${x + k}" y2="${y + k}"/>`;
+        s += `<line class="wrong-x" x1="${x - k}" y1="${y + k}" x2="${x + k}" y2="${y - k}"/>`;
+        s += label(pick, `你點的 (${num(pick[0], q.style, true)}, ${num(pick[1], q.style, true)})`, 'wrong', true);
+      }
+      s += `<circle class="target-ring" cx="${S(t[0])}" cy="${SY(t[1])}" r="0.3"/>`;
+      s += `<circle class="target-dot" cx="${S(t[0])}" cy="${SY(t[1])}" r="0.22"/>`;
+      s += label(t, ptSvg(q.name, t, q.style), 'target', false);
+    } else if (pick) {
+      const x = S(pick[0]), y = SY(pick[1]);
+      s += `<line class="pick-cross" x1="${x}" y1="-6.3" x2="${x}" y2="6.3"/>`;
+      s += `<line class="pick-cross" x1="-6.3" y1="${y}" x2="6.3" y2="${y}"/>`;
+      s += `<circle class="pick-ring" cx="${x}" cy="${y}" r="0.32"/>`;
+      s += `<circle class="pick-dot" cx="${x}" cy="${y}" r="0.08"/>`;
+    }
+    $('g-marks').innerHTML = s;
+  }
+
+  /* ── 狀態 ───────────────────────────── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, pick = null, deadline = 0, raf = 0, lastTick = -1, locked = true;
+  const limit = () => limits[level];
+  const stepH = () => (level === 'adv' ? 1 : 2);   // 一次移動幾個半格
+
+  function setView(v) { document.body.dataset.view = v; drawMarks(); }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.level === level));
+    });
+    $('level-note').textContent = LEVELS[level].note;
+    paintLimit();
+  }
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function startQuestion() {
+    cur = nextQuestion();
+    pick = null;
+    drawGrid(level === 'adv');
+    $('rule').textContent = cur.rule;
+    $('q').innerHTML = cur.html;
+    $('q').classList.toggle('big', cur.big);
+    $('confirm').disabled = true;
+    locked = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + limit() * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      $('bar').style.transform = `scaleX(${left / (limit() * 1000)})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 3 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { judge(true); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  function setPick(p) {
+    if (locked) return;
+    const np = [Math.max(-H, Math.min(H, p[0])), Math.max(-H, Math.min(H, p[1]))];
+    if (pick && same(pick, np)) return;
+    pick = np;
+    $('confirm').disabled = false;
+    sfxPlace();
+    drawMarks();
+  }
+
+  /* ── 判定 ───────────────────────────── */
+  function judge(timeout) {
+    if (locked) return;
+    if (!timeout && !pick) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    document.body.classList.remove('urgent');
+
+    const win = !timeout && same(pick, cur.target);
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const res = $('res');
+    res.classList.toggle('ok', win);
+    res.classList.toggle('ng', !win);
+    $('res-title').textContent = timeout ? '時間到！' : (win ? '答對了！' : '點錯了');
+    $('res-ask').innerHTML = cur.html.replace(/<br>/g, ' ');
+    let why = '';
+    if (!win && pick) {
+      const msg = diagnose(cur, pick);
+      if (msg) why += `<p class="oops">✗ ${msg}</p>`;
+      else if (timeout) why += `<p class="oops">時間到了，標記還沒按確定。</p>`;
+    }
+    why += `<p>${win ? '' : '正解：'}${cur.how}</p>`;
+    $('res-why').innerHTML = why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 點擊坐標平面 ─────────────────────── */
+  const svg = $('svg');
+  function toHalf(e) {
+    const m = svg.getScreenCTM();
+    if (!m) return null;
+    const p = svg.createSVGPoint();
+    p.x = e.clientX; p.y = e.clientY;
+    const q = p.matrixTransform(m.inverse());
+    const st = stepH();
+    return [Math.round((q.x * 2) / st) * st, Math.round((-q.y * 2) / st) * st];
+  }
+  let dragging = false;
+  svg.addEventListener('pointerdown', e => {
+    if (locked || document.body.dataset.view !== 'play') return;
+    e.preventDefault();
+    dragging = true;
+    try { svg.setPointerCapture(e.pointerId); } catch (err) { /* 舊瀏覽器 */ }
+    const p = toHalf(e);
+    if (p) setPick(p);
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!dragging || locked) return;
+    const p = toHalf(e);
+    if (p) setPick(p);
+  });
+  const stopDrag = () => { dragging = false; };
+  svg.addEventListener('pointerup', stopDrag);
+  svg.addEventListener('pointercancel', stopDrag);
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('confirm').addEventListener('click', () => judge(false));
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limits[level] = clampLimit(limit() + Number(b.dataset.step));
+      store.set('coord-limit-' + level, String(limit()));
+      paintLimit();
+    });
+  });
+
+  document.querySelectorAll('#level button').forEach(b => {
+    b.addEventListener('click', () => {
+      level = b.dataset.level;
+      store.set('coord-level', level);
+      paintLevel();
+    });
+  });
+
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    store.set('coord-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      const st = stepH();
+      const base = pick || [0, 0];
+      const moves = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, st], ArrowDown: [0, -st] };
+      if (moves[e.key]) { e.preventDefault(); setPick(pick ? add(base, moves[e.key]) : base); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); judge(false); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (e.target && e.target.closest && e.target.closest('button, a') && e.target.id !== 'start') return;
+        e.preventDefault(); audio(); startQuestion();
+      }
+    }
+  });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 自我檢查（主控台：__coordStrike.selfTest(3000)）──
+     用另一套算法重算正解：平移題由文字裡的方向與格數重新推，
+     距離題由「|y| = 到 x 軸距離」反推，再檢查每個陷阱說明都對得上。 */
+  function selfTest(n = 2000) {
+    const errs = [];
+    const fail = (lv, q, why) => { if (errs.length < 30) errs.push({ lv, why, html: q.html.replace(/<[^>]+>/g, ''), target: q.target }); };
+    const strip = h => h.replace(/<span class="fr"><i>1<\/i><i>2<\/i><\/span>/g, '½').replace(/<[^>]+>/g, '');
+    const parseNum = t => {
+      t = t.trim().replace(MINUS, '-');
+      const neg = t.startsWith('-'); if (neg) t = t.slice(1);
+      let v;
+      if (t.endsWith('½')) v = (t.length > 1 ? Number(t.slice(0, -1)) * 2 : 0) + 1;
+      else v = Number(t) * 2;
+      return neg ? -v : v;
+    };
+    const parsePts = h => [...strip(h).matchAll(/([A-Z]) \( ([^,]+) , ([^)]+) \)/g)].map(m => ({ name: m[1], p: [parseNum(m[2]), parseNum(m[3])] }));
+    const counts = {};
+    Object.keys(POOLS).forEach(lv => {
+      for (let i = 0; i < n; i++) {
+        const q = makeQuestion(lv);
+        counts[q.rule] = (counts[q.rule] || 0) + 1;
+        const text = strip(q.html);
+        if (/NaN|undefined/.test(q.html + q.how + q.traps.map(t => t.msg).join(''))) fail(lv, q, 'NaN/undefined');
+        if (!inRange(q.target)) fail(lv, q, '正解出界');
+        if (q.given && !inRange(q.given.p)) fail(lv, q, '已知點出界');
+        if (q.given && same(q.given.p, q.target)) fail(lv, q, '已知點＝正解');
+        if (diagnose(q, q.target) !== null) fail(lv, q, '正解被判錯');
+        q.traps.forEach(t => {
+          if (diagnose(q, t.p) !== t.msg) fail(lv, q, '陷阱說明對不上');
+          if (same(t.p, q.target)) fail(lv, q, '陷阱＝正解');
+        });
+        if (lv !== 'adv' && (q.target[0] % 2 || q.target[1] % 2)) fail(lv, q, '整數題出現半格');
+        // 依題目文字獨立重算
+        const pts = parsePts(q.html);
+        let expect = null;
+        if (q.rule === '點的平移' || q.rule === '平移倒推') {
+          const mv = [...text.matchAll(/向(上|下|左|右) (\d+) 單位/g)].map(m => ({ dir: m[1], k: Number(m[2]) * 2 }));
+          const v = [0, 0];
+          mv.forEach(({ dir, k }) => { if (dir === '右') v[0] += k; if (dir === '左') v[0] -= k; if (dir === '上') v[1] += k; if (dir === '下') v[1] -= k; });
+          const known = pts[0].p;
+          expect = q.rule === '點的平移' ? [known[0] + v[0], known[1] + v[1]] : [known[0] - v[0], known[1] - v[1]];
+          if (!same(known, q.given.p)) fail(lv, q, '題目的已知點和畫的不一樣');
+          if (!same(q.path[0], q.rule === '點的平移' ? q.given.p : q.target) || !same(q.path[q.path.length - 1], q.rule === '點的平移' ? q.target : q.given.p)) fail(lv, q, '路徑頭尾不對');
+        } else if (q.rule === '象限與距離') {
+          const m = text.match(/第(一|二|三|四)象限，到 x 軸的距離是 (\d+)，到 y 軸的距離是 (\d+)/);
+          const sg = { 一: [1, 1], 二: [-1, 1], 三: [-1, -1], 四: [1, -1] }[m[1]];
+          expect = [sg[0] * Number(m[3]) * 2, sg[1] * Number(m[2]) * 2];
+        } else if (q.rule === '軸上的點') {
+          const m = text.match(/在 (x|y) 軸上，位在原點的(上|下|左|右)方 (\d+) 個單位/);
+          const k = Number(m[3]) * 2 * (m[2] === '右' || m[2] === '上' ? 1 : -1);
+          if ((m[1] === 'x') !== (m[2] === '左' || m[2] === '右')) fail(lv, q, '軸和方向矛盾');
+          expect = m[1] === 'x' ? [k, 0] : [0, k];
+        } else if (q.rule === '用文字描述的點') {
+          const mx = text.match(/x 坐標是 (\S+?)[，。]/), my = text.match(/y 坐標是 (\S+?)[，。]/);
+          expect = [parseNum(mx[1]), parseNum(my[1])];
+        } else {
+          expect = pts[0].p;
+        }
+        if (!expect || !same(expect, q.target)) fail(lv, q, '獨立重算不符：' + JSON.stringify(expect));
+        // 說明裡寫的正解坐標也要一致
+        const howPts = parsePts(q.how);
+        if (howPts.length && !same(howPts[howPts.length - 1].p, q.target)) fail(lv, q, '說明裡的坐標不符');
+      }
+    });
+    return { ok: errs.length === 0, errors: errs, counts };
+  }
+  window.__coordStrike = { selfTest, diagnose, makeQuestion };
+
+  drawGrid(false);
+  paintLevel();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>
