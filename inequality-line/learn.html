@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>數線畫解小抄 - 數線畫解</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="一元一次不等式的解怎麼畫在數線上：方向、空心與實心、兩個不等號只畫一段、數整數解，加上習慣用語對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    var { font-family: "Times New Roman", "Cambria", serif; font-style: italic; padding: 0 0.04em; }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+
+    .topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 16px; }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+    .btn {
+      padding: 9px 16px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    .btn:hover { filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+    .lead strong { color: var(--text); }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 1.3rem;
+      color: var(--accent-2);
+      border-left: 4px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+    .card { border: 1px solid var(--line); border-radius: 16px; background: var(--card); padding: 16px 18px; }
+    .card .law { font-size: clamp(1.15rem, 3.2vw, 1.45rem); font-weight: 700; color: var(--cyan); margin-bottom: 4px; }
+    .card .say { color: var(--muted); font-size: 0.96rem; margin: 0 0 6px; }
+    .card .say strong { color: var(--text); }
+
+    svg.nl { display: block; width: 100%; height: auto; margin-top: 4px; }
+    .axis { stroke: #cbd5e1; stroke-width: 0.05; }
+    .axis-arrow { fill: #cbd5e1; }
+    .tk { stroke: #cbd5e1; stroke-width: 0.04; }
+    .tick { fill: var(--muted); font-size: 0.5px; font-family: inherit; }
+    .sol { stroke: var(--win); stroke-width: 0.15; }
+    .hd { fill: var(--win); }
+    .ep { stroke: var(--win); stroke-width: 0.07; fill: #1e2948; }
+    .ep.solid { fill: var(--win); }
+    .ip { fill: var(--accent-2); }
+
+    .note {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 14px 18px;
+      margin: 14px 0;
+    }
+    .note b { color: var(--accent-2); }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: clamp(0.95rem, 2.4vw, 1.1rem); }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td { border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: middle; }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.sym { font-size: 1.35em; font-weight: 700; color: var(--accent-2); text-align: center; white-space: nowrap; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions"><a class="btn" href="./">🎮 開始挑戰</a></div>
+    </header>
+
+    <h1>數線畫解小抄</h1>
+    <p class="lead">康軒 1 下 4-1 認識一元一次不等式。把解畫在數線上只要決定兩件事：<strong>往哪邊畫</strong>（比端點大還是小）、<strong>端點空心還是實心</strong>（有沒有等號）。</p>
+
+    <h2>一個不等號：從端點畫到盡頭</h2>
+    <div class="grid" id="singles"></div>
+    <div class="note">
+      <b>方向</b>：數線愈右邊愈大，<var>x</var> &gt; <var>a</var>、<var>x</var> ≥ <var>a</var> 往<b>右</b>畫；<var>x</var> &lt; <var>a</var>、<var>x</var> ≤ <var>a</var> 往<b>左</b>畫。<br>
+      <b>端點</b>：沒有等號（&gt;、&lt;）畫<b>空心圓圈 ○</b>，<var>a</var> 不是解；有等號（≥、≤）畫<b>實心圓點 ●</b>，<var>a</var> 也是解。<br>
+      <b>倒著寫</b>：2 &lt; <var>x</var> 要從 <var>x</var> 這邊讀回來，就是 <var>x</var> &gt; 2，往右畫。
+    </div>
+
+    <h2>兩個不等號：只畫中間一段</h2>
+    <div class="grid" id="doubles"></div>
+    <div class="note">
+      兩個端點<b>各自</b>判斷：旁邊的不等號有等號就實心，沒有就空心。解只在兩端之間，<b>不延伸到盡頭</b>。
+    </div>
+
+    <h2>數整數解：先畫圖，再數點</h2>
+    <div class="grid" id="ints"></div>
+    <div class="note">
+      <b>實心端點要算、空心端點不算</b>。「正整數」「負整數」都<b>不含 0</b>。<br>
+      兩端都是整數時，<var>a</var> ≤ <var>x</var> ≤ <var>b</var> 有 <var>b</var> − <var>a</var> + 1 個整數；每多一端是空心就少 1 個。
+    </div>
+
+    <h2>習慣用語對照表</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>翻譯一個詞只問兩件事：比界線大還是小？剛好等於界線算不算？</caption>
+        <thead><tr><th>習慣用語</th><th>不等號</th><th>剛好等於算不算</th><th>端點</th></tr></thead>
+        <tbody>
+          <tr><td>大於、超過、高於</td><td class="sym">&gt;</td><td>不算</td><td>○ 空心，往右</td></tr>
+          <tr><td>小於、未滿、低於、不到</td><td class="sym">&lt;</td><td>不算</td><td>○ 空心，往左</td></tr>
+          <tr><td>不小於、不低於、至少、以上（含）</td><td class="sym">≥</td><td>算</td><td>● 實心，往右</td></tr>
+          <tr><td>不大於、不超過、至多、以下（含）</td><td class="sym">≤</td><td>算</td><td>● 實心，往左</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>常見錯誤</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th style="width:46%">常見的想法</th><th>正確</th></tr></thead>
+        <tbody>
+          <tr><td class="bad"><var>x</var> ≥ 3 畫空心</td><td class="good">有等號，3 也是解，要畫實心</td></tr>
+          <tr><td class="bad">−2 &lt; <var>x</var> 看到「&lt;」就往左畫</td><td class="good">從 <var>x</var> 讀回來是 <var>x</var> &gt; −2，往右畫</td></tr>
+          <tr><td class="bad">「不超過 5」有個「不」字，所以是 <var>x</var> &gt; 5</td><td class="good">沒有超過 → 比 5 小或剛好 5 → <var>x</var> ≤ 5</td></tr>
+          <tr><td class="bad">「未滿 12 歲」包含 12 歲</td><td class="good">未滿不含界線：<var>x</var> &lt; 12，空心</td></tr>
+          <tr><td class="bad">−1 ≤ <var>x</var> &lt; 4 兩端都往外延伸</td><td class="good">兩個不等號只畫 −1 到 4 中間一段</td></tr>
+          <tr><td class="bad"><var>x</var> ≤ 3 的正整數解是 0、1、2、3</td><td class="good">0 不是正整數，答案是 1、2、3</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a>
+    </footer>
+  </div>
+
+<script>
+(() => {
+  // 小數線：只在正向端畫箭頭；解用綠色粗線、端點 ○／●
+  const num = v => (v < 0 ? '−' + (-v) : String(v));
+  function line(lo, hi, from = -4, to = 4, dots = []) {
+    const L = from - 0.6, Rr = to + 0.6;
+    let s = `<svg class="nl" viewBox="${from - 0.9} -0.75 ${to - from + 2} 1.75" aria-hidden="true">`;
+    s += `<line class="axis" x1="${L}" y1="0" x2="${Rr + 0.25}" y2="0"/><polygon class="axis-arrow" points="${Rr + 0.55},0 ${Rr + 0.2},-0.16 ${Rr + 0.2},0.16"/>`;
+    for (let i = from; i <= to; i++) s += `<line class="tk" x1="${i}" y1="-0.12" x2="${i}" y2="0.12"/><text class="tick" x="${i}" y="0.75" text-anchor="middle">${num(i)}</text>`;
+    const x1 = lo ? lo.v : L + 0.3, x2 = hi ? hi.v : Rr - 0.3;
+    s += `<line class="sol" x1="${x1}" y1="0" x2="${x2}" y2="0"/>`;
+    if (!lo) s += `<polygon class="hd" points="${x1 - 0.32},0 ${x1},-0.18 ${x1},0.18"/>`;
+    if (!hi) s += `<polygon class="hd" points="${x2 + 0.32},0 ${x2},-0.18 ${x2},0.18"/>`;
+    [lo, hi].forEach(e => { if (e) s += `<circle class="ep${e.solid ? ' solid' : ''}" cx="${e.v}" cy="0" r="0.18"/>`; });
+    dots.forEach(t => { s += `<circle class="ip" cx="${t}" cy="-0.45" r="0.13"/>`; });
+    return s + '</svg>';
+  }
+  const card = (law, say, svg) => `<div class="card"><div class="law">${law}</div><p class="say">${say}</p>${svg}</div>`;
+  const X = '<var>x</var>';
+  document.getElementById('singles').innerHTML = [
+    card(`${X} &gt; 1`, '沒有等號 → <strong>空心</strong>；比 1 大 → <strong>往右</strong>', line({ v: 1, solid: false }, null)),
+    card(`${X} ≥ −2`, '有等號 → <strong>實心</strong>；比 −2 大 → <strong>往右</strong>', line({ v: -2, solid: true }, null)),
+    card(`${X} &lt; 2`, '沒有等號 → <strong>空心</strong>；比 2 小 → <strong>往左</strong>', line(null, { v: 2, solid: false })),
+    card(`${X} ≤ −1`, '有等號 → <strong>實心</strong>；比 −1 小 → <strong>往左</strong>', line(null, { v: -1, solid: true }))
+  ].join('');
+  document.getElementById('doubles').innerHTML = [
+    card(`−1 ≤ ${X} &lt; 3`, '左端有等號 → 實心；右端沒有 → 空心', line({ v: -1, solid: true }, { v: 3, solid: false })),
+    card(`−3 &lt; ${X} ≤ 2`, '左端沒有等號 → 空心；右端有 → 實心', line({ v: -3, solid: false }, { v: 2, solid: true }))
+  ].join('');
+  document.getElementById('ints').innerHTML = [
+    card(`−1 ≤ ${X} &lt; 3 的整數解`, '−1 實心要算，3 空心不算：<strong>−1、0、1、2</strong>，共 4 個', line({ v: -1, solid: true }, { v: 3, solid: false }, -4, 4, [-1, 0, 1, 2])),
+    card(`${X} &lt; 4 的正整數解`, '0 不是正整數，4 空心不算：<strong>1、2、3</strong>', line(null, { v: 4, solid: false }, -2, 5, [1, 2, 3]))
+  ].join('');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>數線畫解 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="一元一次不等式的解畫在數線上：空心或實心、往左或往右、只畫一段；還有看圖選式、圈出整數解。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    var { font-family: "Times New Roman", "Cambria", serif; font-style: italic; padding: 0 0.04em; }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 38ch;
+      line-height: 1.7;
+    }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; flex-wrap: wrap; justify-content: center; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+
+    .level-note { margin: -6px 0 0; color: var(--muted); font-size: 0.95rem; min-height: 1.5em; }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover:not(:disabled) { filter: brightness(1.06); }
+    .big-btn:active:not(:disabled) { transform: translateY(2px); }
+    .big-btn:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys {
+      color: var(--muted);
+      font-size: 0.85rem;
+      opacity: 0.8;
+      line-height: 1.9;
+    }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer {
+      flex: 0 0 auto;
+      height: 10px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+    body[data-view="result"] .timer > i { opacity: 0.25; }
+
+    /* 數線是寬而扁的圖，不論直式或橫式都由上往下排：題目 → 數線 → 按鈕 */
+    .play-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      max-width: 1180px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px 14px 16px;
+      overflow-y: auto;
+    }
+
+    .head {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .head-row { display: flex; align-items: center; gap: 12px; }
+
+    .rule-tag {
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+      background: var(--panel);
+      white-space: nowrap;
+    }
+
+    .count {
+      margin-left: auto;
+      font-size: clamp(2rem, 5vw, 3.6rem);
+      line-height: 1;
+      font-weight: 800;
+      color: var(--accent-2);
+      font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    .q {
+      text-align: center;
+      font-size: clamp(1.25rem, 3.4vw, 2.4rem);
+      font-weight: 700;
+      line-height: 1.55;
+    }
+    .q em { font-style: normal; color: var(--accent-2); }
+    .ineq { white-space: nowrap; color: var(--accent-2); font-size: 1.25em; }
+    .q .ineq { display: inline-block; margin: 0 0.15em; }
+
+    .tip { margin: 0; text-align: center; color: var(--muted); font-size: 0.95rem; }
+    .tip b { color: var(--text); }
+    body[data-view="result"] .tip,
+    body[data-view="result"] .q-wrap { display: none; }
+    body[data-view="play"] .res { display: none; }
+
+    .res { text-align: center; }
+    .res h2 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .res.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .res.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .res .ask {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2vw, 1.2rem);
+      line-height: 1.6;
+    }
+    .res .ask .ineq { font-size: 1.1em; }
+    .res .ask em { font-style: normal; }
+    .res .why {
+      margin: 10px auto 0;
+      max-width: 860px;
+      padding: 12px 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      text-align: left;
+      font-size: clamp(1rem, 2.2vw, 1.3rem);
+      line-height: 1.75;
+    }
+    .res .why p { margin: 0; }
+    .res .why p + p { margin-top: 6px; }
+    .res .why em { font-style: normal; color: var(--accent-2); font-weight: 700; }
+    .res .why .oops { color: #fca5a5; }
+    .res .why .ineq { font-size: 1em; }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+    .actions .big-btn { margin: 0; padding: 14px 40px; }
+    body[data-view="play"] .act-res,
+    body[data-view="result"] .act-play { display: none; }
+    .actions [hidden] { display: none !important; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* 畫圖題：選方向 */
+    .dirs { width: 100%; display: flex; justify-content: center; }
+    .dirs .seg button { font-size: clamp(1rem, 2.4vw, 1.3rem); padding: 12px 20px; }
+    .dirs .seg button[aria-pressed="true"] { background: rgba(34, 211, 238, 0.18); color: var(--cyan); }
+
+    /* 看圖選式：四個選項 */
+    .opts {
+      width: 100%;
+      max-width: 860px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .opt {
+      padding: 14px 10px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: clamp(1.25rem, 3.2vw, 2rem);
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .opt small { color: var(--muted); font-size: 0.6em; margin-right: 0.4em; font-weight: 400; }
+    .opt:hover:not(:disabled) { border-color: var(--cyan); }
+    .opt:disabled { cursor: default; opacity: 0.5; }
+    .opt.right { opacity: 1; border-color: var(--win); background: rgba(34, 197, 94, 0.18); color: #bbf7d0; }
+    .opt.wrong { opacity: 1; border-color: var(--lose); background: rgba(239, 68, 68, 0.16); color: #fecaca; }
+
+    /* ── 數線 ───────────────────────────────── */
+    .board {
+      flex: 1 1 auto;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .board svg {
+      display: block;
+      width: 100%;
+      max-height: 100%;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: inherit;
+    }
+    .board { touch-action: none; }
+    body[data-kind="draw"][data-view="play"] .board,
+    body[data-kind="ints"][data-view="play"] .board { cursor: pointer; }
+
+    .plate { fill: rgba(20, 27, 52, 0.6); stroke: var(--line); stroke-width: 0.03; }
+    .axis { stroke: #cbd5e1; stroke-width: 0.05; }
+    .axis-arrow { fill: #cbd5e1; }
+    .tk { stroke: #cbd5e1; stroke-width: 0.04; }
+    .tick { fill: #cbd5e1; font-size: 0.5px; }
+    .tick.zero { fill: var(--text); }
+    .axis-name { fill: #e2e8f0; font-size: 0.55px; font-style: italic; font-family: "Times New Roman", serif; }
+    .hover-col { fill: rgba(34, 211, 238, 0.08); }
+
+    .sol { stroke-width: 0.15; stroke-linecap: butt; }
+    .sol.me { stroke: var(--cyan); }
+    .sol.ok { stroke: var(--win); }
+    .sol.bad { stroke: var(--lose); opacity: 0.85; }
+    .sol.show { stroke: var(--accent-2); }
+    .sol.ghost { stroke: var(--cyan); opacity: 0.35; stroke-dasharray: 0.2 0.15; }
+    .hd.me { fill: var(--cyan); }
+    .hd.ok { fill: var(--win); }
+    .hd.bad { fill: var(--lose); opacity: 0.85; }
+    .hd.show { fill: var(--accent-2); }
+    .ep { stroke-width: 0.07; }
+    .ep.hollow { fill: #141b34; }
+    .ep.me { stroke: var(--cyan); }
+    .ep.me.solid { fill: var(--cyan); }
+    .ep.ok { stroke: var(--win); }
+    .ep.ok.solid { fill: var(--win); }
+    .ep.bad { stroke: var(--lose); }
+    .ep.bad.solid { fill: var(--lose); }
+    .ep.show { stroke: var(--accent-2); }
+    .ep.show.solid { fill: var(--accent-2); }
+    .track { stroke: rgba(239, 68, 68, 0.35); stroke-width: 0.03; stroke-dasharray: 0.1 0.1; }
+    .track-lbl { fill: #fca5a5; font-size: 0.4px; }
+
+    .pick { fill: var(--cyan); }
+    .ans-dot { fill: var(--win); stroke: #0b1020; stroke-width: 0.04; }
+    .miss-ring { fill: none; stroke: var(--win); stroke-width: 0.06; stroke-dasharray: 0.12 0.08; }
+    .wrong-x { stroke: var(--lose); stroke-width: 0.09; stroke-linecap: round; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .actions .big-btn { padding: 12px 30px; }
+      .ghost-btn { padding: 10px 18px; }
+      .dirs .seg button { padding: 10px 12px; }
+      .opts { gap: 8px; }
+    }
+
+    /* 題組四個按鈕：窄螢幕排成 2 × 2，避免換行成 3 + 1 */
+    @media (max-width: 560px) {
+      #level { display: grid; grid-template-columns: 1fr 1fr; border-radius: 18px; }
+      #level button + button { border-left: 0; }
+      #level button:nth-child(even) { border-left: 1px solid var(--line); }
+      #level button:nth-child(n+3) { border-top: 1px solid var(--line); }
+    }
+
+    @media (max-height: 560px) {
+      .tip { display: none; }
+      .q { font-size: clamp(1.1rem, 3vw, 1.8rem); }
+    }
+  </style>
+</head>
+<body data-view="menu" data-kind="draw">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">數線畫解</h1>
+      <p class="unit" style="margin:0 0 8px;opacity:.75;font-size:.95rem">📘 第2冊・第4章 一元一次不等式・第1節 認識一元一次不等式</p>
+      <p class="hint">螢幕出一個不等式，<span class="limit-val">15</span> 秒內把它的解<strong>畫在數線上</strong>：端點空心還是實心？往左、往右，還是只畫一段？</p>
+
+      <div class="ctl-row">
+        <div class="seg" id="level" role="group" aria-label="題組">
+          <button type="button" data-level="single" aria-pressed="true">一個不等號</button>
+          <button type="button" data-level="double" aria-pressed="false">兩個不等號</button>
+          <button type="button" data-level="read" aria-pressed="false">看圖選式</button>
+          <button type="button" data-level="ints" aria-pressed="false">圈整數解</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-1" aria-label="減少 1 秒">−</button>
+          <b class="limit-val">15</b>秒
+          <button type="button" data-step="1" aria-label="增加 1 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+
+      <button type="button" class="big-btn" id="start">🎯 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看數線畫解小抄</a>
+      <p class="keys">也能用鍵盤：<kbd>←</kbd><kbd>→</kbd> 選方向　<kbd>1</kbd>～<kbd>4</kbd> 選答案　<kbd>Enter</kbd> 確定　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <!-- ── 作答／判定 ─────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="play-body">
+      <div class="head">
+        <div class="head-row">
+          <div class="rule-tag" id="rule">畫解</div>
+          <div class="count" id="count">15</div>
+        </div>
+        <div class="q-wrap"><div class="q" id="q"></div></div>
+        <p class="tip" id="tip"></p>
+        <div class="res" id="res" aria-live="polite">
+          <h2 id="res-title">答對了！</h2>
+          <div class="ask" id="res-ask"></div>
+          <div class="why" id="res-why"></div>
+        </div>
+      </div>
+
+      <div class="board">
+        <svg id="svg" viewBox="-7.3 -2.05 14.95 3.1" role="img" aria-label="數線">
+          <g id="g-grid"></g>
+          <g id="g-marks"></g>
+        </svg>
+      </div>
+
+      <div class="actions">
+        <div class="dirs act-play" id="dirs-wrap">
+          <div class="seg" id="dirs" role="group" aria-label="解的方向">
+            <button type="button" data-dir="left" aria-pressed="false">◀ 往左</button>
+            <button type="button" data-dir="between" aria-pressed="false">◀▶ 只畫一段</button>
+            <button type="button" data-dir="right" aria-pressed="false">往右 ▶</button>
+          </div>
+        </div>
+        <div class="opts" id="opts"></div>
+        <button type="button" class="big-btn act-play" id="confirm" disabled>✔ 確定</button>
+        <button type="button" class="big-btn act-res" id="next">▸ 下一題</button>
+        <button type="button" class="ghost-btn act-res" id="back">結束這輪</button>
+      </div>
+    </div>
+  </section>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器）────────────── */
+  const LEVELS = {
+    single: { name: '一個不等號', def: 15, kind: 'draw', note: 'x > a、x ≤ a，也有 a < x 的寫法和「至少」「未滿」這類文字。' },
+    double: { name: '兩個不等號', def: 18, kind: 'draw', note: 'a < x ≤ b 這類：兩個端點各自決定空心或實心，只畫中間一段。' },
+    read:   { name: '看圖選式', def: 10, kind: 'read', note: '數線上已經畫好解，從四個不等式裡挑出對的那一個。' },
+    ints:   { name: '圈整數解', def: 20, kind: 'ints', note: '在數線上點出全部的整數解（或正整數解、負整數解）。' }
+  };
+  const LIMIT_MIN = 4, LIMIT_MAX = 40;
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 無痕模式等情況就不記 */ } }
+  };
+  const clampLimit = v => Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v));
+  let level = LEVELS[store.get('iline-level')] ? store.get('iline-level') : 'single';
+  const limits = {};
+  Object.keys(LEVELS).forEach(k => {
+    limits[k] = clampLimit(parseInt(store.get('iline-limit-' + k), 10) || LEVELS[k].def);
+  });
+  let muted = store.get('iline-muted') === '1';
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const coin = () => Math.random() < 0.5;
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const MINUS = '−';
+  const N = 6;                                   // 數線範圍 −6 ~ 6
+  const num = v => (v < 0 ? MINUS + (-v) : String(v));
+  const X = '<var>x</var>';
+  const LT = '&lt;', GT = '&gt;';                // 寫進 HTML 的 < >，一律用實體字元
+  const SYM = { '>': GT, '<': LT, '>=': '≥', '<=': '≤' };
+  const MIRROR = { '>': '<', '<': '>', '>=': '<=', '<=': '>=' };
+
+  /* 解集合：{ lo: { v, solid } | null, hi: { v, solid } | null }，null 表示延伸到盡頭 */
+  const opSet = (op, a) => (op[0] === '>'
+    ? { lo: { v: a, solid: op.length === 2 }, hi: null }
+    : { lo: null, hi: { v: a, solid: op.length === 2 } });
+  const shapeOf = s => (s.lo && s.hi ? 'between' : (s.lo ? 'right' : 'left'));
+  const sameEnd = (a, b) => (!a && !b) || (!!a && !!b && a.v === b.v && a.solid === b.solid);
+  const sameSet = (a, b) => sameEnd(a.lo, b.lo) && sameEnd(a.hi, b.hi);
+  const contains = (s, t) =>
+    (!s.lo || t > s.lo.v || (s.lo.solid && t === s.lo.v)) &&
+    (!s.hi || t < s.hi.v || (s.hi.solid && t === s.hi.v));
+  function fmt(s) {
+    let t;
+    if (s.lo && s.hi) t = `${num(s.lo.v)} ${s.lo.solid ? '≤' : LT} ${X} ${s.hi.solid ? '≤' : LT} ${num(s.hi.v)}`;
+    else if (s.lo) t = `${X} ${s.lo.solid ? '≥' : GT} ${num(s.lo.v)}`;
+    else t = `${X} ${s.hi.solid ? '≤' : LT} ${num(s.hi.v)}`;
+    return `<span class="ineq">${t}</span>`;
+  }
+  const dot = solid => (solid ? '實心圓點 ●' : '空心圓圈 ○');
+
+  /* 習慣用語（課本 4-1）：問兩件事——比界線大還是小？剛好等於算不算？ */
+  const W = (w, op, tpl) => ({ w, op, t: tpl || (a => `${X} <em>${w}</em> ${a}`) });
+  const WORDS = [
+    W('超過', '>'), W('大於', '>'),
+    W('未滿', '<'), W('小於', '<'), W('不到', '<'),
+    W('至少是', '>='), W('不小於', '>='), W('不低於', '>='),
+    W('以上（含）', '>=', a => `${X} 在 ${a} <em>以上（含）</em>`),
+    W('至多是', '<='), W('不超過', '<='), W('不大於', '<='),
+    W('以下（含）', '<=', a => `${X} 在 ${a} <em>以下（含）</em>`)
+  ];
+  const wordsOf = test => WORDS.filter(w => test(w.op));
+
+  /* ── 題目產生器 ───────────────────────── */
+  function endHow(e, word) {
+    const why = word
+      ? `「${word.w}」${e.solid ? '包含' : '不包含'}剛好等於 ${num(e.v)}`
+      : `${e.solid ? '有' : '沒有'}等號，${num(e.v)} ${e.solid ? '也是' : '不是'}解`;
+    return `${num(e.v)} 畫<em>${dot(e.solid)}</em>（${why}）`;
+  }
+
+  // 一個不等號：x op a、a op x（倒著寫）、文字敘述
+  function genSingle() {
+    const a = R(-5, 5);
+    const op = pickOf(['>', '>=', '<', '<=']);
+    const target = opSet(op, a);
+    const e = target.lo || target.hi;
+    const big = op[0] === '>';
+    const r = Math.random();
+    let form, html, rule, prefix = '', words = [];
+    if (r < 0.58) {
+      form = 'plain'; rule = '一個不等號';
+      html = `畫出 ${fmt(target)} 的解`;
+    } else if (r < 0.8) {
+      form = 'rev'; rule = '倒著寫的不等式';
+      const orig = `<span class="ineq">${num(a)} ${SYM[MIRROR[op]]} ${X}</span>`;
+      html = `畫出 ${orig} 的解`;
+      prefix = `${orig} 就是 ${fmt(target)}；`;
+    } else {
+      form = 'word'; rule = '文字敘述';
+      const w = pickOf(wordsOf(o => o === op));
+      words = [w];
+      html = `${w.t(num(a))}。<br>在數線上畫出 ${X} 的範圍。`;
+      prefix = `寫成 ${fmt(target)}；`;
+    }
+    return {
+      kind: 'draw', rule, form, html, target, words,
+      how: `${prefix}${endHow(e, words[0])}，往<em>${big ? '右' : '左'}</em>畫到盡頭（比 ${num(a)} ${big ? '大' : '小'}）。`
+    };
+  }
+
+  // 兩個不等號：a < x ≤ b，或「至少 a，而且未滿 b」
+  function genDouble() {
+    let a, b;
+    do { a = R(-5, 4); b = R(-4, 5); } while (b - a < 2 || b - a > 7);
+    const target = { lo: { v: a, solid: coin() }, hi: { v: b, solid: coin() } };
+    let html, rule, prefix = '', words = [];
+    if (Math.random() < 0.75) {
+      rule = '兩個不等號';
+      html = `畫出 ${fmt(target)} 的解`;
+    } else {
+      rule = '兩個條件';
+      const wl = pickOf(wordsOf(o => o === (target.lo.solid ? '>=' : '>')));
+      const wh = pickOf(wordsOf(o => o === (target.hi.solid ? '<=' : '<')));
+      words = [wl, wh];
+      html = `${wl.t(num(a))}，而且 ${wh.t(num(b))}。<br>在數線上畫出 ${X} 的範圍。`;
+      prefix = `寫成 ${fmt(target)}；`;
+    }
+    return {
+      kind: 'draw', rule, form: words.length ? 'word' : 'plain', html, target, words,
+      how: `${prefix}左端 ${endHow(target.lo, words[0])}、右端 ${endHow(target.hi, words[1])}，<em>只畫兩端之間</em>。`
+    };
+  }
+
+  // 看圖選式：同一組端點，把方向／空心實心的四種組合都列出來
+  function genRead() {
+    let sets;
+    if (coin()) {
+      const a = R(-5, 5);
+      sets = ['>', '>=', '<', '<='].map(op => opSet(op, a));
+    } else {
+      let a, b;
+      do { a = R(-5, 4); b = R(-4, 5); } while (b - a < 2 || b - a > 7);
+      sets = [[true, true], [true, false], [false, true], [false, false]]
+        .map(([l, h]) => ({ lo: { v: a, solid: l }, hi: { v: b, solid: h } }));
+    }
+    const target = pickOf(sets);
+    const options = shuffle(sets);
+    const s = shapeOf(target);
+    let how;
+    if (s === 'between') {
+      how = `只畫了 ${num(target.lo.v)} 到 ${num(target.hi.v)} 之間一段；左端${target.lo.solid ? '實心（≤）' : `空心（${LT}）`}、右端${target.hi.solid ? '實心（≤）' : `空心（${LT}）`}，所以是 ${fmt(target)}。`;
+    } else {
+      const e = target.lo || target.hi;
+      how = `從 ${num(e.v)} 往<em>${s === 'right' ? '右' : '左'}</em>畫（比 ${num(e.v)} ${s === 'right' ? '大' : '小'}），端點是<em>${e.solid ? '實心' : '空心'}</em>（${e.solid ? '有' : '沒有'}等號），所以是 ${fmt(target)}。`;
+    }
+    return {
+      kind: 'read', rule: s === 'between' ? '看圖選式・一段' : '看圖選式',
+      html: `數線上畫的是哪一個不等式的解？`, target, options,
+      answer: options.findIndex(o => o === target), how
+    };
+  }
+
+  // 圈整數解：整數解／正整數解／負整數解
+  const INT_KIND = { all: '整數解', pos: '正整數解', neg: '負整數解' };
+  const kindOk = (k, t) => (k === 'pos' ? t > 0 : k === 'neg' ? t < 0 : true);
+  function genInts() {
+    const type = pickOf(['all', 'all', 'pos', 'neg']);
+    let set;
+    if (type === 'all') {
+      let a, b;
+      do { a = R(-5, 3); b = R(-3, 5); } while (b - a < 2 || b - a > 6);
+      set = { lo: { v: a, solid: coin() }, hi: { v: b, solid: coin() } };
+    } else if (type === 'pos') {
+      if (coin()) {
+        set = coin() ? opSet('<', R(2, 5)) : opSet('<=', R(1, 5));
+      } else {
+        set = { lo: { v: R(-3, 0), solid: coin() }, hi: { v: R(2, 5), solid: coin() } };
+      }
+    } else {
+      if (coin()) {
+        set = coin() ? opSet('>', R(-5, -2)) : opSet('>=', R(-5, -1));
+      } else {
+        set = { lo: { v: R(-5, -2), solid: coin() }, hi: { v: R(0, 3), solid: coin() } };
+      }
+    }
+    const answer = [];
+    for (let t = -N; t <= N; t++) if (contains(set, t) && kindOk(type, t)) answer.push(t);
+    const notes = [];
+    [set.lo, set.hi].forEach(e => {
+      if (!e || !kindOk(type, e.v)) return;
+      notes.push(`端點 ${num(e.v)} 是${e.solid ? '實心，<em>要算</em>' : '空心，<em>不算</em>'}`);
+    });
+    if (type !== 'all' && contains(set, 0)) notes.push(`0 ${type === 'pos' ? '不是正整數' : '不是負整數'}`);
+    return {
+      kind: 'ints', rule: INT_KIND[type], type, target: set, answer,
+      html: `${fmt(set)} 的<em>${INT_KIND[type]}</em>有哪些？<br>在數線上點出全部。`,
+      how: `${notes.length ? notes.join('；') + '。' : ''}${INT_KIND[type]}是 <em>${answer.map(num).join('、')}</em>，共 ${answer.length} 個。`
+    };
+  }
+
+  const GEN = { single: genSingle, double: genDouble, read: genRead, ints: genInts };
+  const keyOf = q => q.html + JSON.stringify(q.target);
+  let lastKey = '';
+  function nextQuestion() {
+    let q;
+    for (let i = 0; i < 12; i++) {
+      q = GEN[level]();
+      if (keyOf(q) !== lastKey) break;
+    }
+    lastKey = keyOf(q);
+    return q;
+  }
+
+  /* ── 判斷錯在哪裡（回傳字串陣列；答對回傳 null）── */
+  function fillMsg(te, word) {
+    if (word) return `「${word.w}」${te.solid ? '包含' : '不包含'}剛好等於 ${num(te.v)}，端點要畫<em>${dot(te.solid)}</em>。`;
+    return `${num(te.v)} 旁邊的不等號${te.solid ? '<em>有</em>' : '<em>沒有</em>'}等號，${num(te.v)} ${te.solid ? '也是' : '不是'}解，要畫<em>${dot(te.solid)}</em>。`;
+  }
+
+  function diagnoseDraw(q, P) {
+    const T = q.target;
+    if (sameSet(T, P)) return null;
+    const msgs = [];
+    const sT = shapeOf(T), sP = shapeOf(P);
+    if (sT !== sP) {
+      if (sT === 'between') msgs.push(`有<em>兩個</em>${q.words.length ? '條件' : '不等號'}，解是兩個端點<em>之間的一段</em>，不會延伸到盡頭。`);
+      else if (sP === 'between') msgs.push(`只有一個不等號，解從端點<em>一直延伸到數線盡頭</em>，不是只有一段。`);
+      else {
+        const big = sT === 'right', a = num((T.lo || T.hi).v);
+        if (q.form === 'rev') msgs.push(`倒著寫的式子要從 ${X} 這邊讀回來：就是 ${fmt(T)}，${X} 比 ${a} ${big ? '大' : '小'}，在 ${a} 的<em>${big ? '右' : '左'}邊</em>。`);
+        else if (q.form === 'word') msgs.push(`「${q.words[0].w}」是比 ${a} ${big ? '大' : '小'}的那一邊，解在 ${a} 的<em>${big ? '右' : '左'}邊</em>。`);
+        else msgs.push(`${fmt(T)} 的解比 ${a} ${big ? '大' : '小'}；數線<em>愈右邊愈大</em>，所以往<em>${big ? '右' : '左'}</em>畫。`);
+      }
+    }
+    let pairs = [];
+    if (sT === 'between' && sP === 'between') pairs = [[T.lo, P.lo, '左', q.words[0]], [T.hi, P.hi, '右', q.words[1]]];
+    else if (sT !== 'between' && sP !== 'between') pairs = [[T.lo || T.hi, P.lo || P.hi, '', q.words[0]]];
+    pairs.forEach(([te, pe, side, word]) => {
+      if (te.v !== pe.v) msgs.push(`${side}端點要在 <em>${num(te.v)}</em>，你畫在 ${num(pe.v)}。`);
+      else if (te.solid !== pe.solid) msgs.push(fillMsg(te, word));
+    });
+    return msgs;
+  }
+
+  function diagnoseRead(q, idx) {
+    const T = q.target, C = q.options[idx];
+    if (sameSet(T, C)) return null;
+    const msgs = [];
+    const sT = shapeOf(T);
+    if (sT !== 'between') {
+      const te = T.lo || T.hi, ce = C.lo || C.hi, a = num(te.v);
+      if (shapeOf(C) !== sT) {
+        const big = sT === 'right';
+        msgs.push(`解畫在 ${a} 的<em>${big ? '右' : '左'}邊</em>，是比 ${a} ${big ? '大' : '小'}的數，要用 <em>${big ? GT + ' 或 ≥' : LT + ' 或 ≤'}</em>。`);
+      }
+      if (te.solid !== ce.solid) msgs.push(te.solid
+        ? `端點是<em>實心</em>，${a} 本身也是解，不等號要<em>有等號</em>。`
+        : `端點是<em>空心</em>，${a} 不是解，不等號<em>不能有等號</em>。`);
+    } else {
+      [['左', T.lo, C.lo], ['右', T.hi, C.hi]].forEach(([side, te, ce]) => {
+        if (te.solid !== ce.solid) msgs.push(`${side}端 ${num(te.v)} 是<em>${te.solid ? '實心' : '空心'}</em>，那一邊的不等號要用 <em>${te.solid ? '≤' : LT}</em>。`);
+      });
+    }
+    return msgs;
+  }
+
+  function diagnoseInts(q, picks) {
+    const A = new Set(q.answer), P = new Set(picks);
+    const extra = [...P].filter(t => !A.has(t)).sort((a, b) => a - b);
+    const miss = [...A].filter(t => !P.has(t)).sort((a, b) => a - b);
+    if (!extra.length && !miss.length) return null;
+    const S = q.target, msgs = [];
+    const hollow = [], outside = [], wrongSign = [], solidMiss = [], otherMiss = [];
+    let zero = false;
+    extra.forEach(t => {
+      const end = [S.lo, S.hi].find(e => e && e.v === t);
+      if (!contains(S, t)) (end && !end.solid ? hollow : outside).push(t);
+      else if (t === 0) zero = true;
+      else wrongSign.push(t);
+    });
+    miss.forEach(t => {
+      const end = [S.lo, S.hi].find(e => e && e.v === t);
+      (end && end.solid ? solidMiss : otherMiss).push(t);
+    });
+    const list = arr => arr.map(num).join('、');
+    hollow.forEach(t => msgs.push(`${num(t)} 是<em>空心</em>端點（沒有等號），${num(t)} 本身<em>不是</em>解。`));
+    if (outside.length) msgs.push(`${list(outside)} 不在解的範圍裡。`);
+    if (zero) msgs.push(`0 <em>不是${q.type === 'pos' ? '正' : '負'}整數</em>，不能圈。`);
+    if (wrongSign.length) msgs.push(`${list(wrongSign)} 雖然是解，但不是<em>${q.type === 'pos' ? '正' : '負'}整數</em>。`);
+    solidMiss.forEach(t => msgs.push(`${num(t)} 是<em>實心</em>端點（有等號），${num(t)} 本身<em>也是</em>解，要圈。`));
+    if (otherMiss.length) msgs.push(`漏了 ${list(otherMiss)}。`);
+    return msgs;
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+  const sfxPlace = () => tone(760, 0.05, 0, 'triangle', 0.08);
+
+  /* ── 數線 ───────────────────────────── */
+  const EDGE_L = -6.7, EDGE_R = 6.6;
+  function drawGrid() {
+    let s = `<rect class="plate" x="-7.15" y="-1.95" width="14.65" height="2.9" rx="0.2"/>`;
+    // 數線只在正向端畫一個箭頭，負向端平切
+    s += `<line class="axis" x1="${EDGE_L}" y1="0" x2="7.05" y2="0"/>`;
+    s += `<polygon class="axis-arrow" points="7.35,0 6.97,-0.17 6.97,0.17"/>`;
+    for (let i = -N; i <= N; i++) {
+      s += `<line class="tk" x1="${i}" y1="-0.13" x2="${i}" y2="0.13"/>`;
+      s += `<text class="tick${i === 0 ? ' zero' : ''}" x="${i}" y="0.72" text-anchor="middle">${num(i)}</text>`;
+    }
+    $('g-grid').innerHTML = s;
+  }
+
+  function head(x, y, dir, cls) {
+    const k = dir > 0 ? 1 : -1;
+    return `<polygon class="hd ${cls}" points="${x + k * 0.34},${y} ${x},${y - 0.2} ${x},${y + 0.2}"/>`;
+  }
+  // 把一個解集合畫成粗線＋端點；y 是畫在哪一條水平線上
+  function setSvg(set, cls, y = 0) {
+    const x1 = set.lo ? set.lo.v : EDGE_L + 0.34, x2 = set.hi ? set.hi.v : EDGE_R - 0.34;
+    let s = `<line class="sol ${cls}" x1="${x1}" y1="${y}" x2="${x2}" y2="${y}"/>`;
+    if (!set.lo) s += head(x1, y, -1, cls);
+    if (!set.hi) s += head(x2, y, 1, cls);
+    [set.lo, set.hi].forEach(e => {
+      if (e) s += `<circle class="ep ${cls} ${e.solid ? 'solid' : 'hollow'}" cx="${e.v}" cy="${y}" r="0.19"/>`;
+    });
+    return s;
+  }
+  const endSvg = (e, cls, y = 0) => `<circle class="ep ${cls} ${e.solid ? 'solid' : 'hollow'}" cx="${e.v}" cy="${y}" r="0.19"/>`;
+  const xMark = (x, y) => { const k = 0.17; return `<line class="wrong-x" x1="${x - k}" y1="${y - k}" x2="${x + k}" y2="${y + k}"/><line class="wrong-x" x1="${x - k}" y1="${y + k}" x2="${x + k}" y2="${y - k}"/>`; };
+
+  function drawMarks() {
+    const q = cur;
+    let s = '';
+    if (!q) { $('g-marks').innerHTML = ''; return; }
+    const showRes = document.body.dataset.view === 'result';
+    if (q.kind === 'draw') {
+      if (showRes) {
+        s += setSvg(q.target, 'ok');
+        const P = drawnSet();
+        if (lastWrong && P) {
+          s += `<line class="track" x1="${EDGE_L}" y1="-1.25" x2="${EDGE_R}" y2="-1.25"/>`;
+          s += `<text class="track-lbl" x="-7.05" y="-1.55">你畫的</text>`;
+          s += setSvg(P, 'bad', -1.25);
+        }
+      } else {
+        const P = drawnSet();
+        if (P) s += setSvg(P, 'me');
+        else ends.forEach(e => { s += endSvg(e, 'me'); });
+      }
+    } else if (q.kind === 'read') {
+      s += setSvg(q.target, showRes ? 'ok' : 'show');
+    } else if (q.kind === 'ints') {
+      if (showRes) {
+        s += setSvg(q.target, 'ok');
+        const P = new Set(picks);
+        q.answer.forEach(t => {
+          s += P.has(t)
+            ? `<circle class="ans-dot" cx="${t}" cy="-0.7" r="0.17"/>`
+            : `<circle class="miss-ring" cx="${t}" cy="-0.7" r="0.22"/>`;
+        });
+        picks.filter(t => !q.answer.includes(t)).forEach(t => { s += xMark(t, -0.7); });
+      } else {
+        picks.forEach(t => { s += `<circle class="pick" cx="${t}" cy="-0.7" r="0.2"/><line class="sol me" x1="${t}" y1="-0.5" x2="${t}" y2="-0.12" style="stroke-width:.05"/>`; });
+      }
+    }
+    $('g-marks').innerHTML = s;
+  }
+
+  /* ── 狀態 ───────────────────────────── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, lastWrong = false;
+  let dir = null, ends = [], picks = [], chosen = -1;
+  const limit = () => limits[level];
+
+  function drawnSet() {
+    if (!dir) return null;
+    if (dir === 'between') {
+      if (ends.length < 2) return null;
+      const [p, q] = ends.slice().sort((a, b) => a.v - b.v);
+      return { lo: { ...p }, hi: { ...q } };
+    }
+    if (!ends.length) return null;
+    const e = { ...ends[ends.length - 1] };
+    return dir === 'right' ? { lo: e, hi: null } : { lo: null, hi: e };
+  }
+
+  function setView(v) { document.body.dataset.view = v; drawMarks(); }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.level === level));
+    });
+    $('level-note').textContent = LEVELS[level].note;
+    paintLimit();
+  }
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+  function paintDirs() {
+    document.querySelectorAll('#dirs button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.dir === dir));
+    });
+  }
+  function refreshConfirm() {
+    const k = cur && cur.kind;
+    $('confirm').disabled = locked || !(
+      (k === 'draw' && drawnSet()) || (k === 'ints' && picks.length)
+    );
+  }
+
+  const TIPS = {
+    draw: '在數線上點一下放<b>端點</b>，<b>再點一次端點</b>切換 ○空心／●實心；再選方向，按「確定」。',
+    read: '看端點是空心還是實心、解往哪邊畫，再從下面選一個。',
+    ints: '點數線上的整數把它圈起來，再點一次取消；全部圈完按「確定」。'
+  };
+
+  /* ── 出題 ───────────────────────────── */
+  function startQuestion() {
+    cur = nextQuestion();
+    dir = null; ends = []; picks = []; chosen = -1; lastWrong = false;
+    document.body.dataset.kind = cur.kind;
+    $('rule').textContent = cur.rule;
+    $('q').innerHTML = cur.html;
+    $('tip').innerHTML = TIPS[cur.kind];
+    $('dirs-wrap').hidden = cur.kind !== 'draw';
+    $('confirm').hidden = cur.kind === 'read';
+    const opts = $('opts');
+    opts.hidden = cur.kind !== 'read';
+    opts.innerHTML = cur.kind === 'read'
+      ? cur.options.map((o, i) => `<button type="button" class="opt" data-i="${i}"><small>${i + 1}</small>${fmt(o).replace('class="ineq"', '')}</button>`).join('')
+      : '';
+    paintDirs();
+    locked = false;
+    refreshConfirm();
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + limit() * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      $('bar').style.transform = `scaleX(${left / (limit() * 1000)})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 3 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { judge(true); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 作答操作 ───────────────────────── */
+  function tapLine(v) {
+    if (locked) return;
+    if (cur.kind === 'draw') {
+      const hit = ends.find(e => e.v === v);
+      if (hit) hit.solid = !hit.solid;
+      else if (dir === 'between') {
+        if (ends.length < 2) ends.push({ v, solid: false });
+        else {
+          const i = Math.abs(ends[0].v - v) <= Math.abs(ends[1].v - v) ? 0 : 1;
+          ends[i] = { v, solid: ends[i].solid };
+        }
+      } else {
+        const solid = ends.length ? ends[ends.length - 1].solid : false;
+        ends = [{ v, solid }];
+      }
+    } else if (cur.kind === 'ints') {
+      picks = picks.includes(v) ? picks.filter(t => t !== v) : picks.concat(v);
+    } else return;
+    sfxPlace();
+    refreshConfirm();
+    drawMarks();
+  }
+
+  function setDir(d) {
+    if (locked || cur.kind !== 'draw') return;
+    dir = d;
+    if (d !== 'between' && ends.length > 1) ends = [ends[ends.length - 1]];
+    sfxPlace();
+    paintDirs();
+    refreshConfirm();
+    drawMarks();
+  }
+
+  /* ── 判定 ───────────────────────────── */
+  function judge(timeout) {
+    if (locked) return;
+    let msgs = null, answered = false;
+    if (cur.kind === 'draw') {
+      const P = drawnSet();
+      answered = !!P;
+      if (!timeout && !P) return;
+      msgs = P ? diagnoseDraw(cur, P) : [];
+    } else if (cur.kind === 'read') {
+      answered = chosen >= 0;
+      if (!timeout && !answered) return;
+      msgs = answered ? diagnoseRead(cur, chosen) : [];
+    } else {
+      answered = picks.length > 0;
+      if (!timeout && !answered) return;
+      msgs = answered ? diagnoseInts(cur, picks) : [];
+    }
+    locked = true;
+    cancelAnimationFrame(raf);
+    document.body.classList.remove('urgent');
+
+    const win = answered && msgs === null;
+    lastWrong = answered && !win;
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const res = $('res');
+    res.classList.toggle('ok', win);
+    res.classList.toggle('ng', !win);
+    $('res-title').textContent = win ? '答對了！' : (timeout && !answered ? '時間到！' : '答錯了');
+    $('res-ask').innerHTML = cur.html.replace(/<br>/g, ' ');
+    let why = '';
+    if (!win && msgs && msgs.length) why += msgs.map(m => `<p class="oops">✗ ${m}</p>`).join('');
+    else if (!win && timeout && !answered) why += `<p class="oops">時間到了，還沒作答。</p>`;
+    why += `<p>${win ? '' : '正解：'}${cur.how}</p>`;
+    $('res-why').innerHTML = why;
+
+    if (cur.kind === 'read') {
+      document.querySelectorAll('#opts .opt').forEach(b => {
+        const i = Number(b.dataset.i);
+        b.disabled = true;
+        b.classList.toggle('right', i === cur.answer);
+        b.classList.toggle('wrong', i === chosen && i !== cur.answer);
+      });
+    }
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 點擊數線 ─────────────────────────── */
+  const svg = $('svg');
+  function toInt(e) {
+    const m = svg.getScreenCTM();
+    if (!m) return null;
+    const p = svg.createSVGPoint();
+    p.x = e.clientX; p.y = e.clientY;
+    const q = p.matrixTransform(m.inverse());
+    return Math.max(-N, Math.min(N, Math.round(q.x)));
+  }
+  // 手機上數線又扁又小，整個數線區塊（含上下空白）都能點，只看左右位置
+  document.querySelector('.board').addEventListener('pointerdown', e => {
+    if (locked || document.body.dataset.view !== 'play') return;
+    e.preventDefault();
+    const v = toInt(e);
+    if (v !== null) tapLine(v);
+  });
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('confirm').addEventListener('click', () => judge(false));
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+  document.querySelectorAll('#dirs button').forEach(b => b.addEventListener('click', () => setDir(b.dataset.dir)));
+  $('opts').addEventListener('click', e => {
+    const b = e.target.closest('.opt');
+    if (!b || locked) return;
+    chosen = Number(b.dataset.i);
+    judge(false);
+  });
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limits[level] = clampLimit(limit() + Number(b.dataset.step));
+      store.set('iline-limit-' + level, String(limit()));
+      paintLimit();
+    });
+  });
+
+  document.querySelectorAll('#level button').forEach(b => {
+    b.addEventListener('click', () => {
+      level = b.dataset.level;
+      store.set('iline-level', level);
+      paintLevel();
+    });
+  });
+
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    store.set('iline-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      if (cur.kind === 'draw' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        const order = ['left', 'between', 'right'];
+        const i = dir ? order.indexOf(dir) : 1;
+        setDir(order[Math.max(0, Math.min(2, i + (e.key === 'ArrowLeft' ? -1 : 1)))]);
+      } else if (cur.kind === 'read' && /^[1-4]$/.test(e.key)) {
+        e.preventDefault();
+        chosen = Number(e.key) - 1;
+        judge(false);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        judge(false);
+      }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (e.target && e.target.closest && e.target.closest('button, a') && e.target.id !== 'start') return;
+        e.preventDefault(); audio(); startQuestion();
+      }
+    }
+  });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 自我檢查（主控台：__inequalityLine.selfTest(3000)）──
+     不看產生器內部的資料，直接把題目「文字」重新解析成判斷式，
+     在 −6.5 ~ 6.5 每隔 0.5 取一點，檢查和正解的圖是否一致；
+     整數解另外用文字重算；每個錯誤答案都要有說明。 */
+  function selfTest(n = 2000) {
+    const errs = [];
+    const strip = h => h.replace(/<br>/g, ' ').replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/−/g, '-');
+    const fail = (lv, q, why) => { if (errs.length < 30) errs.push({ lv, why, q: strip(q.html) }); };
+    const CMP = { '>': (t, a) => t > a, '<': (t, a) => t < a, '≥': (t, a) => t >= a, '≤': (t, a) => t <= a };
+    const FLIP = { '>': '<', '<': '>', '≥': '≤', '≤': '≥' };
+    const TW = { 超過: '>', 大於: '>', 未滿: '<', 小於: '<', 不到: '<', 至少是: '≥', 不小於: '≥', 不低於: '≥', 至多是: '≤', 不超過: '≤', 不大於: '≤' };
+    function parseIneq(str) {
+      str = str.trim();
+      let m;
+      if ((m = str.match(/^x ([><≥≤]) (-?\d+)$/))) { const a = +m[2]; return t => CMP[m[1]](t, a); }
+      if ((m = str.match(/^(-?\d+) ([><≥≤]) x$/))) { const a = +m[1]; return t => CMP[FLIP[m[2]]](t, a); }
+      if ((m = str.match(/^(-?\d+) ([<≤]) x ([<≤]) (-?\d+)$/))) { const a = +m[1], b = +m[4]; return t => CMP[FLIP[m[2]]](t, a) && CMP[m[3]](t, b); }
+      if ((m = str.match(/^x 在 (-?\d+) (以上|以下)（含）$/))) { const a = +m[1]; return t => (m[2] === '以上' ? t >= a : t <= a); }
+      if ((m = str.match(/^x (\S+) (-?\d+)$/)) && TW[m[1]]) { const a = +m[2]; return t => CMP[TW[m[1]]](t, a); }
+      return null;
+    }
+    function predOf(q) {
+      const text = strip(q.html);
+      let m;
+      if ((m = text.match(/^畫出 (.+) 的解$/))) return parseIneq(m[1]);
+      if ((m = text.match(/^(.+?)。 在數線上畫出 x 的範圍。$/))) {
+        const ps = m[1].split('，而且 ').map(parseIneq);
+        return ps.every(Boolean) ? t => ps.every(p => p(t)) : null;
+      }
+      return null;
+    }
+    const samples = [];
+    for (let t = -6.5; t <= 6.5; t += 0.5) samples.push(t);
+    const counts = {};
+    Object.keys(GEN).forEach(lv => {
+      for (let i = 0; i < n; i++) {
+        const q = GEN[lv]();
+        counts[q.rule] = (counts[q.rule] || 0) + 1;
+        const all = q.html + q.how;
+        if (/NaN|undefined|null/.test(all)) fail(lv, q, 'NaN/undefined');
+        if (q.kind === 'draw') {
+          const pred = predOf(q);
+          if (!pred) { fail(lv, q, '題目解析不出來'); continue; }
+          if (samples.some(t => pred(t) !== contains(q.target, t))) fail(lv, q, '正解的圖和題目不符');
+          if (diagnoseDraw(q, q.target) !== null) fail(lv, q, '正解被判錯');
+          // 各種畫錯：換方向、換空心實心、移端點、改成一段／射線，都要有說明
+          const T = q.target, vars = [];
+          const flip = e => ({ v: e.v, solid: !e.solid });
+          const mv = e => ({ v: e.v + (e.v < 5 ? 1 : -1), solid: e.solid });
+          if (shapeOf(T) === 'between') {
+            vars.push({ lo: flip(T.lo), hi: T.hi }, { lo: T.lo, hi: flip(T.hi) }, { lo: mv(T.lo), hi: T.hi }, { lo: T.lo, hi: null }, { lo: null, hi: T.hi });
+          } else {
+            const e = T.lo || T.hi;
+            vars.push(opSet(T.lo ? '<' : '>', e.v), T.lo ? { lo: flip(e), hi: null } : { lo: null, hi: flip(e) },
+              T.lo ? { lo: mv(e), hi: null } : { lo: null, hi: mv(e) }, { lo: { v: e.v, solid: e.solid }, hi: { v: Math.min(6, e.v + 2), solid: true } });
+          }
+          vars.forEach(P => {
+            if (sameSet(P, T)) return;
+            const d = diagnoseDraw(q, P);
+            if (!d || !d.length || d.some(x => !x || /NaN|undefined/.test(x))) fail(lv, q, '畫錯沒有說明：' + JSON.stringify(P));
+          });
+        } else if (q.kind === 'read') {
+          const strs = q.options.map(o => strip(fmt(o)));
+          if (new Set(strs).size !== 4) fail(lv, q, '選項重複');
+          if (!sameSet(q.options[q.answer], q.target)) fail(lv, q, '答案索引錯');
+          const pred = parseIneq(strs[q.answer]);
+          if (!pred || samples.some(t => pred(t) !== contains(q.target, t))) fail(lv, q, '答案和圖不符');
+          q.options.forEach((o, i) => {
+            const d = diagnoseRead(q, i);
+            if (i === q.answer ? d !== null : (!d || !d.length)) fail(lv, q, '選項說明有誤：' + strs[i]);
+          });
+        } else {
+          const m = strip(q.html).match(/^(.+) 的(正整數|負整數|整數)解有哪些/);
+          const pred = m && parseIneq(m[1]);
+          if (!pred) { fail(lv, q, '題目解析不出來'); continue; }
+          const ok = t => pred(t) && (m[2] === '正整數' ? t > 0 : m[2] === '負整數' ? t < 0 : true);
+          const exp = [];
+          for (let t = -6; t <= 6; t++) if (ok(t)) exp.push(t);
+          if (exp.join() !== q.answer.join()) fail(lv, q, '整數解不符：' + exp.join());
+          if (!exp.length) fail(lv, q, '沒有整數解');
+          if (diagnoseInts(q, q.answer) !== null) fail(lv, q, '正解被判錯');
+          for (let t = -6; t <= 6; t++) {
+            const picksX = q.answer.includes(t) ? q.answer.filter(x => x !== t) : q.answer.concat(t);
+            if (!picksX.length) continue;
+            const d = diagnoseInts(q, picksX);
+            if (!d || !d.length) fail(lv, q, `多圈／漏圈 ${t} 沒有說明`);
+          }
+        }
+      }
+    });
+    return { ok: errs.length === 0, errors: errs, counts };
+  }
+  window.__inequalityLine = { selfTest, GEN, diagnoseDraw, diagnoseRead, diagnoseInts };
+
+  drawGrid();
+  paintLevel();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>

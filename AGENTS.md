@@ -29,17 +29,18 @@
 | `elimination-steps/` | 消去闖關（1 下 1-2）：`index.html` 遊戲本體、`learn.html` 消去法小抄 |
 | `coordinate-strike/` | 坐標點點打擊（1 下 2-1）：`index.html` 遊戲本體、`learn.html` 坐標小抄 |
 | `proportion-sort/` | 正比反比快分類（1 下 3-2）：`index.html` 遊戲本體、`learn.html` 正比反比小抄 |
+| `inequality-line/` | 數線畫解（1 下 4-1）：`index.html` 遊戲本體、`learn.html` 數線畫解小抄 |
 | `output/` | 產出物（不進 git） |
 
 ## 專案專屬規則
 
-- **一款遊戲一個子資料夾**（英文 kebab-case），入口為該資料夾的 `index.html`；新增遊戲後要在大廳 `index.html` 補一張卡片，並視需要在 teach-math-web 的 `tools-sidebar.js` 加連結。
+- **一款遊戲一個子資料夾**（英文 kebab-case），入口為該資料夾的 `index.html`；新增遊戲後要在大廳 `index.html` 對應冊別的 `<section id="book-N">` 內補一張卡片（該冊原本是「敬請期待」就換成 `.grid`），並視需要在 teach-math-web 的 `tools-sidebar.js` 加連結。
 - 純靜態 HTML／CSS／JS，不需建置步驟；外部函式庫只用固定版本的 CDN。
 - 遊戲頁的「回遊戲大廳」連結用相對路徑 `../index.html`，favicon 用 `../header-logo.svg`。
 - 數學內容（題目、記號、用語）遵循 teach-math-web 的共用正本 `docs/reference/shared-math/math-rules.md` 與 `chapter-notes.md`，不在本 repo 另存副本。
 - 畫面需同時適用智慧白板（大字、觸控）與手機寬度。
 - **遊戲一律設計成「一台裝置、一個人操作、全班觀戰」**：課堂情境是投在大螢幕叫學生上台挑戰，不可假設每個學生都有手機或平板，也不要做需要全班同時連線、掃 QR、分組帳號的玩法（那類互動交給 `audience-poll`／`audience-wordcloud` 之類的獨立工具）。學生回家用手機自己玩是第二順位情境，版面要撐得住。
-- 遊戲不記成績、不需登入；設定（限時、難度、音效）用 `localStorage` 記在該台瀏覽器即可；每款遊戲的 key 用自己的前綴，不可和既有的撞名（`power-` 次方大挑戰、`exp-` 指數律、`es-` 移項闖關、`simp-` 化簡對錯快判、`elim-` 消去闖關、`coord-` 坐標點點打擊、`prop-` 正比反比快分類）。
+- 遊戲不記成績、不需登入；設定（限時、難度、音效）用 `localStorage` 記在該台瀏覽器即可；每款遊戲的 key 用自己的前綴，不可和既有的撞名（`power-` 次方大挑戰、`exp-` 指數律、`es-` 移項闖關、`simp-` 化簡對錯快判、`elim-` 消去闖關、`coord-` 坐標點點打擊、`prop-` 正比反比快分類、`iline-` 數線畫解）。
 - 新增遊戲時同步更新 `README.md` 的〈遊戲清單〉。
 - 每款遊戲都要標「課本範圍」，格式統一為「第N冊・第N章 章名・第N節 節名」（章節名以 teach-math-web 的 `docs/reference/book-N.md` 為準），寫在三處：大廳卡片的 `.unit` 區塊、遊戲開始畫面標題下一行、README〈遊戲清單〉的「課本範圍」欄。
 
