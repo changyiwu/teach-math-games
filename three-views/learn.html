@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>三視圖小抄 - 三視圖積木</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="視圖的意義、前視圖、右視圖、上視圖怎麼畫，前後視圖與左右視圖的對稱關係，以及常見迷思對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --green: #4ade80;
+      --blue: #38bdf8;
+      --yellow: #facc15;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 8px 0 16px;
+    }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+
+    .btn {
+      padding: 9px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.98rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn-play {
+      border: 0;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-weight: 800;
+    }
+    .btn-play:hover { filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+    .lead strong { color: var(--text); }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 1.3rem;
+      color: var(--accent-2);
+      border-left: 4px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      padding: 18px;
+    }
+    .card.front { border-top: 4px solid var(--green); }
+    .card.right { border-top: 4px solid var(--blue); }
+    .card.top { border-top: 4px solid var(--yellow); }
+    .card .law { font-size: clamp(1.15rem, 3.2vw, 1.4rem); font-weight: 700; margin-bottom: 8px; }
+    .card.front .law { color: var(--green); }
+    .card.right .law { color: var(--blue); }
+    .card.top .law { color: var(--yellow); }
+    .card .say { color: var(--muted); font-size: 0.98rem; margin: 0 0 10px; }
+    .card .say strong { color: var(--text); }
+    .card .fig { width: 120px; height: 120px; margin: 6px auto 0; }
+    .card .fig svg { width: 100%; height: 100%; display: block; }
+    .hl { color: var(--accent-2); font-weight: 700; }
+
+    .example {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 16px 28px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      padding: 18px;
+    }
+    .example .iso { width: min(340px, 100%); height: 260px; }
+    .example .iso svg { width: 100%; height: 100%; display: block; }
+    .views { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 16px; }
+    .vbox { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .vbox .vimg { width: 110px; height: 110px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: rgba(15, 23, 42, 0.5); }
+    .vbox .vimg svg { width: 100%; height: 100%; display: block; }
+    .vbox .vname { color: var(--muted); font-size: 0.95rem; }
+
+    .note {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 14px 18px;
+      margin: 14px 0;
+    }
+    .note b { color: var(--accent-2); }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+    }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions">
+        <a class="btn btn-play" href="./">🎮 開始挑戰</a>
+      </div>
+    </header>
+
+    <h1>三視圖小抄</h1>
+    <p class="lead">康軒 1 下 6-1 垂直、線對稱與三視圖。從某一個方向觀察立體圖形，看到的<strong>平面圖形輪廓</strong>就叫做這個方向的<strong>視圖</strong>。<strong>前視圖、右視圖、上視圖</strong>合稱<strong>三視圖</strong>。</p>
+
+    <h2>先定好「前面」</h2>
+    <div class="note">
+      先選一個方向當<b>前面</b>，後面、左面、右面、上面就跟著決定了。<br>
+      <b>上視圖</b>約定是站在<b>正前方</b>往下看：畫出來最下面一列是<b>最前面那一排</b>，左右不變。
+    </div>
+
+    <h2>例子：三視圖怎麼畫</h2>
+    <div class="example">
+      <div class="iso" id="ex-iso"></div>
+      <div class="views" id="ex-views"></div>
+    </div>
+
+    <div class="grid" style="margin-top:14px">
+      <div class="card front">
+        <div class="law">前視圖：每一直行取最高</div>
+        <p class="say">站在前面看，由左到右一直行一直行看。前後重疊的積木只看得到<strong>最高的那一疊</strong>，不是把它們加起來。</p>
+        <p class="say">例子由左到右：<span class="hl">3、2、1</span> 層。</p>
+      </div>
+      <div class="card right">
+        <div class="law">右視圖：左手邊是前面</div>
+        <p class="say">站在右面看，<strong>左手邊是前面、右手邊是後面</strong>。由前到後一排一排看，每一排取最高的一疊。</p>
+        <p class="say">例子由前到後：<span class="hl">1、2、3</span> 層。</p>
+      </div>
+      <div class="card top">
+        <div class="law">上視圖：有就塗，不管幾層</div>
+        <p class="say">站在正前方往下看，<strong>有積木的位置塗一格</strong>。疊幾層從上面看不出來，所以上視圖只有一層。</p>
+        <p class="say">最下面一列是最前面那一排。</p>
+      </div>
+    </div>
+
+    <h2>前後、左右是線對稱</h2>
+    <div class="note">
+      <b>前視圖和後視圖</b>左右並排，會是線對稱圖形：後視圖就是把前視圖<b>左右翻過來</b>。<br>
+      <b>右視圖和左視圖</b>也一樣。所以只要畫前視圖、右視圖和上視圖，後視圖、左視圖都推得出來。
+    </div>
+    <div class="example">
+      <div class="views" id="ex-mirror"></div>
+    </div>
+
+    <h2>反過來：看視圖找方向</h2>
+    <div class="note">
+      拿到一張視圖，先看它<b>有沒有高低</b>：只有一層、形狀像底座的，多半是<b>上視圖</b>。<br>
+      有高低的，看最高的那一疊在哪一邊：例子最高的在<b>左後角</b>。從前面看，它在左邊；從後面看，在右邊；從右面看，它在後面，也就是右手邊；從左面看，它在左手邊。
+    </div>
+
+    <h2>常見迷思對照表</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>遊戲的錯誤選項大多是左邊這幾種。</caption>
+        <thead>
+          <tr><th style="width:46%">常見的想法</th><th>正確</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="bad">從前面看，只看得到最前面一排</td>
+            <td class="good">後面比較高的積木<b>露出來的部分</b>也看得到，每一直行取最高</td>
+          </tr>
+          <tr>
+            <td class="bad">同一直行前後有好幾疊，高度要加起來</td>
+            <td class="good">前後重疊只看得到<b>最高的那一疊</b></td>
+          </tr>
+          <tr>
+            <td class="bad">右視圖的左邊是後面</td>
+            <td class="good">站在右面看，<b>左手邊是前面</b></td>
+          </tr>
+          <tr>
+            <td class="bad">前視圖和後視圖長得一樣</td>
+            <td class="good">兩張<b>左右相反</b>（線對稱）</td>
+          </tr>
+          <tr>
+            <td class="bad">上視圖從哪一邊往下看都可以</td>
+            <td class="good">約定站在<b>正前方</b>往下看，換方向圖會轉</td>
+          </tr>
+          <tr>
+            <td class="bad">上視圖要畫出每一疊有幾層</td>
+            <td class="good">上視圖只看位置，<b>有就塗一格</b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a>
+    </footer>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+  // 例子：H[x][y]，x 由左到右、y 由前到後
+  const S = { W: 3, D: 3, Hm: 3, H: [[1, 2, 3], [1, 1, 2], [1, 0, 0]] };
+  const N = 3;
+  const range = n => Array.from({ length: n }, (_, i) => i);
+  const occ = (x, y, z) => x >= 0 && x < S.W && y >= 0 && y < S.D && z >= 0 && z < S.H[x][y];
+  const COLOR = { front: '#4ade80', right: '#38bdf8', top: '#facc15' };
+  const STROKE = '#0b1020';
+  const f2 = n => (Math.round(n * 1000) / 1000).toString();
+
+  const fromHeights = hs => ({ w: hs.length, h: N, rows: range(N).map(r => hs.map(v => r < v)) });
+  const mirrorLR = v => ({ w: v.w, h: v.h, rows: v.rows.map(row => row.slice().reverse()) });
+  const front = fromHeights(range(S.W).map(x => Math.max(...S.H[x])));
+  const right = fromHeights(range(S.D).map(y => Math.max(...range(S.W).map(x => S.H[x][y]))));
+  const top = { w: S.W, h: S.D, rows: range(S.D).map(y => range(S.W).map(x => S.H[x][y] > 0)) };
+
+  function viewSvg(v, color) {
+    let empty = '', fill = '';
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const y = N - 1 - r;
+      if (r < v.h && c < v.w && v.rows[r][c]) fill += `<rect x="${c}" y="${y}" width="1" height="1" fill="${color}" stroke="${STROKE}" stroke-width="0.07"/>`;
+      else empty += `<rect x="${c}" y="${y}" width="1" height="1" fill="none" stroke="rgba(148,163,184,0.35)" stroke-width="0.035"/>`;
+    }
+    return `<svg viewBox="-0.08 -0.08 ${N + 0.16} ${N + 0.16}" aria-hidden="true">${fill}${empty}</svg>`;
+  }
+
+  const C30 = Math.cos(Math.PI / 6);
+  const P = (x, y, z) => [(x + y) * C30, (x - y) * 0.5 - z];
+  function isoSvg() {
+    const pts = [];
+    const poly = (ps, fill, stroke, sw) => {
+      ps.forEach(p => pts.push(p));
+      return `<polygon points="${ps.map(p => `${f2(p[0])},${f2(p[1])}`).join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+    };
+    let g = '';
+    for (let x = 0; x < S.W; x++) for (let y = 0; y < S.D; y++) {
+      g += poly([P(x, y, 0), P(x + 1, y, 0), P(x + 1, y + 1, 0), P(x, y + 1, 0)], 'rgba(148,163,184,0.10)', 'rgba(148,163,184,0.45)', 0.025);
+    }
+    const cubes = [];
+    for (let x = 0; x < S.W; x++) for (let y = 0; y < S.D; y++) for (let z = 0; z < S.H[x][y]; z++) cubes.push([x, y, z]);
+    cubes.sort((a, b) => (a[0] - a[1] + a[2]) - (b[0] - b[1] + b[2]));
+    cubes.forEach(([x, y, z]) => {
+      if (!occ(x, y, z + 1)) g += poly([P(x, y, z + 1), P(x + 1, y, z + 1), P(x + 1, y + 1, z + 1), P(x, y + 1, z + 1)], COLOR.top, STROKE, 0.05);
+      if (!occ(x, y - 1, z)) g += poly([P(x, y, z), P(x + 1, y, z), P(x + 1, y, z + 1), P(x, y, z + 1)], COLOR.front, STROKE, 0.05);
+      if (!occ(x + 1, y, z)) g += poly([P(x + 1, y, z), P(x + 1, y + 1, z), P(x + 1, y + 1, z + 1), P(x + 1, y, z + 1)], COLOR.right, STROKE, 0.05);
+    });
+    let a = '';
+    [['前面', P(S.W / 2, 0, 0), [-1.25, 0.85]], ['右面', P(S.W, S.D / 2, 0), [1.25, 0.85]],
+     ['後面', P(S.W / 2, S.D, S.Hm), [1.25, -0.85]], ['左面', P(0, S.D / 2, S.Hm), [-1.25, -0.85]],
+     ['上面', P(S.W / 2, S.D / 2, S.Hm), [0, -1.35]]].forEach(([name, tgt, off]) => {
+      const len = Math.hypot(off[0], off[1]);
+      const u = [off[0] / len, off[1] / len];
+      const tail = [tgt[0] + off[0], tgt[1] + off[1]];
+      const head = [tgt[0] + u[0] * 0.18, tgt[1] + u[1] * 0.18];
+      const tx = [tail[0] + u[0] * 0.5, tail[1] + u[1] * 0.5 + 0.18];
+      a += `<line x1="${f2(tail[0])}" y1="${f2(tail[1])}" x2="${f2(head[0])}" y2="${f2(head[1])}" stroke="#f87171" stroke-width="0.07" marker-end="url(#ah)"/>`;
+      a += `<text x="${f2(tx[0])}" y="${f2(tx[1])}" text-anchor="middle" font-size="0.5" font-weight="700" fill="#fca5a5">${name}</text>`;
+      pts.push(tail, [tx[0] - 0.6, tx[1] - 0.45], [tx[0] + 0.6, tx[1] + 0.15]);
+    });
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x0 = Math.min(...xs) - 0.25, y0 = Math.min(...ys) - 0.25;
+    const w = Math.max(...xs) - x0 + 0.25, h = Math.max(...ys) - y0 + 0.25;
+    return `<svg viewBox="${f2(x0)} ${f2(y0)} ${f2(w)} ${f2(h)}" role="img" aria-label="例子：正方體積木堆成的立體圖形"><defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f87171"/></marker></defs>${g}${a}</svg>`;
+  }
+
+  const vbox = (name, svg) => `<div class="vbox"><div class="vimg">${svg}</div><div class="vname">${name}</div></div>`;
+  document.getElementById('ex-iso').innerHTML = isoSvg();
+  document.getElementById('ex-views').innerHTML =
+    vbox('前視圖', viewSvg(front, COLOR.front)) + vbox('右視圖', viewSvg(right, COLOR.right)) + vbox('上視圖', viewSvg(top, COLOR.top));
+  document.getElementById('ex-mirror').innerHTML =
+    vbox('前視圖', viewSvg(front, COLOR.front)) + vbox('後視圖', viewSvg(mirrorLR(front), COLOR.front)) +
+    vbox('右視圖', viewSvg(right, COLOR.right)) + vbox('左視圖', viewSvg(mirrorLR(right), COLOR.right));
+})();
+</script>
+</body>
+</html>

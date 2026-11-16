@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>三視圖積木 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="螢幕出一堆正方體積木，限時內選出它的前視圖、右視圖或上視圖；也能反過來看視圖，判斷是從哪一面看的。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --violet: #a78bfa;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .unit { margin: 0 0 8px; opacity: 0.75; font-size: 0.95rem; }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 38ch;
+      line-height: 1.7;
+    }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; flex-wrap: wrap; justify-content: center; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+
+    .level-note { margin: -6px 0 0; color: var(--muted); font-size: 0.9rem; max-width: 44ch; line-height: 1.6; }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys {
+      color: var(--muted);
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer {
+      flex: 0 0 auto;
+      height: 10px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(6px, 1.6vh, 16px);
+      padding: 12px 16px 16px;
+      min-height: 0;
+    }
+
+    .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; }
+
+    .rule-tag {
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+      background: var(--panel);
+    }
+
+    .ask {
+      font-size: clamp(1.2rem, 3.4vw, 2.2rem);
+      font-weight: 700;
+      text-align: center;
+    }
+    .ask em { font-style: normal; color: var(--accent-2); }
+
+    .count {
+      position: absolute;
+      top: 54px;
+      right: 18px;
+      font-size: clamp(2.4rem, 7vw, 4.4rem);
+      font-weight: 800;
+      color: var(--accent-2);
+      opacity: 0.85;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    /* 舞台：左邊立體圖、右邊選項（窄螢幕上下排） */
+    .stage {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      max-width: 1500px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(8px, 2vw, 28px);
+    }
+    .pic {
+      flex: 1 1 0;
+      min-height: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pic svg { width: 100%; height: 100%; max-height: 100%; display: block; }
+
+    .side {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(8px, 1.6vh, 16px);
+    }
+
+    .answers {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: clamp(8px, 1.6vw, 18px);
+      width: min(100%, 520px, 50vh);
+    }
+
+    .ans {
+      position: relative;
+      border: 2px solid var(--line);
+      border-radius: 18px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s, background 0.15s;
+    }
+    .ans.pict { aspect-ratio: 1; padding: 12%; }
+    .ans.pict svg { width: 100%; height: 100%; display: block; }
+    .ans .k {
+      position: absolute;
+      top: 5px;
+      left: 9px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .ans:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--cyan); background: rgba(34, 211, 238, 0.1); }
+    .ans:disabled { opacity: 0.45; cursor: default; }
+
+    /* 判方向：一張視圖＋五個方向鈕 */
+    .given {
+      width: min(62vw, 30vh, 340px);
+      aspect-ratio: 1;
+      padding: 4%;
+      border: 2px dashed var(--line);
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.45);
+    }
+    .given svg { width: 100%; height: 100%; display: block; }
+    .answers.dirs {
+      grid-template-columns: repeat(5, 1fr);
+      width: min(100%, 640px);
+    }
+    .ans.word {
+      padding: clamp(12px, 2.6vh, 22px) 4px;
+      font-size: clamp(1.15rem, 3vw, 1.9rem);
+      font-weight: 800;
+    }
+
+    @media (min-aspect-ratio: 5/4) and (min-width: 720px) {
+      .stage { flex-direction: row; }
+      .pic { height: 100%; flex: 1 1 0; }
+      .answers { width: min(46vw, calc(100vh - 200px), 640px); }
+      .given { width: min(34vw, calc(100vh - 330px), 420px); }
+      .answers.dirs { width: min(46vw, 640px); }
+    }
+
+    /* ── 結果 ───────────────────────────────── */
+    .verdict {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 24px 16px;
+      background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95));
+      backdrop-filter: blur(3px);
+      overflow-y: auto;
+    }
+    body[data-view="result"] .verdict { display: flex; }
+    .verdict > * { flex-shrink: 0; }
+
+    .verdict h2 {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .solution {
+      width: min(1000px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: clamp(12px, 2.6vw, 22px);
+      text-align: center;
+    }
+    .sol-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 14px 22px;
+      margin-bottom: 12px;
+    }
+    .sol-pic { width: min(300px, 70vw); height: min(240px, 30vh); }
+    .sol-pic svg { width: 100%; height: 100%; display: block; }
+    .views { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 14px; }
+    .vbox { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .vbox .vname { font-size: 0.95rem; color: var(--muted); }
+    .vbox .vimg {
+      width: clamp(72px, 14vw, 116px);
+      aspect-ratio: 1;
+      padding: 8%;
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.5);
+    }
+    .vbox .vimg svg { width: 100%; height: 100%; display: block; }
+    .vbox.ok .vimg { border-color: var(--win); box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25); }
+    .vbox.ok .vname { color: #86efac; font-weight: 700; }
+    .vbox.ng .vimg { border-color: var(--lose); }
+    .vbox.ng .vname { color: #fca5a5; }
+
+    .solution .answer-chip {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 4px 18px;
+      border-radius: 999px;
+      font-size: clamp(1.05rem, 2.8vw, 1.5rem);
+      font-weight: 800;
+      color: var(--win);
+      border: 2px solid currentColor;
+    }
+    .solution .answer-chip:empty { display: none; }
+    .solution .why {
+      color: var(--text);
+      font-size: clamp(1rem, 2.4vw, 1.25rem);
+      line-height: 1.85;
+      opacity: 0.95;
+    }
+    .solution .why em { font-style: normal; color: var(--accent-2); font-weight: 700; }
+    .solution .why .warn { color: #fca5a5; }
+
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    .nw { white-space: nowrap; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; font-size: 2.2rem; }
+      .head { padding-right: 52px; }
+      .answers.dirs { grid-template-columns: repeat(3, 1fr); }
+      .ans.word { padding: 10px 4px; }
+    }
+
+    @media (max-height: 560px) {
+      .ans.word { padding: 8px 4px; }
+      .sol-pic { height: 150px; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">三視圖積木</h1>
+      <p class="unit">📘 第2冊・第6章 生活中的幾何・第1節 垂直、線對稱與三視圖</p>
+      <p class="hint">螢幕出一堆正方體積木，<span class="limit-val">20</span> 秒內選出它的<strong>前視圖</strong>、<strong>右視圖</strong>或<strong>上視圖</strong>；也能反過來，看視圖判斷是從哪一面看的。</p>
+
+      <div class="ctl-row">
+        <div class="seg" id="level" role="group" aria-label="題型">
+          <button type="button" data-level="view" aria-pressed="false">選視圖</button>
+          <button type="button" data-level="dir" aria-pressed="false">判方向</button>
+          <button type="button" data-level="all" aria-pressed="true">混合</button>
+        </div>
+        <div class="seg" id="size" role="group" aria-label="難度">
+          <button type="button" data-size="easy" aria-pressed="false">簡單</button>
+          <button type="button" data-size="normal" aria-pressed="true">標準</button>
+          <button type="button" data-size="hard" aria-pressed="false">挑戰</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-1" aria-label="減少 1 秒">−</button>
+          <b class="limit-val">20</b>秒
+          <button type="button" data-step="1" aria-label="增加 1 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+
+      <button type="button" class="big-btn" id="start">🎲 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看三視圖小抄</a>
+      <p class="keys">鍵盤：<kbd>1</kbd>～<kbd>5</kbd> 選答案　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <!-- ── 作答 ───────────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="count" id="count">20</div>
+
+    <div class="play-body">
+      <div class="head">
+        <div class="rule-tag" id="rule">選視圖</div>
+        <div class="ask" id="ask"></div>
+      </div>
+      <div class="stage">
+        <div class="pic" id="pic"></div>
+        <div class="side" id="side"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 判定 ───────────────────────────── -->
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="sol-top">
+        <div class="sol-pic" id="sol-pic"></div>
+        <div class="views" id="sol-views"></div>
+      </div>
+      <div class="answer-chip" id="sol-ans"></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器，限時依題型各自記）── */
+  const LEVELS = ['view', 'dir', 'all'];
+  const SIZE_KEYS = ['easy', 'normal', 'hard'];
+  const LIMIT_DEFAULT = { view: 20, dir: 15, all: 20 };
+  const LIMIT_MIN = 5, LIMIT_MAX = 90;
+  const LEVEL_NOTE = {
+    view: '從四張圖裡選出指定的前視圖、右視圖或上視圖。',
+    dir: '給一張視圖，判斷是從前、後、左、右、上哪一面看的。',
+    all: '兩種題型混在一起出。'
+  };
+  const SIZE_NOTE = {
+    easy: '簡單：底座最多 3 × 2，最高 2 層。',
+    normal: '標準：底座最多 3 × 3，最高 3 層。',
+    hard: '挑戰：底座最多 4 × 3，最高 3 層，積木比較多。'
+  };
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 私密視窗等情況：不記也能玩 */ } }
+  };
+
+  function clampLimit(v) { return Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v)); }
+
+  let level = LEVELS.includes(store.get('tv-level')) ? store.get('tv-level') : 'all';
+  let size = SIZE_KEYS.includes(store.get('tv-size')) ? store.get('tv-size') : 'normal';
+  const limits = {};
+  LEVELS.forEach(l => {
+    const v = parseInt(store.get(`tv-limit-${l}`), 10);
+    limits[l] = clampLimit(Number.isFinite(v) ? v : LIMIT_DEFAULT[l]);
+  });
+  let muted = store.get('tv-muted') === '1';
+  const limit = () => limits[level];
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const coin = (p = 0.5) => Math.random() < p;
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  const range = n => Array.from({ length: n }, (_, i) => i);
+  const sum = arr => arr.reduce((s, v) => s + v, 0);
+
+  /* ══ 積木：高度表 ═══════════════════════════════════
+     H[x][y] = 這一格疊幾塊。x 由左到右，y 由前到後（y = 0 是最前面一排）。
+     不懸空，所以每一格就是一疊。 */
+  const SIZES = {
+    easy:   { dims: [[2, 2], [3, 2], [2, 3]], cap: 2, min: 3, max: 6 },
+    normal: { dims: [[3, 3], [3, 3], [3, 2], [2, 3]], cap: 3, min: 6, max: 13 },
+    hard:   { dims: [[3, 3], [4, 3], [3, 4], [4, 3]], cap: 3, min: 10, max: 20 }
+  };
+
+  function occ(S, x, y, z) {
+    return x >= 0 && x < S.W && y >= 0 && y < S.D && z >= 0 && z < S.H[x][y];
+  }
+
+  // 從 (x0, y0) 那一格、高度 z0 的水平面往觀察者 (1, −1, 1) 方向看，有幾成沒被擋住
+  function visFrac(S, x0, y0, z0) {
+    let vis = 0, tot = 0;
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 4; j++) {
+        const px = x0 + (i + 0.5) / 4, py = y0 + (j + 0.5) / 4;
+        let blocked = false;
+        for (let t = 0.03; ; t += 0.04) {
+          const x = px + t, y = py - t, z = z0 + t;
+          if (x >= S.W || y < 0 || z >= S.Hm) break;
+          if (occ(S, Math.floor(x), Math.floor(y), Math.floor(z))) { blocked = true; break; }
+        }
+        tot++;
+        if (!blocked) vis++;
+      }
+    }
+    return vis / tot;
+  }
+
+  // 每一疊的頂面、每一個空格的地板，都要看得到一部分，才判斷得出來
+  function visibleOK(S) {
+    for (let x = 0; x < S.W; x++) {
+      for (let y = 0; y < S.D; y++) {
+        if (visFrac(S, x, y, S.H[x][y]) < 0.3) return false;
+      }
+    }
+    return true;
+  }
+
+  function connected(S) {
+    const cells = [];
+    range(S.W).forEach(x => range(S.D).forEach(y => { if (S.H[x][y]) cells.push([x, y]); }));
+    const seen = new Set([cells[0].join()]);
+    const stack = [cells[0]];
+    while (stack.length) {
+      const [x, y] = stack.pop();
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+        const nx = x + dx, ny = y + dy, k = `${nx},${ny}`;
+        if (occ(S, nx, ny, 0) && !seen.has(k)) { seen.add(k); stack.push([nx, ny]); }
+      });
+    }
+    return seen.size === cells.length;
+  }
+
+  function makeShape(sizeKey) {
+    const sz = SIZES[sizeKey];
+    for (let tries = 0; tries < 6000; tries++) {
+      const [W, D] = pickOf(sz.dims);
+      const H = range(W).map(() => range(D).map(() => (coin(0.25) ? 0 : R(1, sz.cap))));
+      // 每一直行、每一排都要有積木（底座剛好是 W × D）
+      if (range(W).some(x => H[x].every(h => h === 0))) continue;
+      if (range(D).some(y => range(W).every(x => H[x][y] === 0))) continue;
+      const n = sum(H.flat());
+      if (n < sz.min || n > sz.max) continue;
+      const Hm = Math.max(...H.flat());
+      if (Hm < 2) continue;
+      const S = { W, D, H, Hm, n };
+      if (!connected(S)) continue;
+      if (!visibleOK(S)) continue;
+      return S;
+    }
+    throw new Error('makeShape: 產生失敗');
+  }
+
+  /* ══ 視圖 ══════════════════════════════════════════
+     視圖 = { w, h, rows }，rows[r][c]：r = 0 是最下面一列，c = 0 是最左邊一行。 */
+  const fromHeights = (hs, h) => ({ w: hs.length, h, rows: range(h).map(r => hs.map(v => r < v)) });
+  const mirrorLR = v => ({ w: v.w, h: v.h, rows: v.rows.map(row => row.slice().reverse()) });
+  const mirrorUD = v => ({ w: v.w, h: v.h, rows: v.rows.slice().reverse() });
+  // 順時針轉 90°
+  const rot90 = v => ({ w: v.h, h: v.w, rows: range(v.w).map(r => range(v.h).map(c => v.rows[c][v.w - 1 - r])) });
+
+  const frontHeights = S => range(S.W).map(x => Math.max(...S.H[x]));
+  const rightHeights = S => range(S.D).map(y => Math.max(...range(S.W).map(x => S.H[x][y])));
+
+  function viewsOf(S) {
+    const front = fromHeights(frontHeights(S), S.Hm);
+    const right = fromHeights(rightHeights(S), S.Hm);   // 右視圖：左手邊是前面、右手邊是後面
+    const top = { w: S.W, h: S.D, rows: range(S.D).map(y => range(S.W).map(x => S.H[x][y] > 0)) };
+    return { front, back: mirrorLR(front), right, left: mirrorLR(right), top };
+  }
+
+  // 方格至少 3 × 3：2 × 2 的方格能畫的圖太少，湊不滿四個選項
+  const frameOf = S => Math.max(S.W, S.D, S.Hm, 3);
+  // 放進 N × N 的方格，左下對齊；畫出來長一樣，key 就一樣
+  function keyOf(v, N) {
+    let k = '';
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) k += (r < v.h && c < v.w && v.rows[r][c]) ? '1' : '0';
+      k += '/';
+    }
+    return k;
+  }
+  const countCells = v => sum(v.rows.map(row => row.filter(Boolean).length));
+
+  /* ══ 畫圖 ══════════════════════════════════════════ */
+  const COLOR = {
+    front: '#4ade80', right: '#38bdf8', top: '#facc15', back: '#4ade80', left: '#38bdf8', plain: '#e2e8f0'
+  };
+  const STROKE = '#0b1020';
+  const f2 = n => (Math.round(n * 1000) / 1000).toString();
+
+  function viewSvg(v, N, color) {
+    let empty = '', fill = '';
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const y = N - 1 - r;
+        if (r < v.h && c < v.w && v.rows[r][c]) {
+          fill += `<rect x="${c}" y="${y}" width="1" height="1" fill="${color}" stroke="${STROKE}" stroke-width="0.07"/>`;
+        } else {
+          empty += `<rect x="${c}" y="${y}" width="1" height="1" fill="none" stroke="rgba(148,163,184,0.35)" stroke-width="0.035"/>`;
+        }
+      }
+    }
+    // 空格的框線畫在最上面，才不會被旁邊塗滿的格子蓋掉一半
+    return `<svg viewBox="-0.08 -0.08 ${N + 0.16} ${N + 0.16}" aria-hidden="true">${fill}${empty}</svg>`;
+  }
+
+  const C30 = Math.cos(Math.PI / 6);
+  const P = (x, y, z) => [(x + y) * C30, (x - y) * 0.5 - z];
+  let svgUid = 0;
+
+  // 等角立體圖；labels：'front' 只標前面，'all' 標五個方向
+  function isoSvg(S, labels) {
+    const pts = [];
+    const poly = (ps, fill, stroke, sw) => {
+      ps.forEach(p => pts.push(p));
+      return `<polygon points="${ps.map(p => `${f2(p[0])},${f2(p[1])}`).join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+    };
+    let g = '';
+    // 地板方格：沒有積木的格子也看得出來是空的
+    for (let x = 0; x < S.W; x++) {
+      for (let y = 0; y < S.D; y++) {
+        g += poly([P(x, y, 0), P(x + 1, y, 0), P(x + 1, y + 1, 0), P(x, y + 1, 0)],
+          'rgba(148,163,184,0.10)', 'rgba(148,163,184,0.45)', 0.025);
+      }
+    }
+    const cubes = [];
+    for (let x = 0; x < S.W; x++) for (let y = 0; y < S.D; y++) for (let z = 0; z < S.H[x][y]; z++) cubes.push([x, y, z]);
+    // 由遠畫到近：觀察者在 (+x, −y, +z) 那邊
+    cubes.sort((a, b) => (a[0] - a[1] + a[2]) - (b[0] - b[1] + b[2]));
+    cubes.forEach(([x, y, z]) => {
+      if (!occ(S, x, y, z + 1)) g += poly([P(x, y, z + 1), P(x + 1, y, z + 1), P(x + 1, y + 1, z + 1), P(x, y + 1, z + 1)], COLOR.top, STROKE, 0.05);
+      if (!occ(S, x, y - 1, z)) g += poly([P(x, y, z), P(x + 1, y, z), P(x + 1, y, z + 1), P(x, y, z + 1)], COLOR.front, STROKE, 0.05);
+      if (!occ(S, x + 1, y, z)) g += poly([P(x + 1, y, z), P(x + 1, y + 1, z), P(x + 1, y + 1, z + 1), P(x + 1, y, z + 1)], COLOR.right, STROKE, 0.05);
+    });
+
+    const id = `ah${++svgUid}`;
+    const arrows = [];
+    const add = (name, tgt, off) => arrows.push({ name, tgt, off });
+    add('前面', P(S.W / 2, 0, 0), [-1.25, 0.85]);
+    if (labels === 'all') {
+      add('右面', P(S.W, S.D / 2, 0), [1.25, 0.85]);
+      add('後面', P(S.W / 2, S.D, S.Hm), [1.25, -0.85]);
+      add('左面', P(0, S.D / 2, S.Hm), [-1.25, -0.85]);
+      add('上面', P(S.W / 2, S.D / 2, S.Hm), [0, -1.35]);
+    }
+    let a = '';
+    arrows.forEach(({ name, tgt, off }) => {
+      const len = Math.hypot(off[0], off[1]);
+      const u = [off[0] / len, off[1] / len];
+      const tail = [tgt[0] + off[0], tgt[1] + off[1]];
+      const head = [tgt[0] + u[0] * 0.18, tgt[1] + u[1] * 0.18];
+      const tx = [tail[0] + u[0] * 0.5, tail[1] + u[1] * 0.5 + 0.18];
+      a += `<line x1="${f2(tail[0])}" y1="${f2(tail[1])}" x2="${f2(head[0])}" y2="${f2(head[1])}" stroke="#f87171" stroke-width="0.07" marker-end="url(#${id})"/>`;
+      a += `<text x="${f2(tx[0])}" y="${f2(tx[1])}" text-anchor="middle" font-size="0.5" font-weight="700" fill="#fca5a5">${name}</text>`;
+      pts.push(tail, [tx[0] - 0.6, tx[1] - 0.45], [tx[0] + 0.6, tx[1] + 0.15]);
+    });
+
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const m = 0.25;
+    const x0 = Math.min(...xs) - m, y0 = Math.min(...ys) - m;
+    const w = Math.max(...xs) - x0 + m, h = Math.max(...ys) - y0 + m;
+    const defs = `<defs><marker id="${id}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f87171"/></marker></defs>`;
+    return `<svg viewBox="${f2(x0)} ${f2(y0)} ${f2(w)} ${f2(h)}" role="img" aria-label="正方體積木堆成的立體圖形">${defs}${g}${a}</svg>`;
+  }
+
+  /* ══ ① 選視圖（課本 P.211～P.212 例 5）════════════════
+     誤答取自常見錯誤：前後視圖左右相反、只看最前面一排、把前後的積木疊在一起算、
+     上視圖轉了方向，不夠再補「某一行高度差一層」的圖。 */
+  const VNAME = { front: '前視圖', right: '右視圖', top: '上視圖', back: '後視圖', left: '左視圖' };
+
+  function perturbHeights(hs, N) {
+    const c = R(0, hs.length - 1);
+    const d = coin() ? 1 : -1;
+    const nv = hs[c] + d;
+    if (nv < 1 || nv > N) return null;
+    const out = hs.slice();
+    out[c] = nv;
+    return out;
+  }
+
+  function makeView() {
+    const S = makeShape(size);
+    const N = frameOf(S);
+    const V = viewsOf(S);
+    const which = pickOf(['front', 'right', 'top']);
+    const correct = V[which];
+    const concept = [];
+    const fh = frontHeights(S), rh = rightHeights(S);
+    if (which === 'front') {
+      concept.push({ v: V.back, trap: '這是<em>後視圖</em>：從後面看，左右會顛倒。' });
+      concept.push({ v: fromHeights(range(S.W).map(x => S.H[x][0]), S.Hm), trap: '這張只算了<em>最前面一排</em>。後面比較高的積木，從前面也看得到。' });
+      const sums = range(S.W).map(x => sum(S.H[x]));
+      if (Math.max(...sums) <= N) concept.push({ v: fromHeights(sums, Math.max(...sums)), trap: '這張把同一直行<em>前後的積木全部疊起來</em>算了；從前面看，前後重疊的只看得到最高的那一疊。' });
+      concept.push({ v: V.right, trap: '這是<em>右視圖</em>。' });
+    } else if (which === 'right') {
+      concept.push({ v: V.left, trap: '這是<em>左視圖</em>：前、後的位置左右顛倒了。站在右面看，左手邊是前面。' });
+      concept.push({ v: fromHeights(range(S.D).map(y => S.H[S.W - 1][y]), S.Hm), trap: '這張只算了<em>最右邊一行</em>。左邊比較高的積木，從右面也看得到。' });
+      const sums = range(S.D).map(y => sum(range(S.W).map(x => S.H[x][y])));
+      if (Math.max(...sums) <= N) concept.push({ v: fromHeights(sums, Math.max(...sums)), trap: '這張把同一排<em>左右的積木全部疊起來</em>算了；從右面看，重疊的只看得到最高的那一疊。' });
+      concept.push({ v: V.front, trap: '這是<em>前視圖</em>。' });
+    } else {
+      concept.push({ v: rot90(correct), trap: '上視圖要<em>站在正前方</em>往下看；這張轉了 90°。' });
+      concept.push({ v: rot90(rot90(rot90(correct))), trap: '上視圖要<em>站在正前方</em>往下看；這張轉了 90°。' });
+      concept.push({ v: mirrorUD(correct), trap: '前後顛倒了：上視圖<em>最下面一列是最前面那一排</em>。' });
+      concept.push({ v: mirrorLR(correct), trap: '左右顛倒了。' });
+    }
+    const opts = [{ key: keyOf(correct, N), v: correct, trap: '' }];
+    const has = k => opts.some(o => o.key === k);
+    shuffle(concept).forEach(o => {
+      const k = keyOf(o.v, N);
+      if (opts.length < 4 && !has(k)) opts.push({ key: k, v: o.v, trap: o.trap });
+    });
+    for (let i = 0; opts.length < 4 && i < 200; i++) {
+      let v = null, trap = '';
+      if (which === 'top') {
+        const x = R(0, S.W - 1), y = R(0, S.D - 1);
+        v = { w: correct.w, h: correct.h, rows: correct.rows.map(r => r.slice()) };
+        v.rows[y][x] = !v.rows[y][x];
+        if (countCells(v) === 0) continue;
+        trap = v.rows[y][x] ? '這張<em>多畫了一格</em>。' : '這張<em>少畫了一格</em>。';
+      } else {
+        const hs = perturbHeights(which === 'front' ? fh : rh, N);
+        if (!hs) continue;
+        v = fromHeights(hs, Math.max(...hs));
+        trap = which === 'front' ? '這張有<em>一直行的高度不對</em>。' : '這張有<em>一排的高度不對</em>。';
+      }
+      const k = keyOf(v, N);
+      if (!has(k)) opts.push({ key: k, v, trap });
+    }
+    const color = COLOR[which];
+    let why;
+    if (which === 'front') {
+      why = `<em>前視圖</em>：站在前面看，由左到右每一直行看得到的是那一行<em>最高的一疊</em>：<span class="nw">${fh.join('、')} 層</span>。`;
+    } else if (which === 'right') {
+      why = `<em>右視圖</em>：站在右面看，<em>左手邊是前面、右手邊是後面</em>；由前到後每一排取最高的一疊：<span class="nw">${rh.join('、')} 層</span>。`;
+    } else {
+      why = `<em>上視圖</em>：站在<em>正前方</em>往下看，有積木的位置就塗一格，不管疊幾層；<em>最下面一列是最前面那一排</em>。`;
+    }
+    return {
+      type: 'view', rule: '選視圖', which, S, N,
+      ask: `哪一張是它的<em>${VNAME[which]}</em>？`,
+      opts: shuffle(opts).map(o => ({ ...o, html: viewSvg(o.v, N, color) })),
+      ans: opts[0].key,
+      why,
+      check: { which }
+    };
+  }
+
+  /* ══ ② 判方向（課本 P.213 例 6）══════════════════════
+     給一張視圖，從前、後、左、右、上五個方向選一個；五張視圖要彼此不一樣，答案才唯一。 */
+  const DIRS = ['front', 'back', 'left', 'right', 'top'];
+  const DNAME = { front: '前面', back: '後面', left: '左面', right: '右面', top: '上面' };
+  const DWHY = {
+    front: '從<em>前面</em>看，左右就是積木的左右，每一直行看得到最高的那一疊。',
+    back: '從<em>後面</em>看，左右會顛倒：<em>後視圖是前視圖左右翻過來</em>。',
+    left: '從<em>左面</em>看，左手邊是後面、右手邊是前面：<em>左視圖是右視圖左右翻過來</em>。',
+    right: '從<em>右面</em>看，<em>左手邊是前面、右手邊是後面</em>。',
+    top: '從<em>上面</em>看，只看得出哪些位置有積木，不管疊幾層。'
+  };
+
+  function makeDir() {
+    for (let tries = 0; tries < 300; tries++) {
+      const S = makeShape(size);
+      const N = frameOf(S);
+      const V = viewsOf(S);
+      const keys = DIRS.map(d => keyOf(V[d], N));
+      if (new Set(keys).size !== DIRS.length) continue;
+      const d = pickOf(DIRS);
+      return {
+        type: 'dir', rule: '判方向', dir: d, S, N, V,
+        ask: '這張視圖是從<em>哪一面</em>看的？',
+        given: viewSvg(V[d], N, COLOR.plain),
+        opts: DIRS.map(k => ({ key: k, html: DNAME[k], word: true })),
+        ans: d,
+        why: DWHY[d],
+        check: { dir: d }
+      };
+    }
+    throw new Error('makeDir: 產生失敗');
+  }
+
+  const GENS = [
+    { key: 'view', make: makeView },
+    { key: 'dir', make: makeDir }
+  ];
+  const pool = () => (level === 'all' ? GENS : GENS.filter(g => g.key === level));
+
+  let lastSig = '';
+  function nextQuestion() {
+    let q;
+    for (let i = 0; i < 12; i++) {
+      q = pickOf(pool()).make();
+      const sig = JSON.stringify(q.S.H) + q.type;
+      if (sig !== lastSig) { lastSig = sig; break; }
+    }
+    return q;
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+
+  /* ── 狀態 ───────────────────────────── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, curLimit = 20;
+  let ansBtns = [];
+
+  function setView(v) { document.body.dataset.view = v; }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.level === level));
+    });
+    document.querySelectorAll('#size button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.size === size));
+    });
+    $('level-note').textContent = `${LEVEL_NOTE[level]}${SIZE_NOTE[size]}`;
+    paintLimit();
+  }
+
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function startQuestion() {
+    cur = nextQuestion();
+    curLimit = limit();
+    $('rule').textContent = cur.rule;
+    $('ask').innerHTML = cur.ask;
+    $('pic').innerHTML = isoSvg(cur.S, cur.type === 'dir' ? 'all' : 'front');
+    const btns = cur.opts.map((o, i) =>
+      `<button type="button" class="ans ${o.word ? 'word' : 'pict'}" data-key="${o.key}" aria-label="選項 ${i + 1}"><span class="k">${i + 1}</span>${o.html}</button>`).join('');
+    $('side').innerHTML = cur.type === 'dir'
+      ? `<div class="given">${cur.given}</div><div class="answers dirs">${btns}</div>`
+      : `<div class="answers">${btns}</div>`;
+    ansBtns = Array.from(document.querySelectorAll('#side .ans'));
+    ansBtns.forEach(b => b.addEventListener('click', () => judge(b.dataset.key)));
+    locked = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + curLimit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      const ratio = left / (curLimit * 1000);
+      $('bar').style.transform = `scaleX(${ratio})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 3 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { judge(null); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 判定 ───────────────────────────── */
+  const vbox = (name, svg, cls = '') =>
+    `<div class="vbox ${cls}"><div class="vimg">${svg}</div><div class="vname">${name}</div></div>`;
+
+  function judge(answer) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    ansBtns.forEach(b => { b.disabled = true; });
+    document.body.classList.remove('urgent');
+
+    const timeout = answer === null;
+    const win = !timeout && answer === cur.ans;
+
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+    $('sol-pic').innerHTML = isoSvg(cur.S, cur.type === 'dir' ? 'all' : 'front');
+
+    let why = cur.why;
+    if (cur.type === 'view') {
+      const V = viewsOf(cur.S);
+      const picked = cur.opts.find(o => o.key === answer);
+      let views = ['front', 'right', 'top'].map(k =>
+        vbox(VNAME[k], viewSvg(V[k], cur.N, COLOR[k]), k === cur.which ? 'ok' : '')).join('');
+      if (!timeout && !win && picked) {
+        views += vbox('你選的', viewSvg(picked.v, cur.N, COLOR[cur.which]), 'ng');
+        why += `<br><span class="warn">你選的那張：</span>${picked.trap}`;
+      }
+      $('sol-views').innerHTML = views;
+      $('sol-ans').textContent = '';
+    } else {
+      $('sol-views').innerHTML = DIRS.map(k => {
+        const cls = k === cur.ans ? 'ok' : (k === answer ? 'ng' : '');
+        return vbox(`從${DNAME[k]}看`, viewSvg(cur.V[k], cur.N, k === cur.ans ? COLOR.plain : 'rgba(226,232,240,0.55)'), cls);
+      }).join('');
+      $('sol-ans').textContent = `答案：${DNAME[cur.ans]}`;
+      if (!timeout && !win) why += `<br><span class="warn">你選的「${DNAME[answer]}」，看到的是上面標紅框的那一張。</span>`;
+    }
+    $('sol-why').innerHTML = why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limits[level] = clampLimit(limits[level] + Number(b.dataset.step));
+      store.set(`tv-limit-${level}`, String(limits[level]));
+      paintLimit();
+    });
+  });
+
+  document.querySelectorAll('#level button').forEach(b => {
+    b.addEventListener('click', () => {
+      level = b.dataset.level;
+      store.set('tv-level', level);
+      paintLevel();
+    });
+  });
+
+  document.querySelectorAll('#size button').forEach(b => {
+    b.addEventListener('click', () => {
+      size = b.dataset.size;
+      store.set('tv-size', size);
+      paintLevel();
+    });
+  });
+
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    store.set('tv-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      const i = ['1', '2', '3', '4', '5'].indexOf(e.key);
+      if (i >= 0 && ansBtns[i]) { e.preventDefault(); judge(ansBtns[i].dataset.key); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (document.activeElement && document.activeElement.closest('button, a') && document.activeElement !== $('start')) return;
+        e.preventDefault(); audio(); startQuestion();
+      }
+    }
+  });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）───────
+     用「一塊一塊積木」的座標重新算視圖（不經過高度表的捷徑），和標的答案比對；
+     並檢查選項數、選項不重複、正解恰好一個、看得到每一疊、判方向五張視圖互不相同。 */
+  function bruteView(S, which) {
+    const N = frameOf(S);
+    const cubes = [];
+    for (let x = 0; x < S.W; x++) for (let y = 0; y < S.D; y++) for (let z = 0; z < S.H[x][y]; z++) cubes.push([x, y, z]);
+    // 投影到觀察者眼前的 (左右, 上下) 座標
+    const proj = {
+      front: ([x, , z]) => [x, z],
+      back: ([x, , z]) => [S.W - 1 - x, z],
+      right: ([, y, z]) => [y, z],
+      left: ([, y, z]) => [S.D - 1 - y, z],
+      top: ([x, y]) => [x, y]
+    }[which];
+    const on = new Set(cubes.map(c => proj(c).join()));
+    let k = '';
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) k += on.has(`${c},${r}`) ? '1' : '0';
+      k += '/';
+    }
+    return k;
+  }
+
+  window.__threeViews = {
+    makeShape, viewsOf, keyOf, bruteView,
+    selfTest(n = 1000) {
+      const report = {}, errors = [];
+      const saved = size;
+      SIZE_KEYS.forEach(sk => {
+        size = sk;
+        GENS.forEach(g => {
+          const t0 = performance.now();
+          for (let i = 0; i < n; i++) {
+            let q;
+            try { q = g.make(); } catch (e) { errors.push([sk, g.key, 'throw', e.message]); continue; }
+            const S = q.S;
+            const txt = q.ask + q.why + q.opts.map(o => o.html + (o.trap || '')).join('|');
+            if (/undefined|NaN|Infinity|\[object|null/.test(txt)) errors.push([sk, g.key, '字串有壞值', txt.slice(0, 200)]);
+            const want = g.key === 'dir' ? 5 : 4;
+            if (q.opts.length !== want) errors.push([sk, g.key, `選項 ${q.opts.length} 個`]);
+            const keys = q.opts.map(o => o.key);
+            if (new Set(keys).size !== keys.length) errors.push([sk, g.key, '選項重複']);
+            if (keys.filter(k => k === q.ans).length !== 1) errors.push([sk, g.key, '正解不在選項裡']);
+            if (!visibleOK(S)) errors.push([sk, g.key, '有一疊看不到']);
+            if (Math.max(S.W, S.D) > (sk === 'easy' ? 3 : sk === 'normal' ? 3 : 4) || S.Hm > SIZES[sk].cap) errors.push([sk, g.key, '尺寸超過難度']);
+            if (g.key === 'view') {
+              if (q.ans !== bruteView(S, q.check.which)) errors.push([sk, g.key, `${q.check.which} 標的答案和重算不同`, JSON.stringify(S.H)]);
+            } else {
+              const all = DIRS.map(d => bruteView(S, d));
+              if (new Set(all).size !== 5) errors.push([sk, g.key, '五張視圖有重複']);
+              if (q.opts.length && all[DIRS.indexOf(q.ans)] !== keyOf(q.V[q.ans], q.N)) errors.push([sk, g.key, '題目視圖和重算不同', JSON.stringify(S.H)]);
+            }
+          }
+          report[`${sk}-${g.key}`] = `${n} 題，${(performance.now() - t0).toFixed(0)} ms`;
+        });
+      });
+      size = saved;
+      return { report, errors: errors.slice(0, 20), errorCount: errors.length };
+    }
+  };
+
+  paintLevel();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>
