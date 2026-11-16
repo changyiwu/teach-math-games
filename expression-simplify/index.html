@@ -498,11 +498,11 @@
 
   /* ── 設定（記在這台瀏覽器，限時依難度各自記）── */
   const LEVELS = ['basic', 'adv', 'all'];
-  const LIMIT_DEFAULT = { basic: 10, adv: 20, all: 15 };
+  const LIMIT_DEFAULT = { basic: 10, adv: 15, all: 12 };
   const LIMIT_MIN = 4, LIMIT_MAX = 40;
   const LEVEL_NOTE = {
     basic: '同類項、係數、代入求值、合併同類項、判斷是不是二元一次方程式。',
-    adv: '去括號、分配律、多層括號、分數通分，以及「化簡後才算數」。',
+    adv: '去括號、分配律、多層括號、分數通分，以及「化簡後才算數」；題目都很短，看一眼或心算就能判斷。',
     all: '基礎與進階混在一起出。'
   };
 
@@ -685,10 +685,11 @@
 
     // ③ 二元一次式的值（課本 P.8；自我檢核 2）
     { key: 'value', level: 'basic', rule: '二元一次式的值', make() {
-      const a = nz(1, 6);
-      let b; do { b = nz(1, 6); } while (b === a);
-      const c = coin(0.75) ? nz(1, 9) : 0;
-      const xv = R(-4, 4), yv = R(-4, 4);
+      // 數字壓小，心算就能代
+      const a = nz(1, 4);
+      let b; do { b = nz(1, 4); } while (b === a);
+      const c = coin(0.6) ? nz(1, 5) : 0;
+      const xv = R(-3, 3), yv = R(-3, 3);
       const truth = a * xv + b * yv + c;
       const ok = coin();
       let shown = truth, wrongWhy = '';
@@ -719,13 +720,11 @@
 
     // ④ 合併同類項（課本 P.10 例 2；自我檢核 3）
     { key: 'merge', level: 'basic', rule: '合併同類項', make() {
-      // 至少兩個 x 項、兩個 y 項，再加 0～2 個常數項，打散順序
+      // 只放 4 項、係數 1～5：兩個 x 項＋一個 y 項＋（再一個 y 項或一個常數），打散順序
       let list;
       do {
-        list = [T(nz(1, 7), 'x'), T(nz(1, 7), 'x'), T(nz(1, 7), 'y'), T(nz(1, 7), 'y')];
-        const nc = R(0, 2);
-        for (let i = 0; i < nc; i++) list.push(T(nz(1, 9)));
-        if (coin(0.4)) list.push(T(nz(1, 7), pickOf(['x', 'y'])));
+        list = [T(nz(1, 5), 'x'), T(nz(1, 5), 'x'), T(nz(1, 5), 'y'), coin() ? T(nz(1, 5), 'y') : T(nz(1, 6))];
+        if (coin()) list = list.map(t => (t.v === 'x' ? T(t.r, 'y') : t.v === 'y' ? T(t.r, 'x') : t));
         list = shuffle(list);
       } while (polyOf(list).x.n === 0 || polyOf(list).y.n === 0);
       const truth = polyOf(list);
@@ -794,133 +793,148 @@
     } },
 
     // ⑥ 去括號規則（課本 P.11 例 3；自我評量 2(1)）
+    // 只考「拿掉括號」這一步：括號外一個文字項、括號內另一個文字項＋常數，結果不必再合併
     { key: 'paren', level: 'adv', rule: '去括號規則', make() {
-      const A = randList(R(2, 3)), B = randList(R(2, 3));
+      const kinds = shuffle(['x', 'y']);
+      const A = [T(nz(1, 5), kinds[0])];
+      const B = [T(nz(1, 5), kinds[1]), T(nz(1, 5))];
       const minus = coin(0.7);
-      const wrapA = coin(0.6);
+      const opened = minus ? flipAll(B) : B;
       const truth = minus ? psub(polyOf(A), polyOf(B)) : padd(polyOf(A), polyOf(B));
       const ok = coin();
-      let shown = truth, why;
-      const opened = minus ? flipAll(B) : B;
+      let shownList = A.concat(opened), why;
       if (ok) {
         why = minus
-          ? `減號括號，裡面<em>每一項都變號</em>：${MINUS}(${listHtml(B)}) → ${listHtml(opened)}，再合併同類項得 <em>${polyHtml(truth)}</em>。`
-          : `加號括號直接拿掉，裡面<em>符號照抄</em>，再合併同類項得 <em>${polyHtml(truth)}</em>。`;
+          ? `減號括號，裡面<em>每一項都變號</em>：${MINUS}(${listHtml(B)}) → ${listHtml(opened)}。`
+          : `加號括號直接拿掉，裡面<em>符號照抄</em>。`;
       } else if (minus) {
-        // 減號括號只翻了第一項（B 至少兩項，所以一定和正解不同）
-        shown = padd(polyOf(A), polyOf(flipFirst(B)));
-        why = `減號後面的括號，<em>每一項</em>都要變號，不是只變第一項：${MINUS}(${listHtml(B)})＝${listHtml(opened)}。正確是 <em>${polyHtml(truth)}</em>。`;
+        // 減號括號只翻了第一項
+        shownList = A.concat(flipFirst(B));
+        why = `減號後面的括號，<em>每一項</em>都要變號，不是只變第一項：${MINUS}(${listHtml(B)})＝${listHtml(opened)}。`;
       } else {
         // 加號括號卻把裡面整組變號
-        shown = psub(polyOf(A), polyOf(B));
-        why = `括號前面是<em>加號</em>，拿掉括號時裡面的符號照抄，不用變號。正確是 <em>${polyHtml(truth)}</em>。`;
+        shownList = A.concat(flipAll(B));
+        why = `括號前面是<em>加號</em>，拿掉括號時裡面的符號照抄，不用變號：${listHtml(A.concat(B))}。`;
       }
-      const left = wrapA ? `(${listHtml(A)})` : listHtml(A);
       return {
-        html: `<span class="nw">${left} ${minus ? MINUS : '+'} (${listHtml(B)})</span> <span class="nw">= ${polyHtml(shown)}</span>`,
-        ok, why, check: { lhs: truth, rhs: shown }
+        html: `<span class="nw">${listHtml(A)} ${minus ? MINUS : '+'} (${listHtml(B)})</span> <span class="nw">= ${listHtml(shownList)}</span>`,
+        ok, why, check: { lhs: truth, rhs: polyOf(shownList) }
       };
     } },
 
     // ⑦ 分配律（課本 P.12 例 4(1)(2)、重新布題的分數倍）
+    // 倍數乘進兩項的括號，數字小到可以心算；分數倍時括號裡的係數都能整除
     { key: 'dist', level: 'adv', rule: '分配律', make() {
-      const fracK = [Q(1, 2), Q(1, 3), Q(2, 3), Q(3, 2), Q(-1, 2), Q(-1, 3), Q(3, 4)];
-      const two = coin(0.6);
-      if (!two) {
-        const k = coin(0.3) ? pickOf(fracK) : Q(nz(2, 6));
-        const A = randList(3);
-        const truth = pscale(polyOf(A), k);
-        const ok = coin();
-        // 錯法：只乘到括號裡第一項
-        const shown = ok ? truth : padd(pscale(polyOf([A[0]]), k), polyOf(A.slice(1)));
-        return {
-          html: `<span class="nw">${multHtml(k)}(${listHtml(A)})</span> <span class="nw">= ${polyHtml(shown)}</span>`,
-          ok,
-          why: ok
-            ? `${qHtml(k)} 要乘到括號裡的<em>每一項</em>：${listHtml(scaleList(A, k))}。`
-            : `分配律要乘到括號裡<em>每一項</em>，不能只乘第一項：${listHtml(scaleList(A, k))}。`,
-          check: { lhs: truth, rhs: shown }
-        };
+      let k, A;
+      if (coin(0.25)) {
+        k = pickOf([Q(1, 2), Q(1, 3), Q(-1, 2)]);
+        A = randList(2, 1, 3).map(t => T(qmul(t.r, Q(k.d)), t.v));
+      } else {
+        k = Q(nz(2, 5));
+        A = randList(2, 1, 5);
       }
-      const k1 = Q(nz(2, 6)), k2 = Q(R(2, 6));
-      const A = randList(2, 1, 6, ['x', 'y']), B = randList(3, 1, 6);
-      const truth = psub(pscale(polyOf(A), k1), pscale(polyOf(B), k2));
+      const right = scaleList(A, k);
+      const truth = polyOf(right);
       const ok = coin();
-      // 錯法：減號後面那個倍數，只有第一項變號（其餘項的負號沒乘進去）
-      const shown = ok ? truth
-        : padd(pscale(polyOf(A), k1), padd(pscale(polyOf([B[0]]), qneg(k2)), pscale(polyOf(B.slice(1)), k2)));
-      const opened = listHtml(scaleList(A, k1).concat(scaleList(B, qneg(k2))));
+      let shownList = right, why;
+      if (ok) {
+        why = `${qHtml(k)} 要乘到括號裡的<em>每一項</em>${k.n < 0 ? '，而且<em>連負號</em>一起乘' : ''}：${listHtml(right)}。`;
+      } else if (k.n < 0 && coin(0.6)) {
+        // 負倍數：第二項沒有連負號乘
+        shownList = [right[0], T(qmul(A[1].r, qneg(k)), A[1].v)];
+        why = `乘的是 <em>${qHtml(k)}</em>，第二項也要<em>連負號</em>一起乘：${listHtml(right)}。`;
+      } else {
+        // 只乘到括號裡第一項
+        shownList = [right[0], A[1]];
+        why = `分配律要乘到括號裡<em>每一項</em>，不能只乘第一項：${listHtml(right)}。`;
+      }
       return {
-        html: `<span class="nw">${multHtml(k1)}(${listHtml(A)}) ${MINUS} ${qAbsHtml(k2)}(${listHtml(B)})</span> <span class="nw">= ${polyHtml(shown)}</span>`,
-        ok,
-        why: ok
-          ? `兩段各自乘開：${opened}，再合併得 <em>${polyHtml(truth)}</em>。`
-          : `後面是 <em>${MINUS}${qAbsHtml(k2)}</em> 乘進括號，每一項都要<em>連負號</em>一起乘：${opened}。正確是 <em>${polyHtml(truth)}</em>。`,
-        check: { lhs: truth, rhs: shown }
+        html: `<span class="nw">${multHtml(k)}(${listHtml(A)})</span> <span class="nw">= ${listHtml(shownList)}</span>`,
+        ok, why, check: { lhs: truth, rhs: polyOf(shownList) }
       };
     } },
 
     // ⑧ 多層括號（課本 P.12 例 4(3)、P.13 重新布題）
+    // k[B − (C)]：B 一項、C 兩項，三項字母都不同；結果不必合併，只看去括號＋分配律
     { key: 'nest', level: 'adv', rule: '多層括號', make() {
-      // T0 ± k[ B − (C) ]，先去小括號，再用分配律
-      const T0 = randList(R(1, 2), 1, 9);
-      const k = Q(R(2, 4));
-      const s1 = coin(0.6) ? 1 : -1;
-      const B = randList(1, 1, 9, ['x', 'y']);
-      const C = randList(2, 1, 9);
-      const inner = padd(polyOf(B), pscale(polyOf(C), Q(-1)));
-      const truth = padd(polyOf(T0), pscale(inner, qmul(k, Q(s1))));
+      const k = Q(R(2, 3));
+      const kinds = shuffle(['x', 'y']);
+      const B = [T(nz(1, 4), kinds[0])];
+      const C = [T(nz(1, 4), kinds[1]), T(nz(1, 5))];
+      const step1 = B.concat(flipAll(C));
+      const right = scaleList(step1, k);
+      const truth = polyOf(right);
       const ok = coin();
-      let shown = truth, why;
-      const step1 = listHtml(B.concat(flipAll(C)));
+      let shownList = right, why;
       if (ok) {
-        why = `先去小括號：[${step1}]，合併得 [${polyHtml(inner)}]；再把 ${s1 < 0 ? MINUS : ''}${k.n} 乘進去，最後合併得 <em>${polyHtml(truth)}</em>。`;
+        why = `先去小括號：[${listHtml(step1)}]，再把 ${k.n} 乘到<em>每一項</em>：${listHtml(right)}。`;
       } else if (coin()) {
-        // 錯法 1：小括號前是減號，只翻了第一項
-        const innerBad = padd(polyOf(B), polyOf(flipFirst(C)));
-        shown = padd(polyOf(T0), pscale(innerBad, qmul(k, Q(s1))));
-        why = `小括號前面是減號，<em>裡面每一項</em>都要變號：${MINUS}(${listHtml(C)})＝${listHtml(flipAll(C))}。正確是 <em>${polyHtml(truth)}</em>。`;
+        // 小括號前是減號，只翻了第一項
+        shownList = scaleList(B.concat(flipFirst(C)), k);
+        why = `小括號前面是減號，<em>裡面每一項</em>都要變號：${MINUS}(${listHtml(C)})＝${listHtml(flipAll(C))}。正確是 <em>${listHtml(right)}</em>。`;
       } else {
-        // 錯法 2：中括號外的倍數只乘到第一項
-        const innerBad = padd(pscale(polyOf(B), k), pscale(polyOf(C), Q(-1)));
-        shown = padd(polyOf(T0), pscale(innerBad, Q(s1)));
-        why = `去完小括號是 [${step1}]，中括號外的 ${k.n} 要乘到<em>裡面每一項</em>，不能只乘第一項。正確是 <em>${polyHtml(truth)}</em>。`;
+        // 中括號外的倍數只乘到第一項
+        shownList = [right[0]].concat(step1.slice(1));
+        why = `去完小括號是 [${listHtml(step1)}]，中括號外的 ${k.n} 要乘到<em>裡面每一項</em>，不能只乘第一項。正確是 <em>${listHtml(right)}</em>。`;
       }
       return {
-        html: `<span class="nw">${listHtml(T0)} ${s1 < 0 ? MINUS : '+'} ${k.n}[${listHtml(B)} ${MINUS} (${listHtml(C)})]</span> <span class="nw">= ${polyHtml(shown)}</span>`,
-        ok, why, check: { lhs: truth, rhs: shown }
+        html: `<span class="nw">${k.n}[${listHtml(B)} ${MINUS} (${listHtml(C)})]</span> <span class="nw">= ${listHtml(shownList)}</span>`,
+        ok, why, check: { lhs: truth, rhs: polyOf(shownList) }
       };
     } },
 
     // ⑨ 分數的化簡（課本 P.13 例 5；P.21 挑錯題）
+    // 三種短題：拆開一個分數、兩個單項分數相加、減一個兩項的分數；分母只用 2、3、4
     { key: 'frac', level: 'adv', rule: '分數的化簡', make() {
-      let p, q; do { p = R(2, 5); q = R(2, 5); } while (p === q);
-      const A = randList(R(2, 3), 1, 6), B = randList(R(2, 3), 1, 6);
-      const minus = coin(0.7);
-      const L = lcm(p, q);
-      const pa = polyOf(A), pb = polyOf(B);
-      const truth = minus ? psub(pscale(pa, Q(1, p)), pscale(pb, Q(1, q)))
-        : padd(pscale(pa, Q(1, p)), pscale(pb, Q(1, q)));
+      const kind = pickOf(['split', 'split', 'add', 'minus']);
       const ok = coin();
-      let shown = truth, why;
-      const numerA = `${L / p}${TIMES}(${listHtml(A)})`, numerB = `${L / q}${TIMES}(${listHtml(B)})`;
-      if (ok) {
-        why = minus
-          ? `通分成 ${L}：${fr(`${numerA} ${MINUS} ${numerB}`, L)}，被減的那一組分子要<em>整組變號</em>，合併後得 <span class="nw">${polyOverHtml(truth)}。</span>`
-          : `通分成 ${L}：${fr(`${numerA} + ${numerB}`, L)}，合併後得 <span class="nw">${polyOverHtml(truth)}。</span>`;
-      } else if (minus) {
-        // 錯法：通分後，被減式的分子只有第一項變號（課本挑錯題小翊的錯）
-        shown = padd(pscale(pa, Q(1, p)), pscale(polyOf(flipFirst(B)), Q(1, q)));
-        why = `前面是減號，通分後被減的分子<em>每一項都要變號</em>，不能只變第一項。正確是 <span class="nw">${polyOverHtml(truth)}。</span>`;
-      } else {
-        // 錯法：分母直接相加
-        shown = pscale(padd(pa, pb), Q(1, p + q));
-        why = `分母<em>不能直接相加</em>，要先通分成 ${L}：${fr(`${numerA} + ${numerB}`, L)}。正確是 <span class="nw">${polyOverHtml(truth)}。</span>`;
+      if (kind === 'split') {
+        // (4x + 6)/2 = 2x + 3：分子每一項都要除
+        const d = R(2, 4);
+        const A = randList(2, 1, 3).map(t => T(t.r.n * d, t.v));
+        const right = scaleList(A, Q(1, d));
+        const shownList = ok ? right : [right[0], A[1]];
+        return {
+          html: `<span class="nw">${fr(listHtml(A), d)} = ${listHtml(shownList)}</span>`,
+          ok,
+          why: ok
+            ? `分子<em>每一項</em>都除以 ${d}：${listHtml(right)}。`
+            : `分子<em>每一項</em>都要除以 ${d}，不能只除第一項：${listHtml(right)}。`,
+          check: { lhs: polyOf(right), rhs: polyOf(shownList) }
+        };
       }
-      if (!ok && peq(shown, truth)) return this.make();   // 極少數巧合：錯法剛好等於正解，重抽
+      const [p, q] = pickOf([[2, 3], [3, 2], [2, 4], [4, 2], [3, 4]]);
+      const L = lcm(p, q);
+      if (kind === 'add') {
+        // x/p + y/q：分母不能直接相加
+        const truth = P(Q(1, p), Q(1, q), Z);
+        let shown = truth, why;
+        if (ok) {
+          why = `通分成 ${L}：${fr(`${L / p}x + ${L / q}y`, L)}。`.replace(/(^|[^0-9])1([xy])/g, '$1$2');
+        } else if (coin()) {
+          shown = P(Q(1, p + q), Q(1, p + q), Z);
+          why = `分母<em>不能直接相加</em>，要先通分成 ${L}。正確是 <span class="nw">${polyOverHtml(truth)}。</span>`;
+        } else {
+          shown = P(Q(1, L), Q(1, L), Z);
+          why = `通分時<em>分子也要跟著乘</em>，不能只改分母。正確是 <span class="nw">${polyOverHtml(truth)}。</span>`;
+        }
+        return {
+          html: `<span class="nw">${fr('x', p)} + ${fr('y', q)} = ${polyOverHtml(shown)}</span>`,
+          ok, why, check: { lhs: truth, rhs: shown }
+        };
+      }
+      // x/p − (y ± c)/q：被減的分子要整組變號
+      const B = [T(1, 'y'), T(nz(1, 5))];
+      const truth = psub(P(Q(1, p), Z, Z), pscale(polyOf(B), Q(1, q)));
+      const shown = ok ? truth : padd(P(Q(1, p), Z, Z), pscale(polyOf(flipFirst(B)), Q(1, q)));
+      // 錯法：通分後被減分子只有第一項變號（課本挑錯題小翊的錯）
       return {
-        html: `<span class="nw">${fr(listHtml(A), p)} ${minus ? MINUS : '+'} ${fr(listHtml(B), q)}</span> <span class="nw">= ${polyOverHtml(shown)}</span>`,
-        ok, why, check: { lhs: truth, rhs: shown }
+        html: `<span class="nw">${fr('x', p)} ${MINUS} ${fr(listHtml(B), q)} = ${polyOverHtml(shown)}</span>`,
+        ok,
+        why: ok
+          ? `通分成 ${L}，被減的分子要<em>整組變號</em>：<span class="nw">${polyOverHtml(truth)}。</span>`
+          : `前面是減號，通分後被減的分子<em>每一項都要變號</em>，不能只變第一項。正確是 <span class="nw">${polyOverHtml(truth)}。</span>`,
+        check: { lhs: truth, rhs: shown }
       };
     } },
 
@@ -930,10 +944,10 @@
       let leftHtml, left, right;
       if (ok && coin()) {
         // (x+a)+(y+b)=c 型
-        const a = R(1, 9), b = R(1, 9);
+        const a = R(1, 5), b = R(1, 5);
         const A = [T(1, 'x'), T(a)], B = [T(1, 'y'), T(b)];
         left = A.concat(B);
-        right = [T(R(a + b + 5, 60))];
+        right = [T(R(a + b + 1, 20))];
         leftHtml = `(${listHtml(A)}) + (${listHtml(B)})`;
       } else {
         const ax = nz(1, 6), by = nz(1, 6);
