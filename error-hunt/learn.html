@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>解一元二次方程式小抄 - 解法抓錯行</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="解一元二次方程式小抄：因式分解、平方根、配方法、公式解的步驟與使用時機，判別式的三種情況，應用問題四步驟，以及常見錯誤對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    i { font-family: "Times New Roman", "Noto Serif", serif; font-style: italic; }
+    .fr { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; font-size: 0.86em; margin: 0 0.12em; line-height: 1.18; }
+    .fr > span:first-child { border-bottom: 0.08em solid currentColor; padding: 0 0.15em; }
+    .rad { border-top: 0.07em solid currentColor; padding: 0 0.08em 0 0.04em; }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+    .topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 16px; }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+    .btn {
+      padding: 9px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel);
+      color: var(--text); font-family: inherit; font-size: 0.98rem; text-decoration: none; cursor: pointer;
+    }
+    .btn-play { border: 0; background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05; font-weight: 800; }
+    .btn-play:hover { filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px; font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+    .lead strong { color: var(--text); }
+    h2 { margin: 36px 0 14px; font-size: 1.3rem; color: var(--accent-2); border-left: 4px solid var(--accent); padding-left: 12px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+    .card { border: 1px solid var(--line); border-top: 4px solid var(--cyan); border-radius: 16px; background: var(--card); padding: 18px; }
+    .card .law { font-size: clamp(1.1rem, 3vw, 1.3rem); font-weight: 700; margin: 2px 0 8px; }
+    .card .say { color: var(--muted); font-size: 0.98rem; margin: 0 0 6px; }
+    .card .say strong { color: var(--text); }
+    .card .eg { font-size: 1.05rem; line-height: 2; }
+    .card .when { color: var(--cyan); font-size: 0.92rem; margin-top: 6px; }
+    .hl { color: var(--accent-2); font-weight: 700; }
+
+    .note { border: 1px solid var(--line); border-left: 4px solid var(--cyan); border-radius: 12px; background: var(--panel); padding: 14px 18px; margin: 14px 0; }
+    .note b { color: var(--accent-2); }
+    .steps { margin: 0; padding-left: 1.4em; line-height: 2; }
+    .steps b { color: var(--accent-2); }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: clamp(0.95rem, 2.4vw, 1.1rem); }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td { border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: middle; }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.sec { color: var(--cyan); white-space: nowrap; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+    .nw { white-space: nowrap; }
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions"><a class="btn btn-play" href="./">🎮 開始挑戰</a></div>
+    </header>
+
+    <h1>解一元二次方程式小抄</h1>
+    <p class="lead">康軒 2 上第 4 章。方程式經化簡後可寫成 <span class="nw"><i>ax</i>² + <i>bx</i> + <i>c</i> = 0（<i>a</i> ≠ 0）</span>，就是一元二次方程式；把某數代入後<strong>等號兩邊相等</strong>，這個數就是它的解（根）。抓錯行的關鍵：每一行都要和上一行<strong>有一樣的解</strong>。</p>
+
+    <h2>四種解法與使用時機</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">因式分解（4-1）</div>
+        <p class="say">先<strong>移項讓一邊是 0</strong>，再分解成兩個一次式相乘。若 <i>A</i> × <i>B</i> = 0，則 <i>A</i> = 0 或 <i>B</i> = 0。</p>
+        <div class="eg"><span class="nw"><i>x</i>² + 5<i>x</i> = 6</span><br><span class="nw"><i>x</i>² + 5<i>x</i> − 6 = 0</span><br><span class="nw">(<i>x</i> + 6)(<i>x</i> − 1) = 0</span><br><span class="hl nw"><i>x</i> = −6 或 <i>x</i> = 1</span></div>
+        <div class="when">適合：提公因式、乘法公式、十字交乘分得開的題目</div>
+      </div>
+      <div class="card">
+        <div class="law">平方根（4-2）</div>
+        <p class="say">整理成 (<i>x</i> + <i>h</i>)² = <i>k</i>，<i>k</i> &gt; 0 時開平方要寫 <strong>±</strong>。</p>
+        <div class="eg"><span class="nw">(<i>x</i> + 1)² = 2</span><br><span class="nw"><i>x</i> + 1 = ±√<span class="rad">2</span></span><br><span class="hl nw"><i>x</i> = −1 ± √<span class="rad">2</span></span></div>
+        <div class="when">適合：已經是「某式的平方 = 數」的題目</div>
+      </div>
+      <div class="card">
+        <div class="law">配方法（4-2）</div>
+        <p class="say"><i>x</i>² 係數先變成 1（<strong>每一項都除</strong>），常數移到右邊，<strong>兩邊同加</strong> (<span class="fr"><span><i>b</i></span><span>2</span></span>)²。</p>
+        <div class="eg"><span class="nw"><i>x</i>² − 4<i>x</i> − 396 = 0</span><br><span class="nw"><i>x</i>² − 4<i>x</i> + 2² = 396 + 2²</span><br><span class="nw">(<i>x</i> − 2)² = 400</span><br><span class="hl nw"><i>x</i> = 22 或 <i>x</i> = −18</span></div>
+        <div class="when">適合：常數項很大、十字交乘不好試的題目</div>
+      </div>
+      <div class="card">
+        <div class="law">公式解（4-2）</div>
+        <p class="say">先<strong>化成一般式</strong>找 <i>a</i>、<i>b</i>、<i>c</i>，算判別式 <i>b</i>² − 4<i>ac</i>，≥ 0 才代公式。</p>
+        <div class="eg"><span class="hl nw"><i>x</i> = <span class="fr"><span>−<i>b</i> ± √<span class="rad"><i>b</i>² − 4<i>ac</i></span></span><span>2<i>a</i></span></span></span></div>
+        <div class="when">分子是 <b class="hl">−<i>b</i></b>；分母 2<i>a</i> 要除<b class="hl">整個分子</b></div>
+      </div>
+    </div>
+
+    <h2>判別式 <i>b</i>² − 4<i>ac</i></h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>判別式</th><th>解的情形</th><th>例子</th></tr></thead>
+        <tbody>
+          <tr><td>&gt; 0</td><td>兩個相異的根</td><td class="nw">2<i>x</i>² − 9<i>x</i> + 5 = 0：81 − 40 = 41 &gt; 0</td></tr>
+          <tr><td>= 0</td><td>兩根相等（重根），<i>x</i> = −<span class="fr"><span><i>b</i></span><span>2<i>a</i></span></span></td><td class="nw">4<i>x</i>² + 4<i>x</i> + 1 = 0：16 − 16 = 0</td></tr>
+          <tr><td>&lt; 0</td><td>無解（負數沒有平方根）</td><td class="nw"><i>x</i>² + <i>x</i> + 2 = 0：1 − 8 = −7 &lt; 0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note"><b>注意</b>：<i>c</i> 是負數時，−4<i>ac</i> 會變成<b>加</b>：3<i>x</i>² + 7<i>x</i> − 2 = 0 的判別式是 49 − 4 × 3 × (−2) = 49 <b>+</b> 24 = 73。</div>
+
+    <h2>應用問題四步驟</h2>
+    <div class="note">
+      <ol class="steps">
+        <li><b>設未知數</b>：設小翊的年齡為 <i>x</i> 歲。</li>
+        <li><b>列方程式</b>：「單價的 2 倍少 20」是 2<i>x</i> − 20，不是 2(<i>x</i> − 20)；沿四邊開路，長、寬都扣 2<i>x</i>，十字形道路只扣 <i>x</i>。</li>
+        <li><b>解方程式</b>：因式分解、配方法或公式解。</li>
+        <li><b>檢查並寫答案</b>：年齡、價格、長度不能是負的，路不能比草地寬；題目問的是 <i>x</i> 還是 <i>x</i> + 4，要回頭讀題目。</li>
+      </ol>
+    </div>
+
+    <h2>常見錯誤對照表</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>遊戲裡的錯行都是這幾種。</caption>
+        <thead><tr><th>節</th><th style="width:40%">錯誤的寫法</th><th>正確</th></tr></thead>
+        <tbody>
+          <tr><td class="sec">4-1</td><td class="bad">(<i>x</i> − 1)(2<i>x</i> + 3) = (<i>x</i> − 1)(<i>x</i> + 2) 兩邊同除以 (<i>x</i> − 1)，得 <i>x</i> = −1</td><td class="good"><i>x</i> − 1 可能是 0，不能同除。移項、提公因式：<i>x</i> = 1 或 <i>x</i> = −1</td></tr>
+          <tr><td class="sec">4-1</td><td class="bad">2<i>x</i>² = 3<i>x</i> 兩邊同除以 <i>x</i>，得 <i>x</i> = <span class="fr"><span>3</span><span>2</span></span></td><td class="good"><i>x</i>(2<i>x</i> − 3) = 0：<i>x</i> = 0 或 <i>x</i> = <span class="fr"><span>3</span><span>2</span></span></td></tr>
+          <tr><td class="sec">4-1</td><td class="bad">(<i>x</i> − 4)(2<i>x</i> − 7) = 1，所以 <i>x</i> − 4 = 1 或 2<i>x</i> − 7 = 1</td><td class="good">右邊不是 0 不能拆。展開、移項：2<i>x</i>² − 15<i>x</i> + 27 = 0</td></tr>
+          <tr><td class="sec">4-1</td><td class="bad"><i>x</i>² + 5<i>x</i> = 6 → <i>x</i>² + 5<i>x</i> + 6 = 0</td><td class="good">移項要變號：<i>x</i>² + 5<i>x</i> − 6 = 0</td></tr>
+          <tr><td class="sec">4-1</td><td class="bad"><i>x</i>² + 2<i>x</i> − 8 = (<i>x</i> + 2)(<i>x</i> − 4)</td><td class="good">乘回去中間項差一個負號：(<i>x</i> − 2)(<i>x</i> + 4)</td></tr>
+          <tr><td class="sec">4-1</td><td class="bad"><i>x</i> − 7 = 0，所以 <i>x</i> = −7</td><td class="good"><i>x</i> = 7</td></tr>
+          <tr><td class="sec">4-1</td><td class="bad">4<i>x</i>² − 1 = (2<i>x</i> − 1)² = 0</td><td class="good">平方差：(2<i>x</i> + 1)(2<i>x</i> − 1) = 0，兩個解 ±<span class="fr"><span>1</span><span>2</span></span></td></tr>
+          <tr><td class="sec">4-2</td><td class="bad">(<i>x</i> − 7)² = 3，所以 <i>x</i> − 7 = √<span class="rad">3</span></td><td class="good"><i>x</i> − 7 = ±√<span class="rad">3</span></td></tr>
+          <tr><td class="sec">4-2</td><td class="bad"><i>x</i>² + 10<i>x</i> + 5² = 1（只加左邊）</td><td class="good">兩邊同加：<i>x</i>² + 10<i>x</i> + 5² = 1 + 5²</td></tr>
+          <tr><td class="sec">4-2</td><td class="bad">2<i>x</i>² − 6<i>x</i> − 3 = 0 → <i>x</i>² − 3<i>x</i> = 3</td><td class="good">每一項都除以 2：<i>x</i>² − 3<i>x</i> = <span class="fr"><span>3</span><span>2</span></span></td></tr>
+          <tr><td class="sec">4-2</td><td class="bad">(<i>x</i> − 4)² = −10，所以 <i>x</i> − 4 = ±√<span class="rad">10</span></td><td class="good">平方不會是負數：方程式無解</td></tr>
+          <tr><td class="sec">4-2</td><td class="bad"><i>x</i>² = 3<i>x</i> + 2，所以 <i>a</i> = 1、<i>b</i> = 3、<i>c</i> = 2</td><td class="good">先化成一般式 <i>x</i>² − 3<i>x</i> − 2 = 0：<i>b</i> = −3、<i>c</i> = −2</td></tr>
+          <tr><td class="sec">4-2</td><td class="bad">5<i>x</i>² − 13<i>x</i> + 7 = 0 → <i>x</i> = <span class="fr"><span>−13 ± √<span class="rad">29</span></span><span>10</span></span></td><td class="good">分子是 −<i>b</i> = 13：<i>x</i> = <span class="fr"><span>13 ± √<span class="rad">29</span></span><span>10</span></span></td></tr>
+          <tr><td class="sec">4-2</td><td class="bad"><i>x</i> = 13 ± <span class="fr"><span>√<span class="rad">29</span></span><span>10</span></span></td><td class="good">分母要除整個分子：<i>x</i> = <span class="fr"><span>13 ± √<span class="rad">29</span></span><span>10</span></span></td></tr>
+          <tr><td class="sec">4-2</td><td class="bad">判別式 = −8，寫成 <i>x</i> = <span class="fr"><span>8 ± √<span class="rad">8</span></span><span>4</span></span></td><td class="good">判別式 &lt; 0：方程式無解</td></tr>
+          <tr><td class="sec">4-3</td><td class="bad">數量是單價的 3 倍少 18：<i>x</i> × 3(<i>x</i> − 18)</td><td class="good"><i>x</i>(3<i>x</i> − 18)</td></tr>
+          <tr><td class="sec">4-3</td><td class="bad">沿四邊開路：(30 − <i>x</i>)(20 − <i>x</i>) = 264</td><td class="good">兩邊都有路：(30 − 2<i>x</i>)(20 − 2<i>x</i>) = 264</td></tr>
+          <tr><td class="sec">4-3</td><td class="bad">所以鬆餅每個賣 23 元或 −16 元</td><td class="good">價格不能是負數，<i>x</i> = −16 不合，每個賣 23 元</td></tr>
+          <tr><td class="sec">4-3</td><td class="bad">設生日是 <i>x</i> 號，答「露營是 <i>x</i> 號」</td><td class="good">露營是 <i>x</i> + 4 號：要回頭看題目問什麼</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer><a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a></footer>
+  </div>
+</body>
+</html>

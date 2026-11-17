@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>解法抓錯行 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="螢幕出一份同學解一元二次方程式的過程，點出第一個寫錯的那一行：同除漏解、開平方漏 ±、配方只加一邊、公式解的 −b 與分母、應用問題沒捨去不合理的解。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --pink: #f9a8d4;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+    i.v { font-family: "Times New Roman", "Noto Serif", serif; font-style: italic; }
+    .fr { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; font-size: 0.86em; margin: 0 0.12em; line-height: 1.18; }
+    .fr > span:first-child { border-bottom: 0.08em solid currentColor; padding: 0 0.15em; }
+    .rad { border-top: 0.07em solid currentColor; padding: 0 0.08em 0 0.04em; }
+    .nw { white-space: nowrap; }
+
+    .screen { position: fixed; inset: 0; display: none; flex-direction: column; }
+    body[data-view="menu"] #menu, body[data-view="play"] #play, body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 10px 18px;
+      border-bottom: 1px solid var(--line); background: rgba(11, 16, 32, 0.55); backdrop-filter: blur(6px);
+    }
+    .home { color: var(--muted); text-decoration: none; font-size: 0.95rem; white-space: nowrap; }
+    .home:hover, .home:focus-visible { color: var(--text); }
+    .spacer { flex: 1 1 auto; }
+    .stat { font-size: 0.95rem; color: var(--muted); white-space: nowrap; }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+    .icon-btn {
+      border: 1px solid var(--line); background: rgba(15, 23, 42, 0.6); color: var(--text);
+      border-radius: 10px; width: 40px; height: 36px; font-size: 1.1rem; cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機 ── */
+    .menu-body {
+      flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 16px; padding: 20px 16px 32px; text-align: center; overflow-y: auto;
+    }
+    .menu-body > :first-child { margin-top: auto; }
+    .menu-body > :last-child { margin-bottom: auto; }
+    h1.title {
+      margin: 0; font-size: clamp(2rem, 7vw, 4.2rem); letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .unit { margin: 0 0 6px; opacity: 0.75; font-size: 0.95rem; max-width: 60ch; line-height: 1.6; }
+    .hint { margin: 0; color: var(--muted); font-size: clamp(0.95rem, 2.2vw, 1.25rem); max-width: 42ch; line-height: 1.7; }
+    .ctl-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+    .ctl {
+      display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line);
+      border-radius: 999px; background: var(--panel); font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6); color: var(--text); font-size: 1.1rem; cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+    .seg { display: flex; flex-wrap: wrap; justify-content: center; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--panel); }
+    .seg button { border: 0; background: transparent; color: var(--muted); padding: 9px 16px; font-size: 1rem; cursor: pointer; font-family: inherit; }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+    .level-note { margin: -4px 0 0; color: var(--muted); font-size: 0.9rem; max-width: 50ch; line-height: 1.6; }
+    .big-btn {
+      margin-top: 4px; padding: 18px 44px; border: 0; border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem); font-weight: 800; font-family: inherit; cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+    .learn-link { color: var(--cyan); text-decoration: none; font-size: 1rem; border-bottom: 1px dashed rgba(34, 211, 238, 0.5); padding-bottom: 2px; }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+    .keys { color: var(--muted); font-size: 0.85rem; opacity: 0.8; }
+    .keys kbd {
+      display: inline-block; padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
+      border-radius: 6px; background: rgba(15, 23, 42, 0.6); font-family: inherit; font-size: 0.85em;
+    }
+
+    /* ── 作答 ── */
+    .timer { flex: 0 0 auto; height: 10px; background: rgba(15, 23, 42, 0.8); }
+    .timer > i { display: block; height: 100%; width: 100%; transform-origin: left center; background: linear-gradient(90deg, var(--cyan), var(--accent-2)); }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center;
+      gap: clamp(6px, 1.2vh, 12px); padding: 8px 16px 12px; min-height: 0; overflow-y: auto;
+    }
+    .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 14px; max-width: 1100px; }
+    .rule-tag {
+      padding: 4px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem); background: var(--panel); white-space: nowrap;
+    }
+    .ask { font-size: clamp(1.15rem, 3.2vw, 1.9rem); font-weight: 700; text-align: center; line-height: 1.45; }
+    .ask.story { font-size: clamp(1rem, 2.4vw, 1.35rem); font-weight: 600; text-align: left; max-width: 62ch; color: #e2e8f0; }
+    .sub { color: var(--muted); font-size: clamp(0.9rem, 2vw, 1.1rem); text-align: center; }
+    .sub em { font-style: normal; color: var(--text); font-weight: 700; }
+
+    .count {
+      position: absolute; top: 54px; right: 18px; font-size: clamp(2.4rem, 7vw, 4.4rem); font-weight: 800;
+      color: var(--accent-2); opacity: 0.85; pointer-events: none; font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    /* 解題過程：一行一個按鈕 */
+    .sheet { width: min(1100px, 100%); display: grid; gap: clamp(5px, 1vh, 9px); }
+    .sheet.two { grid-auto-flow: column; grid-template-columns: 1fr 1fr; column-gap: 14px; }
+    .ln {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; width: 100%; text-align: left;
+      padding: clamp(5px, 1vh, 9px) 14px; border: 2px solid var(--line); border-radius: 14px; background: var(--card);
+      color: var(--text); font-family: inherit; font-size: clamp(1.02rem, min(2.8vw, 4.3vh), 1.9rem); cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s; font-variant-numeric: tabular-nums;
+    }
+    .sheet.story .ln { font-size: clamp(0.98rem, min(2.3vw, 3.3vh), 1.6rem); }
+    @media (max-height: 640px) {
+      .ask.story { font-size: 1rem; line-height: 1.4; }
+      .play-body { gap: 5px; padding-top: 4px; }
+      .ln { padding-top: 4px; padding-bottom: 4px; }
+    }
+    .ln:hover:not(:disabled) { border-color: var(--cyan); }
+    .ln:disabled { cursor: default; }
+    .ln .no {
+      flex: 0 0 auto; width: 1.7em; height: 1.7em; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+      background: rgba(15, 23, 42, 0.75); color: var(--muted); font-size: 0.72em; font-weight: 700;
+    }
+    .ln .m { flex: 1 1 auto; line-height: 1.5; }
+    .ln .tip { flex: 0 1 auto; margin-left: auto; color: var(--muted); font-size: 0.66em; }
+    .ln.given { border-style: dashed; background: rgba(15, 23, 42, 0.5); }
+    .ln.given .no { background: transparent; border: 1px solid var(--line); }
+    .ln.sel { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.28); transform: translateX(4px); }
+    .ln.sel .no { background: var(--cyan); color: #082f49; }
+    .ln.bad { border-color: var(--lose); background: rgba(127, 29, 29, 0.35); }
+    .ln.bad .no { background: var(--lose); color: #fff; }
+    .ln.after { opacity: 0.55; }
+    .ln.okline { border-color: rgba(34, 197, 94, 0.5); }
+    .ln .fixto { flex-basis: 100%; color: #bbf7d0; font-size: 0.86em; padding-left: 2.3em; }
+    .ln .fixto b { color: var(--win); font-weight: 700; margin-right: 6px; font-size: 0.85em; }
+
+    .acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .act {
+      padding: 12px 22px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+      font-family: inherit; font-size: clamp(1rem, 2.6vw, 1.25rem); cursor: pointer;
+    }
+    .act:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .act.go { border: 0; background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05; font-weight: 800; padding: 12px 30px; }
+    .act.go:hover:not(:disabled) { color: #231a05; filter: brightness(1.06); }
+    .act.allok { color: #86efac; border-color: rgba(34, 197, 94, 0.5); }
+    .act:disabled { opacity: 0.4; cursor: default; }
+    .act[hidden] { display: none; }
+    .msg { min-height: 1.4em; font-size: clamp(0.95rem, 2.2vw, 1.1rem); text-align: center; color: var(--accent-2); }
+
+    /* 挑戰：選正確寫法 */
+    .choices { display: flex; flex-direction: column; align-items: stretch; gap: clamp(6px, 1.2vh, 10px); width: min(760px, 100%); }
+    .choices[hidden] { display: none; }
+    .choice {
+      position: relative; padding: clamp(8px, 1.6vh, 12px) 18px clamp(8px, 1.6vh, 12px) 44px;
+      border: 2px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); text-align: left;
+      font-family: inherit; font-size: clamp(1.05rem, min(2.8vw, 3.6vh), 1.55rem); cursor: pointer; transition: transform 0.1s, border-color 0.15s;
+    }
+    .choice .k { position: absolute; top: 50%; left: 14px; transform: translateY(-50%); font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+    .choice:hover:not(:disabled) { transform: translateX(3px); border-color: var(--cyan); }
+    .choice:disabled { opacity: 0.45; cursor: default; }
+
+    /* ── 結果 ── */
+    .verdict {
+      position: fixed; inset: 0; z-index: 20; display: none; flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 12px; padding: 22px 16px; background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.82), rgba(2, 6, 23, 0.96));
+      backdrop-filter: blur(3px); overflow-y: auto;
+    }
+    .verdict > * { flex-shrink: 0; }
+    .verdict > :first-child { margin-top: auto; }
+    .verdict > :last-child { margin-bottom: auto; }
+    body[data-view="result"] .verdict { display: flex; }
+    .verdict h2 { margin: 0; font-size: clamp(2rem, 7vw, 3.6rem); letter-spacing: 0.06em; animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1); }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+    @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .solution { width: min(1060px, 100%); border: 1px solid var(--line); border-radius: 18px; background: var(--panel); padding: clamp(12px, 2.4vw, 20px); text-align: center; }
+    .answer-chip {
+      display: inline-block; margin-bottom: 10px; padding: 4px 18px; border-radius: 999px;
+      font-size: clamp(1.05rem, 2.8vw, 1.5rem); font-weight: 800; color: var(--win); border: 2px solid currentColor;
+    }
+    .answer-chip.ng { color: #fca5a5; }
+    .solution .sheet { margin: 0 auto 10px; }
+    .solution .ln { font-size: clamp(0.95rem, min(2.3vw, 3vh), 1.3rem); cursor: default; }
+    .why { font-size: clamp(1rem, 2.3vw, 1.2rem); line-height: 1.85; text-align: left; max-width: 66ch; margin: 0 auto; }
+    .why > div + div { margin-top: 6px; }
+    .why b { color: var(--accent-2); }
+    .why .warn { color: #fca5a5; }
+    .why .soft { color: var(--muted); font-size: 0.92em; }
+    .sec-title { margin: 14px 0 6px; color: var(--cyan); font-size: 1rem; font-weight: 700; }
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .ghost-btn { padding: 12px 24px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--text); font-family: inherit; font-size: 1.05rem; cursor: pointer; }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    @media (max-width: 720px) {
+      .sheet.two { grid-auto-flow: row; grid-template-columns: 1fr; grid-template-rows: none !important; }
+    }
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; font-size: 2.2rem; }
+      .head { padding-right: 52px; }
+      .seg button { padding: 8px 12px; }
+      .ln { padding: 6px 10px; gap: 2px 8px; }
+      .ln .tip { flex-basis: 100%; margin-left: 2.3em; }
+    }
+    @media (min-aspect-ratio: 5/4) and (min-width: 720px) {
+      .head { padding: 0 110px; }
+    }
+    @media (max-height: 640px) {
+      .verdict { gap: 8px; padding-top: 12px; }
+      .verdict h2 { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+    <div class="menu-body">
+      <h1 class="title">解法抓錯行</h1>
+      <p class="unit">📘 第3冊・第4章 一元二次方程式・第1節 因式分解解一元二次方程式、第2節 配方法與公式解、第3節 應用問題</p>
+      <p class="hint">螢幕出一份同學的解題過程，從上往下檢查，<strong>點出第一個寫錯的那一行</strong>再按「送出」；整份都沒錯就按「全對」。限時 <span class="limit-val">30</span> 秒。</p>
+      <div class="ctl-row">
+        <div class="seg" id="type" role="group" aria-label="題型">
+          <button type="button" data-type="fac" aria-pressed="true">4-1 因式分解</button>
+          <button type="button" data-type="cs" aria-pressed="false">4-2 配方與公式解</button>
+          <button type="button" data-type="app" aria-pressed="false">4-3 應用問題</button>
+          <button type="button" data-type="mix" aria-pressed="false">混合</button>
+        </div>
+      </div>
+      <p class="level-note" id="type-note"></p>
+      <div class="ctl-row">
+        <div class="seg" id="diff" role="group" aria-label="難度">
+          <button type="button" data-diff="basic" aria-pressed="true">基礎：抓錯行</button>
+          <button type="button" data-diff="hard" aria-pressed="false">挑戰：抓錯行＋選正確寫法</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-5" aria-label="減少 5 秒">−</button>
+          <b class="limit-val">30</b>秒
+          <button type="button" data-step="5" aria-label="增加 5 秒">＋</button>
+        </div>
+      </div>
+      <button type="button" class="big-btn" id="start">🔎 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看解一元二次方程式小抄</a>
+      <p class="keys">鍵盤：<kbd>1</kbd>～<kbd>8</kbd> 選行　<kbd>Enter</kbd> 送出　<kbd>0</kbd> 全對　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+    <div class="count" id="count">30</div>
+    <div class="play-body">
+      <div class="head">
+        <div class="rule-tag" id="rule">4-1</div>
+        <div class="ask" id="ask"></div>
+      </div>
+      <div class="sub" id="sub"></div>
+      <div class="sheet" id="sheet"></div>
+      <div class="choices" id="choices" hidden></div>
+      <div class="acts" id="acts">
+        <button type="button" class="act allok" id="allok">✔ 全對</button>
+        <button type="button" class="act go" id="submit">送出 ▸</button>
+      </div>
+      <div class="msg" id="msg"></div>
+    </div>
+  </section>
+
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="answer-chip" id="sol-chip"></div>
+      <div class="sheet" id="sol-sheet"></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器；限時依「題型 × 難度」各自記）── */
+  const TYPES = ['fac', 'cs', 'app', 'mix'];
+  const DIFFS = ['basic', 'hard'];
+  const BASE_LIMIT = { fac: 30, cs: 40, app: 45, mix: 40 };
+  const LIMIT_MIN = 10, LIMIT_MAX = 180;
+  const SEC_NAME = { fac: '4-1 因式分解解一元二次方程式', cs: '4-2 配方法與公式解', app: '4-3 應用問題' };
+  const TYPE_NOTE = {
+    fac: '4-1：兩邊同除而漏解、乘積不是 0 就直接拆、移項沒變號、分解或解一次方程式的正負號、平方差和完全平方式弄混。',
+    cs: '4-2：開平方漏了 ±、配方只加一邊、x² 係數沒先除乾淨、公式解的 −b 和分母、判別式算錯，或判別式小於 0 卻還開根號。',
+    app: '4-3：列式（數量怎麼寫、路寬扣一次還是兩次）、整理時的正負號、解出來後沒捨去不合理的解、答成題目沒問的量。',
+    mix: '三節的題目隨機出。'
+  };
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 私密視窗等情況：不記也能玩 */ } }
+  };
+  const clampLimit = v => Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v));
+  let type = TYPES.includes(store.get('eh-type')) ? store.get('eh-type') : 'fac';
+  let diff = DIFFS.includes(store.get('eh-diff')) ? store.get('eh-diff') : 'basic';
+  const limits = {};
+  TYPES.forEach(t => DIFFS.forEach(d => {
+    const k = `${t}-${d}`;
+    const v = parseInt(store.get(`eh-limit-${k}`), 10);
+    limits[k] = clampLimit(Number.isFinite(v) ? v : BASE_LIMIT[t] + (d === 'hard' ? 15 : 0));
+  }));
+  let muted = store.get('eh-muted') === '1';
+  const limitKey = () => `${type}-${diff}`;
+  const limit = () => limits[limitKey()];
+
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  const coin = (p = 0.5) => Math.random() < p;
+  const nz = m => R(1, m) * (coin() ? 1 : -1);
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; };
+  const isSq = n => n >= 0 && Number.isInteger(Math.sqrt(n));
+  // n = o² × i，i 不含平方因數
+  function sqp(n) { let o = 1, i = n; for (let k = 2; k * k <= i; k++) { while (i % (k * k) === 0) { i /= k * k; o *= k; } } return [o, i]; }
+  const radOK = n => n > 0 && (isSq(n) || sqp(n)[0] === 1);   // 完全平方數或不含平方因數，根號不用再化簡
+
+  /* ══ 式子的寫法 ══════════════════════════════════ */
+  const MINUS = '−';
+  const num = n => (n < 0 ? MINUS : '') + Math.abs(n);
+  const V = v => `<i class="v">${v}</i>`;
+  const X = V('x');
+  const mono = (n, deg = 1) => `${n < 0 ? MINUS : ''}${Math.abs(n) === 1 ? '' : Math.abs(n)}${X}${deg === 2 ? '²' : ''}`;
+  function poly(terms) {
+    let out = '';
+    terms.forEach(([c, d]) => {
+      if (c === 0) return;
+      const abs = Math.abs(c);
+      const body = d === 0 ? String(abs) : `${abs === 1 ? '' : abs}${X}${d === 2 ? '²' : ''}`;
+      if (!out) out = (c < 0 ? MINUS : '') + body;
+      else out += ` ${c < 0 ? MINUS : '+'} ${body}`;
+    });
+    return out || '0';
+  }
+  const quad = (a, b, c) => poly([[a, 2], [b, 1], [c, 0]]);
+  const lin = (p, q) => poly([[p, 1], [q, 0]]);
+  const P = s => `(${s})`;
+  const par = n => (n < 0 ? `(${num(n)})` : String(n));
+  const fr = (n, d) => `<span class="fr"><span>${n}</span><span>${d}</span></span>`;
+  function rat(n, d = 1) {
+    if (d < 0) { n = -n; d = -d; }
+    const g = gcd(n, d) || 1; n /= g; d /= g;
+    return d === 1 ? num(n) : (n < 0 ? MINUS : '') + fr(Math.abs(n), d);
+  }
+  const rad = n => `√<span class="rad">${n}</span>`;
+  function surd(n) { const [o, i] = sqp(n); return i === 1 ? String(o) : (o === 1 ? '' : o) + rad(i); }
+  const sqH = h => `${Math.abs(h)}²`;                    // 配方加的數：3²
+  const bSq = b => (b < 0 ? `(${num(b)})²` : `${b}²`);
+  const lineNo = i => `第 ${i + 1} 行`;
+
+  /* ══ 每一行 ══════════════════════════════════════
+     eq：等式（或「或」連起來的幾個等式）。fs 是「左邊 − 右邊」的函數，
+         這一行的解集合由 fs 各自取樣算出係數再解，和題目的解集合比較。
+     fact：關於 a、b、c、判別式的敘述，ok(標準式係數) 判斷真假。
+     note：設未知數，不判對錯。ans：應用問題的答案，vals 和題目真正的答案比較。 */
+  const E = (h, fs, tip = '') => ({ k: 'eq', h: `<span class="nw">${h}</span>`, fs: Array.isArray(fs) ? fs : [fs], tip });
+  const NONE = (h, tip = '') => ({ k: 'eq', h, fs: [], tip });
+  const FACT = (h, ok, tip = '') => ({ k: 'fact', h, ok, tip });
+  const NOTE = (h, tip = '') => ({ k: 'note', h, tip });
+  const ANS = (h, vals, tip = '檢查並寫答案') => ({ k: 'ans', h, vals, tip });
+  const toRat = v => (Array.isArray(v) ? v : [v, 1]);
+  // x = a 或 x = b（相同就寫重根）
+  function rootsLine(vals, tip = '') {
+    const rs = vals.map(toRat);
+    const fs = rs.map(([n, d]) => x => x - n / d);
+    const key = ([n, d]) => n / d;
+    if (rs.length === 2 && Math.abs(key(rs[0]) - key(rs[1])) < 1e-12) return E(`${X} = ${rat(...rs[0])}（重根）`, fs, tip);
+    return E(rs.map(r => `${X} = ${rat(...r)}`).join(' 或 '), fs, tip);
+  }
+  function facPart(p, q) { return p === 1 && q === 0 ? X : P(lin(p, q)); }
+  function facLine(r1, r2, tip = '因式分解') {   // a = 1：(x − r1)(x − r2) = 0
+    if (r1 === r2) return E(`${P(lin(1, -r1))}² = 0`, x => (x - r1) * (x - r2), tip);
+    const parts = [[1, -r1], [1, -r2]].sort((A, B) => (A[1] === 0 ? -1 : B[1] === 0 ? 1 : 0));
+    return E(`${facPart(...parts[0])}${facPart(...parts[1])} = 0`, x => (x - r1) * (x - r2), tip);
+  }
+  function intRoots(a, b, c) {   // a x² + b x + c = 0 的兩個整數根，不是整數就回傳 null
+    const D = b * b - 4 * a * c;
+    if (!isSq(D)) return null;
+    const s = Math.sqrt(D), r1 = (-b + s) / (2 * a), r2 = (-b - s) / (2 * a);
+    return Number.isInteger(r1) && Number.isInteger(r2) ? [r1, r2] : null;
+  }
+  // (x + h)² = K 之後：x + h = ±√K → x = −h ± √K（K 是完全平方數再寫成兩個解）
+  function sqTail(h, K) {
+    const s = Math.sqrt(K);
+    const fs = [x => x + h - s, x => x + h + s];
+    const out = [E(`${lin(1, h)} = ±${surd(K)}`, fs, `${lin(1, h)} 是 ${K} 的平方根`)];
+    if (isSq(K)) {
+      out.push(E(`${X} = ${num(-h)} ± ${s}`, fs));
+      out.push(rootsLine([-h + s, -h - s]));
+    } else out.push(E(`${X} = ${num(-h)} ± ${surd(K)}`, fs));
+    return out;
+  }
+
+  /* ══ 題目範本 ══════════════════════════════════════
+     每個範本吃一個錯誤代碼（'ok' 是整份全對），回傳：
+       sec、ask（標題）、story（應用問題的題目文字）、
+       wrong（學生的解法）、bad（第一個錯的行，從 0 算）、sol（正確解法）、
+       fix（錯行的正確寫法）、cand（挑戰用的誤答候選）、why（錯在哪）、
+       truth：{ lhs, rhs（原方程式或正確列式的兩邊）, intended（出題時設定的根）,
+                feasible、ask、ans（應用問題：合理的解、題目問的量、答案）}
+     參數不合適就回傳 null，重抽。 */
+  const T = {};
+
+  /* ── 4-1 ── */
+  T.divide = {
+    sec: 'fac', errs: ['bad'],
+    make(err) {
+      if (coin(0.55)) {
+        const m = nz(6), d = pickOf([1, 1, -1, 2]);
+        let r = pickOf([1, 2]); if (d === -1 && r === 1) r = 2;
+        const p = r + d, k = nz(8);
+        if (k === m) return null;
+        const s = nz(7), q = s - d * k;
+        if (q === 0 || Math.abs(q) > 15) return null;
+        const A = P(lin(1, -m)), P1 = P(lin(p, q)), P2 = P(lin(r, s));
+        const lhs = x => (x - m) * (p * x + q), rhs = x => (x - m) * (r * x + s);
+        const orig = E(`${A}${P1} = ${A}${P2}`, x => lhs(x) - rhs(x));
+        const sol = [orig,
+          E(`${A}${P1} − ${A}${P2} = 0`, x => lhs(x) - rhs(x), '移項，使等號右邊為 0'),
+          E(`${A}[${P1} − ${P2}] = 0`, x => (x - m) * ((p * x + q) - (r * x + s)), `提公因式 ${A}`),
+          E(`${A}${P(lin(d, q - s))} = 0`, x => (x - m) * (d * x + q - s)),
+          E(`${lin(1, -m)} = 0 或 ${lin(d, q - s)} = 0`, [x => x - m, x => d * x + q - s]),
+          rootsLine([m, k])];
+        const wrong = [orig,
+          E(`${lin(p, q)} = ${lin(r, s)}`, x => (p * x + q) - (r * x + s), `等號兩邊同除以 ${A}`),
+          E(`${mono(d)} = ${num(s - q)}`, x => d * x - (s - q), '移項')];
+        if (d !== 1) wrong.push(rootsLine([k]));
+        return {
+          sec: 'fac', wrong, bad: 1, sol, fix: sol[1],
+          cand: [E(`${A}${P1} + ${A}${P2} = 0`, x => lhs(x) + rhs(x)), E(`${P1} − ${P2} = 0`, x => (p * x + q) - (r * x + s)), E(`${A}${P1} = 0`, lhs)],
+          why: `${lineNo(1)}把等號兩邊同除以 ${A}。可是 ${lin(1, -m)} 有可能是 0（${X} = ${num(m)} 時），<b>不能同除</b>；這樣會漏掉 ${X} = ${num(m)} 這個解。要先移項讓右邊變成 0，再提公因式 ${A}。`,
+          truth: { lhs, rhs, intended: [m, k] }
+        };
+      }
+      const p = R(2, 5), q = nz(12);
+      if (q % p === 0 && coin(0.5)) return null;
+      const lhs = x => p * x * x, rhs = x => q * x;
+      const orig = E(`${mono(p, 2)} = ${mono(q)}`, x => lhs(x) - rhs(x));
+      const sol = [orig,
+        E(`${quad(p, -q, 0)} = 0`, x => p * x * x - q * x, '移項，使等號右邊為 0'),
+        E(`${X}${P(lin(p, -q))} = 0`, x => x * (p * x - q), `提公因式 ${X}`),
+        E(`${X} = 0 或 ${lin(p, -q)} = 0`, [x => x, x => p * x - q]),
+        rootsLine([0, [q, p]])];
+      const wrong = [orig, E(`${mono(p)} = ${num(q)}`, x => p * x - q, `等號兩邊同除以 ${X}`), rootsLine([[q, p]])];
+      return {
+        sec: 'fac', wrong, bad: 1, sol, fix: sol[1],
+        cand: [E(`${quad(p, q, 0)} = 0`, x => p * x * x + q * x), E(`${lin(p, -q)} = 0`, x => p * x - q), E(`${mono(p, 2)} − ${num(q)} = 0`, x => p * x * x - q)],
+        why: `${lineNo(1)}把等號兩邊同除以 ${X}。可是 ${X} 有可能是 0，<b>不能同除</b>：${X} = 0 代回原式，兩邊都是 0，是一個解，同除就把它弄丟了。要先移項、再提公因式 ${X}。`,
+        truth: { lhs, rhs, intended: [0, q / p] }
+      };
+    }
+  };
+
+  T.notZero = {
+    sec: 'fac', errs: ['bad'],
+    make(err) {
+      const r1 = nz(8), r2 = nz(8);
+      if (r1 === r2) return null;
+      const u = nz(6), w = -(r1 + r2) - u;
+      if (w === 0 || w === u || Math.abs(w) > 12) return null;
+      const k = u * w - r1 * r2;
+      if (k === 0 || Math.abs(k) > 40 || (k < 0 && coin(0.7))) return null;
+      const S = u + w, Pr = u * w;
+      const A = P(lin(1, u)), B = P(lin(1, w));
+      const lhs = x => (x + u) * (x + w), rhs = () => k;
+      const orig = E(`${A}${B} = ${num(k)}`, x => lhs(x) - k);
+      const sol = [orig,
+        E(`${quad(1, S, Pr)} = ${num(k)}`, x => x * x + S * x + Pr - k, '展開'),
+        E(`${quad(1, S, Pr - k)} = 0`, x => x * x + S * x + Pr - k, '移項，使等號右邊為 0'),
+        facLine(r1, r2),
+        rootsLine([r1, r2])];
+      const wrong = [orig,
+        E(`${lin(1, u)} = ${num(k)} 或 ${lin(1, w)} = ${num(k)}`, [x => x + u - k, x => x + w - k]),
+        rootsLine([k - u, k - w])];
+      const t = k - u;
+      return {
+        sec: 'fac', wrong, bad: 1, sol, fix: sol[1],
+        cand: [E(`${quad(1, S, Pr)} = 0`, x => x * x + S * x + Pr), E(`${lin(1, u)} = 0 或 ${lin(1, w)} = 0`, [x => x + u, x => x + w])],
+        why: `等號右邊是 ${num(k)}，<b>不是 0</b>。「若 A × B = 0，則 A = 0 或 B = 0」只能用在乘積等於 0 的時候；乘積是 ${num(k)} 時，兩個因式可以是很多種組合（例如 ${X} = ${num(t)} 代回去，左邊是 ${num(lhs(t))}，不是 ${num(k)}）。要先展開、移項讓右邊變成 0，再因式分解。`,
+        truth: { lhs, rhs, intended: [r1, r2] }
+      };
+    }
+  };
+
+  const MOVE_PAIRS = [];
+  for (let b = 1; b <= 14; b++) for (let c = 2; c <= 60; c++) {
+    if (isSq(b * b + 4 * c) && b * b - 4 * c > 0 && isSq(b * b - 4 * c)) MOVE_PAIRS.push([b, c]);
+  }
+  T.moveSign = {
+    sec: 'fac', errs: ['bad'],
+    make(err) {
+      const [bb, cc] = pickOf(MOVE_PAIRS);
+      const b = coin() ? bb : -bb, C = coin(0.7) ? cc : -cc;
+      const tr = intRoots(1, b, -C), wr = intRoots(1, b, C);
+      if (!tr || !wr) return null;
+      const lhs = x => x * x + b * x, rhs = () => C;
+      const orig = E(`${quad(1, b, 0)} = ${num(C)}`, x => lhs(x) - C);
+      const sol = [orig, E(`${quad(1, b, -C)} = 0`, x => x * x + b * x - C, '移項'), facLine(...tr), rootsLine(tr)];
+      const wrong = [orig, E(`${quad(1, b, C)} = 0`, x => x * x + b * x + C, '移項'), facLine(...wr), rootsLine(wr)];
+      return {
+        sec: 'fac', wrong, bad: 1, sol, fix: sol[1],
+        cand: [E(`${quad(1, -b, -C)} = 0`, x => x * x - b * x - C), E(`${quad(1, -b, C)} = 0`, x => x * x - b * x + C)],
+        why: `把右邊的 ${num(C)} 移到左邊要<b>變號</b>：${quad(1, b, -C)} = 0。${lineNo(1)}沒有變號，後面分解、解出來的都是另一個方程式的解（代回原式：${X} = ${num(wr[0])} 時左邊是 ${num(lhs(wr[0]))}，不是 ${num(C)}）。`,
+        truth: { lhs, rhs, intended: tr }
+      };
+    }
+  };
+
+  T.linSign = {
+    sec: 'fac', errs: ['bad'],
+    make(err) {
+      const s = pickOf([1, 1, 2, 3]), t = nz(9), m = nz(7);
+      if (gcd(s, t) !== 1 || m * s === t || m === -t / s) return null;
+      const a = s, b = -(t + m * s), c = m * t;
+      if (b === 0) return null;
+      const f = x => a * x * x + b * x + c;
+      const orig = E(`${quad(a, b, c)} = 0`, f);
+      const l1 = E(`${P(lin(1, -m))}${P(lin(s, -t))} = 0`, x => (x - m) * (s * x - t), '因式分解（十字交乘）');
+      const l2 = E(`${lin(1, -m)} = 0 或 ${lin(s, -t)} = 0`, [x => x - m, x => s * x - t]);
+      const good = rootsLine([m, [t, s]]);
+      const first = coin();
+      const bad = first ? rootsLine([-m, [t, s]]) : rootsLine([m, [-t, s]]);
+      return {
+        sec: 'fac', wrong: [orig, l1, l2, bad], bad: 3, sol: [orig, l1, l2, good], fix: good,
+        cand: [rootsLine([-m, [-t, s]]), rootsLine([m, [s, t]]), first ? rootsLine([m, [-t, s]]) : rootsLine([-m, [t, s]])],
+        why: first
+          ? `${lin(1, -m)} = 0，移項得 ${X} = <b>${num(m)}</b>，不是 ${num(-m)}（移項要變號，${num(-m)} 移過去變成 ${num(m)}）。`
+          : (s === 1
+            ? `${lin(s, -t)} = 0，移項得 ${X} = <b>${num(t)}</b>，不是 ${num(-t)}（移項要變號）。`
+            : `${lin(s, -t)} = 0，移項得 ${mono(s)} = ${num(t)}，兩邊同除以 ${s} 得 ${X} = <b>${rat(t, s)}</b>，不是 ${rat(-t, s)}。`),
+        truth: { lhs: f, rhs: () => 0, intended: [m, t / s] }
+      };
+    }
+  };
+
+  T.facSign = {
+    sec: 'fac', errs: ['bad'],
+    make(err) {
+      let p = 1, r = 1;
+      if (coin(0.4)) { p = R(1, 3); r = R(1, 3); if (p * r === 1) return null; }
+      const q = nz(7), s = nz(7);
+      if (gcd(p, q) !== 1 || gcd(r, s) !== 1) return null;
+      const A = p * r, B = -(p * s + q * r), C = q * s;
+      if (B === 0 || q * r === s * p) return null;
+      const f = x => A * x * x + B * x + C;
+      const orig = E(`${quad(A, B, C)} = 0`, f);
+      const sol = [orig, E(`${P(lin(p, -q))}${P(lin(r, -s))} = 0`, x => (p * x - q) * (r * x - s), '因式分解（十字交乘）'),
+        E(`${lin(p, -q)} = 0 或 ${lin(r, -s)} = 0`, [x => p * x - q, x => r * x - s]), rootsLine([[q, p], [s, r]])];
+      const wrong = [orig, E(`${P(lin(p, q))}${P(lin(r, s))} = 0`, x => (p * x + q) * (r * x + s), '因式分解（十字交乘）'),
+        E(`${lin(p, q)} = 0 或 ${lin(r, s)} = 0`, [x => p * x + q, x => r * x + s]), rootsLine([[-q, p], [-s, r]])];
+      return {
+        sec: 'fac', wrong, bad: 1, sol, fix: sol[1],
+        cand: [E(`${P(lin(p, -q))}${P(lin(r, s))} = 0`, x => (p * x - q) * (r * x + s)), E(`${P(lin(p, q))}${P(lin(r, -s))} = 0`, x => (p * x + q) * (r * x - s))],
+        why: `把${lineNo(1)}乘開來：${P(lin(p, q))}${P(lin(r, s))} = ${quad(A, -B, C)}，和原式比，<b>中間項差一個負號</b>。正確的分解是 ${P(lin(p, -q))}${P(lin(r, -s))}（兩數的正負號要對調）。`,
+        truth: { lhs: f, rhs: () => 0, intended: [q / p, s / r] }
+      };
+    }
+  };
+
+  T.formula = {
+    sec: 'fac', errs: ['diff', 'perfect'],
+    make(err) {
+      const k = R(1, 4), n = R(1, 9);
+      if (gcd(k, n) !== 1) return null;
+      const want = err === 'ok' ? (coin() ? 'diff' : 'perfect') : err;
+      if (want === 'diff') {
+        const f = x => k * k * x * x - n * n;
+        const orig = E(`${quad(k * k, 0, -n * n)} = 0`, f);
+        const sol = [orig, E(`${P(lin(k, n))}${P(lin(k, -n))} = 0`, x => (k * x + n) * (k * x - n), '平方差公式'),
+          E(`${lin(k, n)} = 0 或 ${lin(k, -n)} = 0`, [x => k * x + n, x => k * x - n]), rootsLine([[-n, k], [n, k]])];
+        const wrong = [orig, E(`${P(lin(k, -n))}² = 0`, x => (k * x - n) ** 2, '差的平方公式'), rootsLine([[n, k], [n, k]])];
+        return {
+          sec: 'fac', wrong, bad: 1, sol, fix: sol[1],
+          cand: [E(`${P(lin(k, n))}² = 0`, x => (k * x + n) ** 2), k > 1 ? E(`${P(lin(1, n))}${P(lin(1, -n))} = 0`, x => (x + n) * (x - n)) : E(`${P(lin(1, n * n))}${P(lin(1, -1))} = 0`, x => (x + n * n) * (x - 1)), E(`${P(lin(k, -n))}² = 0`, x => (k * x - n) ** 2)],
+          why: `${quad(k * k, 0, -n * n)} 是<b>平方差</b>：(${mono(k)})² − ${n}² = ${P(lin(k, n))}${P(lin(k, -n))}。寫成 ${P(lin(k, -n))}² 乘開是 ${quad(k * k, -2 * k * n, n * n)}，多了中間項，還漏掉 ${X} = ${rat(-n, k)} 這個解。`,
+          truth: { lhs: f, rhs: () => 0, intended: [-n / k, n / k] }
+        };
+      }
+      const nn = coin() ? n : -n;
+      const f = x => (k * x + nn) ** 2;
+      const orig = E(`${quad(k * k, 2 * k * nn, nn * nn)} = 0`, f);
+      const sol = [orig, E(`${P(lin(k, nn))}² = 0`, f, nn > 0 ? '和的平方公式' : '差的平方公式'),
+        E(`${lin(k, nn)} = 0`, x => k * x + nn), rootsLine([[-nn, k], [-nn, k]])];
+      const wrong = [orig, E(`${P(lin(k, nn))}${P(lin(k, -nn))} = 0`, x => (k * x + nn) * (k * x - nn), '平方差公式'), rootsLine([[-nn, k], [nn, k]])];
+      return {
+        sec: 'fac', wrong, bad: 1, sol, fix: sol[1],
+        cand: [E(`${P(lin(k, -nn))}² = 0`, x => (k * x - nn) ** 2), E(`${P(lin(k, nn))}${P(lin(k, -nn))} = 0`, x => (k * x + nn) * (k * x - nn))],
+        why: `${quad(k * k, 2 * k * nn, nn * nn)} 是<b>完全平方式</b>：${P(lin(k, nn))}²，兩個解一樣，是重根。${P(lin(k, nn))}${P(lin(k, -nn))} 乘開是 ${quad(k * k, 0, -nn * nn)}，不是原式。`,
+        truth: { lhs: f, rhs: () => 0, intended: [-nn / k, -nn / k] }
+      };
+    }
+  };
+
+  /* ── 4-2 ── */
+  const SQ_FREE = [2, 3, 5, 6, 7, 10, 11, 13, 14, 15, 17, 19, 21, 22, 23];
+  T.plusMinus = {
+    sec: 'cs', errs: ['bad'],
+    make(err) {
+      const h = nz(8), K = coin(0.4) ? R(1, 9) ** 2 : pickOf(SQ_FREE);
+      const s = Math.sqrt(K);
+      const pre = coin(0.5);
+      let lhs, rhs, lines0;
+      if (pre) {
+        const c1 = R(1, 15), c2 = K - c1;
+        lhs = x => (x + h) ** 2 - c1; rhs = () => c2;
+        lines0 = [E(`${P(lin(1, h))}² − ${c1} = ${num(c2)}`, x => lhs(x) - c2), E(`${P(lin(1, h))}² = ${K}`, x => (x + h) ** 2 - K, '移項')];
+      } else {
+        lhs = x => (x + h) ** 2; rhs = () => K;
+        lines0 = [E(`${P(lin(1, h))}² = ${K}`, x => (x + h) ** 2 - K)];
+      }
+      const sol = [...lines0, ...sqTail(h, K)];
+      const wrong = [...lines0, E(`${lin(1, h)} = ${surd(K)}`, x => x + h - s, `${lin(1, h)} 是 ${K} 的平方根`)];
+      wrong.push(isSq(K) ? rootsLine([-h + s]) : E(`${X} = ${num(-h)} + ${surd(K)}`, x => x + h - s));
+      const bi = lines0.length;
+      return {
+        sec: 'cs', wrong, bad: bi, sol, fix: sol[bi],
+        cand: [E(`${lin(1, h)} = ±${K}`, [x => x + h - K, x => x + h + K]), E(`${lin(1, -h)} = ±${surd(K)}`, [x => x - h - s, x => x - h + s]), E(`${lin(1, h)} = ${MINUS}${surd(K)}`, x => x + h + s)],
+        why: `${K} 的平方根有兩個：<b>±${surd(K)}</b>。只寫 ${surd(K)} 會漏掉 ${X} = ${isSq(K) ? num(-h - s) : `${num(-h)} − ${surd(K)}`} 這個解。`,
+        truth: { lhs, rhs, intended: [-h + s, -h - s] }
+      };
+    }
+  };
+
+  T.oneSide = {
+    sec: 'cs', errs: ['bad'],
+    make(err) {
+      const h = nz(6), c = -R(1, 20), K = h * h - c;
+      if (!radOK(K) || K > 45 || !radOK(-c)) return null;
+      const b = 2 * h;
+      const f = x => x * x + b * x + c;
+      const orig = E(`${quad(1, b, c)} = 0`, f);
+      const l1 = E(`${quad(1, b, 0)} = ${num(-c)}`, f, '移項');
+      const good2 = E(`${quad(1, b, 0)} + ${sqH(h)} = ${num(-c)} + ${sqH(h)}`, f, `等號兩邊同加 ${sqH(h)}`);
+      const sol = [orig, l1, good2, E(`${P(lin(1, h))}² = ${K}`, x => (x + h) ** 2 - K, '配成完全平方式'), ...sqTail(h, K)];
+      const wrong = [orig, l1, E(`${quad(1, b, 0)} + ${sqH(h)} = ${num(-c)}`, x => x * x + b * x + h * h + c, '配方'),
+        E(`${P(lin(1, h))}² = ${num(-c)}`, x => (x + h) ** 2 + c), ...sqTail(h, -c)];
+      return {
+        sec: 'cs', wrong, bad: 2, sol, fix: good2,
+        cand: [E(`${quad(1, b, 0)} + ${sqH(h)} = ${num(-c)} − ${sqH(h)}`, x => x * x + b * x + h * h + c + h * h), E(`${quad(1, b, 0)} + ${sqH(h)} = ${sqH(h)}`, x => x * x + b * x)],
+        why: `${lineNo(2)}只在<b>左邊</b>加了 ${sqH(h)}，右邊沒加。等量公理：等號兩邊要加一樣多，應該是 ${quad(1, b, 0)} + ${sqH(h)} = ${num(-c)} + ${sqH(h)}，配方後得 ${P(lin(1, h))}² = ${K}。`,
+        truth: { lhs: f, rhs: () => 0, intended: [-h + Math.sqrt(K), -h - Math.sqrt(K)] }
+      };
+    }
+  };
+
+  T.leadCoef = {
+    sec: 'cs', errs: ['bad'],
+    make(err) {
+      const a = pickOf([2, 3]), h = nz(4), c1 = coin(0.75) ? -R(1, 8) : R(1, 6);
+      const K = h * h - c1, c = a * c1, b = 2 * a * h;
+      if (K <= 0 || !radOK(K) || K > 40) return null;
+      const Kw = h * h - c;
+      if (Kw <= 0 || Kw > 60) return null;
+      const f = x => a * x * x + b * x + c;
+      const orig = E(`${quad(a, b, c)} = 0`, f);
+      const sol = [orig,
+        E(`${quad(1, 2 * h, c1)} = 0`, x => f(x) / a, `等號兩邊同除以 ${a}`),
+        E(`${quad(1, 2 * h, 0)} = ${num(-c1)}`, x => f(x) / a, '移項'),
+        E(`${quad(1, 2 * h, 0)} + ${sqH(h)} = ${num(-c1)} + ${sqH(h)}`, x => f(x) / a, `等號兩邊同加 ${sqH(h)}`),
+        E(`${P(lin(1, h))}² = ${K}`, x => (x + h) ** 2 - K, '配成完全平方式'), ...sqTail(h, K)];
+      const wrong = [orig,
+        E(`${quad(1, 2 * h, 0)} = ${num(-c)}`, x => x * x + 2 * h * x + c, `等號兩邊同除以 ${a}，再移項`),
+        E(`${quad(1, 2 * h, 0)} + ${sqH(h)} = ${num(-c)} + ${sqH(h)}`, x => x * x + 2 * h * x + c, `等號兩邊同加 ${sqH(h)}`),
+        E(`${P(lin(1, h))}² = ${Kw}`, x => (x + h) ** 2 - Kw, '配成完全平方式'), ...sqTail(h, Kw)];
+      return {
+        sec: 'cs', wrong, bad: 1, sol, fix: E(`${quad(1, 2 * h, 0)} = ${num(-c1)}`, x => f(x) / a),
+        cand: [E(`${quad(1, b, 0)} = ${num(-c1)}`, x => x * x + b * x + c1), E(`${quad(1, 2 * h, 0)} = ${num(c1)}`, x => x * x + 2 * h * x - c1), E(`${quad(a, 2 * h, 0)} = ${num(-c1)}`, x => a * x * x + 2 * h * x + c1)],
+        why: `等號兩邊同除以 ${a} 時，<b>每一項都要除</b>：常數項 ${num(c)} 也要變成 ${num(c1)}，移項後是 ${quad(1, 2 * h, 0)} = ${num(-c1)}。${lineNo(1)}只除了 ${X}² 項和 ${X} 項。`,
+        truth: { lhs: f, rhs: () => 0, intended: [-h + Math.sqrt(K), -h - Math.sqrt(K)] }
+      };
+    }
+  };
+
+  T.negSquare = {
+    sec: 'cs', errs: ['bad'],
+    make(err) {
+      const h = nz(5), c = h * h + R(1, 10), K = h * h - c;
+      if (!radOK(-K)) return null;
+      const b = 2 * h;
+      const f = x => x * x + b * x + c;
+      const head = [E(`${quad(1, b, c)} = 0`, f), E(`${quad(1, b, 0)} = ${num(-c)}`, f, '移項'),
+        E(`${quad(1, b, 0)} + ${sqH(h)} = ${num(-c)} + ${sqH(h)}`, f, `等號兩邊同加 ${sqH(h)}`),
+        E(`${P(lin(1, h))}² = ${num(K)}`, x => (x + h) ** 2 - K, '配成完全平方式')];
+      const good = NONE('任何數的平方都不會是負數，所以方程式無解');
+      return {
+        sec: 'cs', wrong: [...head, ...sqTail(h, -K)], bad: 4, sol: [...head, good], fix: good,
+        cand: [rootsLine([-h, -h]), E(`${lin(1, h)} = ${num(K)}`, x => x + h - K), E(`${lin(1, h)} = ±${surd(-K)}`, [x => x + h - Math.sqrt(-K), x => x + h + Math.sqrt(-K)])],
+        why: `${P(lin(1, h))}² = ${num(K)}：任何數的平方都 ≥ 0，不可能等於負數，所以<b>方程式無解</b>。${lineNo(4)}把 ${num(K)} 當成 ${-K} 開平方了。`,
+        truth: { lhs: f, rhs: () => 0, intended: [] }
+      };
+    }
+  };
+
+  // 公式解家族
+  const okABC = (a, b, c) => ([A, B, C]) => (A === a && B === b && C === c) || (A === -a && B === -b && C === -c);
+  const okD = D => ([A, B, C]) => D === B * B - 4 * A * C;
+  const abcH = (a, b, c) => `${V('a')} = ${num(a)}、${V('b')} = ${num(b)}、${V('c')} = ${num(c)}`;
+  const dH = (a, b, c, D) => `${V('b')}² − 4${V('a')}${V('c')} = ${bSq(b)} − 4 × ${par(a)} × ${par(c)} = ${num(D)}`;
+  function formulaLines(a, b, D, tip = '公式解') {   // D > 0
+    const s = Math.sqrt(D);
+    const fs = [x => x - (-b + s) / (2 * a), x => x - (-b - s) / (2 * a)];
+    const out = [E(`${X} = ${fr(`${num(-b)} ± ${rad(D)}`, 2 * a)}`, fs, tip)];
+    if (isSq(D)) out.push(rootsLine([[-b + s, 2 * a], [-b - s, 2 * a]]));
+    return out;
+  }
+  function afterD(a, b, D) {   // 照判別式往下寫
+    if (D < 0) return [NONE(`因為 ${V('b')}² − 4${V('a')}${V('c')} &lt; 0，所以方程式無解`)];
+    if (D === 0) return [rootsLine([[-b, 2 * a], [-b, 2 * a]], '公式解')];
+    return formulaLines(a, b, D);
+  }
+  T.quadFormula = {
+    sec: 'cs', errs: ['negb', 'denom', 'disc', 'abc', 'negD'],
+    make(err) {
+      const a = R(1, 4), b = nz(9), c = nz(9);
+      const D = b * b - 4 * a * c;
+      const want = err === 'ok' ? pickOf(['plain', 'plain', 'abc', 'negD']) : err;
+      if (want === 'negD' ? D >= 0 : (D <= 1 || !radOK(D))) return null;
+      if (want === 'disc' && c > 0) return null;
+      if (Math.abs(a * c) > 30) return null;
+      const f = x => a * x * x + b * x + c;
+      const abc = want === 'abc';
+      const q = -b, r = -c;
+      const orig = abc ? E(`${mono(a, 2)} = ${lin(q, r)}`, f) : E(`${quad(a, b, c)} = 0`, f);
+      const headOK = abc ? [orig, E(`${quad(a, b, c)} = 0`, f, '移項，化成一般式')] : [orig];
+      const lA = FACT(abcH(a, b, c), okABC(a, b, c));
+      const lD = FACT(dH(a, b, c, D), okD(D), '判別式');
+      const sol = [...headOK, lA, lD, ...afterD(a, b, D)];
+      const base = { sec: 'cs', sol, truth: { lhs: f, rhs: () => 0, intended: D < 0 ? [] : [(-b + Math.sqrt(D)) / (2 * a), (-b - Math.sqrt(D)) / (2 * a)] } };
+      const s = Math.sqrt(Math.abs(D));
+      const fNegB = E(`${X} = ${fr(`${num(b)} ± ${rad(D)}`, 2 * a)}`, [x => x - (b + s) / (2 * a), x => x - (b - s) / (2 * a)], '公式解');
+      const fDen = E(`${X} = ${num(-b)} ± ${fr(rad(D), 2 * a)}`, [x => x - (-b + s / (2 * a)), x => x - (-b - s / (2 * a))], '公式解');
+      const fA = E(`${X} = ${fr(`${num(-b)} ± ${rad(D)}`, a)}`, [x => x - (-b + s) / a, x => x - (-b - s) / a], '公式解');
+      const fi = headOK.length + 2;
+      if (err === 'ok') return { ...base, wrong: sol, bad: -1 };
+      if (want === 'negb' || want === 'denom') {
+        const wl = want === 'negb' ? fNegB : fDen;
+        const tail = [];
+        if (isSq(D)) tail.push(want === 'negb' ? rootsLine([[b + s, 2 * a], [b - s, 2 * a]]) : rootsLine([[-2 * a * b + s, 2 * a], [-2 * a * b - s, 2 * a]]));
+        return {
+          ...base, wrong: [...headOK, lA, lD, wl, ...tail], bad: fi, fix: sol[fi],
+          cand: want === 'negb' ? [fDen, fA, fNegB] : [fNegB, fA, fDen],
+          why: want === 'negb'
+            ? `公式解是 ${X} = ${fr(`${MINUS}${V('b')} ± ${rad(`${V('b')}² − 4${V('a')}${V('c')}`)}`, `2${V('a')}`)}，分子是 <b>−${V('b')}</b>：${V('b')} = ${num(b)}，所以 −${V('b')} = ${num(-b)}。${lineNo(fi)}寫成了 ${num(b)}。`
+            : `分母 2${V('a')} = ${2 * a} 要除<b>整個分子</b>（${num(-b)} ± ${rad(D)}），不是只除根號那一項。`
+        };
+      }
+      if (want === 'disc') {
+        const wD = b * b + 4 * a * c;   // −4ac 算成減
+        const cands = [b * b - 4 * c, 2 * Math.abs(b) - 4 * a * c, wD].filter(v => v !== D);
+        return {
+          ...base, wrong: [...headOK, lA, FACT(dH(a, b, c, wD), okD(wD), '判別式'), ...afterD(a, b, wD)], bad: fi - 1, fix: lD,
+          cand: cands.map(v => FACT(dH(a, b, c, v), okD(v), '判別式')),
+          why: `${V('c')} = ${num(c)} 是負數：−4 × ${a} × (${num(c)}) = <b>+${-4 * a * c}</b>，所以 ${V('b')}² − 4${V('a')}${V('c')} = ${b * b} + ${-4 * a * c} = ${D}。${lineNo(fi - 1)}把它算成減掉，得到 ${num(wD)}。`
+        };
+      }
+      if (want === 'abc') {
+        const wD = q * q - 4 * a * r;
+        return {
+          ...base, wrong: [orig, FACT(abcH(a, q, r), okABC(a, q, r)), FACT(dH(a, q, r, wD), () => false, '判別式'), ...afterD(a, q, wD)], bad: 1,
+          fix: FACT(abcH(a, b, c), okABC(a, b, c)),
+          cand: [FACT(abcH(a, b, r), okABC(a, b, r)), FACT(abcH(a, q, c), okABC(a, q, c)), FACT(abcH(a, q, r), okABC(a, q, r))],
+          why: `用公式解之前要先<b>化成一般式</b> ${V('a')}${X}² + ${V('b')}${X} + ${V('c')} = 0：移項得 ${quad(a, b, c)} = 0，所以 ${V('b')} = ${num(b)}、${V('c')} = ${num(c)}。${lineNo(1)}直接抄等號右邊的係數，正負號都錯了。`
+        };
+      }
+      // negD：判別式小於 0 卻開根號
+      return {
+        ...base, wrong: [...headOK, lA, lD, E(`${X} = ${fr(`${num(-b)} ± ${rad(-D)}`, 2 * a)}`, [x => x - (-b + s) / (2 * a), x => x - (-b - s) / (2 * a)], '公式解')], bad: fi, fix: sol[fi],
+        cand: [rootsLine([[-b, 2 * a], [-b, 2 * a]]), E(`${X} = ${fr(`${num(b)} ± ${rad(-D)}`, 2 * a)}`, [x => x - (b + s) / (2 * a), x => x - (b - s) / (2 * a)])],
+        why: `${V('b')}² − 4${V('a')}${V('c')} = ${num(D)} &lt; 0，<b>負數沒有平方根</b>，找不到 ${X} 讓等號成立，所以方程式無解。${lineNo(fi)}把 ${num(D)} 當成 ${-D} 開根號了。`
+      };
+    }
+  };
+
+  /* ── 4-3 ── */
+  T.sumProd = {
+    sec: 'app', errs: ['pick', 'reject', 'tidy'],
+    make(err) {
+      const u = R(9, 24), v = R(3, u - 2), S = u + v, Pr = u * v;
+      if (Pr > 400) return null;
+      const big = '小翊', small = '小妍';
+      const story = `${big}和${small}各抽一個號碼，${big}的號碼比${small}大，兩人號碼的和是 ${S}、乘積是 ${Pr}。${big}抽到幾號？`;
+      const lhs = x => x * (S - x), rhs = () => Pr;
+      const l0 = NOTE(`設${big}的號碼是 ${X}，則${small}的號碼是 ${S} − ${X}`, '設未知數');
+      const l1 = E(`${X}(${S} − ${X}) = ${Pr}`, x => lhs(x) - Pr, '列方程式');
+      const l2 = E(`${quad(1, -S, Pr)} = 0`, x => x * x - S * x + Pr, '整理成一般式');
+      const okAns = ANS(`${big}的號碼比較大，${X} = ${v} 不合，所以${big}抽到 ${u} 號`, [u]);
+      const sol = [l0, l1, l2, facLine(u, v), rootsLine([u, v]), okAns];
+      const truth = { lhs, rhs, intended: [u, v], feasible: x => x > S - x, ask: x => x, ans: [u] };
+      const ansPick = ANS(`${big}的號碼比較大，${X} = ${u} 不合，所以${big}抽到 ${v} 號`, [v]);
+      const ansBoth = ANS(`所以${big}抽到 ${u} 號或 ${v} 號`, [u, v]);
+      const base = { sec: 'app', story, sol, truth };
+      if (err === 'ok') return { ...base, wrong: sol, bad: -1 };
+      if (err === 'pick') return { ...base, wrong: [...sol.slice(0, 5), ansPick], bad: 5, fix: okAns, cand: [ansBoth, ansPick],
+        why: `${X} 是${big}的號碼。${X} = ${v} 時，${small}是 ${S} − ${v} = ${u}，比${big}大，<b>這個才不合</b>；${X} = ${u} 時${small}是 ${v}，符合「${big}比較大」。` };
+      if (err === 'reject') return { ...base, wrong: [...sol.slice(0, 5), ansBoth], bad: 5, fix: okAns, cand: [ansPick, ansBoth],
+        why: `解出兩個 ${X} 之後，要<b>回去讀題目</b>：${big}的號碼比較大。${X} = ${v} 時${small}是 ${u}，比${big}大，不合，要捨去。` };
+      // tidy：兩邊同乘 −1 時常數項沒變號
+      const wr = intRoots(1, -S, -Pr);
+      if (!wr) return null;
+      const w1 = Math.max(...wr), w2 = Math.min(...wr);
+      return { ...base, wrong: [l0, l1, E(`${quad(1, -S, -Pr)} = 0`, x => x * x - S * x - Pr, '整理成一般式'), facLine(w1, w2), rootsLine([w1, w2]),
+        ANS(`號碼不能是負數，${X} = ${num(w2)} 不合，所以${big}抽到 ${w1} 號`, [w1])], bad: 2, fix: l2,
+        cand: [E(`${quad(1, S, Pr)} = 0`, x => x * x + S * x + Pr), E(`${quad(1, S, -Pr)} = 0`, x => x * x + S * x - Pr)],
+        why: `${X}(${S} − ${X}) = ${Pr} 展開是 ${mono(S)} − ${X}² = ${Pr}，移項整理成 ${X}² − ${mono(S)} <b>+ ${Pr}</b> = 0。${lineNo(2)}的常數項正負號錯了。` };
+    }
+  };
+
+  T.dates = {
+    sec: 'app', errs: ['ask'],
+    make(err) {
+      const d = R(3, 8), x0 = R(5, 24);
+      if (x0 + d > 31) return null;
+      const Pr = x0 * (x0 + d);
+      const story = `5 月的某一天是小鈺的生日，再過 ${d} 天就是學校的隔宿露營。這兩天的日期相乘是 ${Pr}，隔宿露營是 5 月幾號？`;
+      const lhs = x => x * (x + d), rhs = () => Pr;
+      const sol = [NOTE(`設小鈺的生日是 5 月 ${X} 號，則露營是 (${lin(1, d)}) 號`, '設未知數'),
+        E(`${X}${P(lin(1, d))} = ${Pr}`, x => lhs(x) - Pr, '列方程式'),
+        E(`${quad(1, d, -Pr)} = 0`, x => lhs(x) - Pr, '整理成一般式'),
+        facLine(x0, -(x0 + d)), rootsLine([x0, -(x0 + d)]),
+        ANS(`日期是正整數，${X} = ${num(-(x0 + d))} 不合，所以隔宿露營是 5 月 ${x0 + d} 號`, [x0 + d])];
+      const truth = { lhs, rhs, intended: [x0, -(x0 + d)], feasible: x => x > 0, ask: x => x + d, ans: [x0 + d] };
+      const ansAsk = ANS(`日期是正整數，${X} = ${num(-(x0 + d))} 不合，所以隔宿露營是 5 月 ${x0} 號`, [x0]);
+      if (err === 'ok') return { sec: 'app', story, sol, truth, wrong: sol, bad: -1 };
+      return { sec: 'app', story, sol, truth, wrong: [...sol.slice(0, 5), ansAsk], bad: 5, fix: sol[5],
+        cand: [ansAsk, ANS(`所以隔宿露營是 5 月 ${x0 + d} 號或 ${num(-x0)} 號`, [x0 + d, -x0])],
+        why: `${X} 設的是<b>生日</b>，題目問的是隔宿露營的日期 ${lin(1, d)} = ${x0} + ${d} = ${x0 + d} 號。答案要回去看題目問什麼。` };
+    }
+  };
+
+  T.price = {
+    sec: 'app', errs: ['setup', 'reject'],
+    make(err) {
+      const m = pickOf([2, 3]), k = m * R(4, 12), u = R(k / m + 3, 60);
+      const qty = m * u - k, Rv = u * qty;
+      if (qty < 5 || Rv > 3600) return null;
+      const s1 = k / m, p1 = Rv / m, v = s1 - u;
+      const story = `小茹班上在園遊會賣鬆餅，賣出的數量是鬆餅單價的 ${m} 倍少 ${k}，總共收入 ${Rv} 元。鬆餅每個賣多少元？`;
+      const lhs = x => x * (m * x - k), rhs = () => Rv;
+      const l0 = NOTE(`設鬆餅每個賣 ${X} 元`, '設未知數');
+      const l1 = E(`${X}${P(lin(m, -k))} = ${Rv}`, x => lhs(x) - Rv, '單價 × 數量 = 收入');
+      const okAns = ANS(`價格不能是負數，${X} = ${num(v)} 不合，所以鬆餅每個賣 ${u} 元`, [u]);
+      const sol = [l0, l1, E(`${quad(1, -s1, -p1)} = 0`, x => x * x - s1 * x - p1, `整理，兩邊同除以 ${m}`), facLine(u, v), rootsLine([u, v]), okAns];
+      const truth = { lhs, rhs, intended: [u, v], feasible: x => x > 0 && m * x - k > 0, ask: x => x, ans: [u] };
+      const base = { sec: 'app', story, sol, truth };
+      const ansBoth = ANS(`所以鬆餅每個賣 ${u} 元或 ${num(v)} 元`, [u, v]);
+      if (err === 'ok') return { ...base, wrong: sol, bad: -1 };
+      if (err === 'reject') return { ...base, wrong: [...sol.slice(0, 5), ansBoth], bad: 5, fix: okAns,
+        cand: [ansBoth, ANS(`${X} = ${u} 不合，所以鬆餅每個賣 ${num(v)} 元`, [v])],
+        why: `${X} = ${num(v)} 表示每個 ${num(v)} 元，<b>價格不能是負數</b>，要捨去，只留 ${u} 元。` };
+      const wr = intRoots(1, -k, -p1);
+      if (!wr) return null;
+      const w1 = Math.max(...wr), w2 = Math.min(...wr);
+      if (w2 >= 0) return null;
+      return { ...base, wrong: [l0, E(`${X} × ${m}(${X} − ${k}) = ${Rv}`, x => m * x * (x - k) - Rv, '單價 × 數量 = 收入'),
+        E(`${quad(1, -k, -p1)} = 0`, x => x * x - k * x - p1, `整理，兩邊同除以 ${m}`), facLine(w1, w2), rootsLine([w1, w2]),
+        ANS(`價格不能是負數，${X} = ${num(w2)} 不合，所以鬆餅每個賣 ${w1} 元`, [w1])], bad: 1, fix: l1,
+        cand: [E(`${X}${P(lin(m, k))} = ${Rv}`, x => x * (m * x + k) - Rv), E(`${X} × ${m}(${X} − ${k}) = ${Rv}`, x => m * x * (x - k) - Rv)],
+        why: `「數量是單價的 ${m} 倍少 ${k}」是 <b>${lin(m, -k)}</b>（先乘 ${m} 倍再少 ${k}）；${m}(${X} − ${k}) 是先少 ${k} 再乘 ${m} 倍，等於少了 ${m * k}。` };
+    }
+  };
+
+  T.border = {
+    sec: 'app', errs: ['setup', 'reject'],
+    make(err) {
+      const x0 = R(1, 4), W = R(2 * x0 + 3, 20), L = R(W + 2, 30);
+      if ((L + W) % 2) return null;
+      const G = (L - 2 * x0) * (W - 2 * x0), x1 = (L + W) / 2 - x0;
+      const story = `一塊長方形草地長 ${L} 公尺、寬 ${W} 公尺，在草地內部沿著四邊開一條等寬的道路，剩下的草地面積是 ${G} 平方公尺。道路寬幾公尺？`;
+      const lhs = x => (L - 2 * x) * (W - 2 * x), rhs = () => G;
+      const l0 = NOTE(`設道路寬 ${X} 公尺`, '設未知數');
+      const l1 = E(`(${L} − 2${X})(${W} − 2${X}) = ${G}`, x => lhs(x) - G, '長、寬兩邊都扣掉路寬');
+      const okAns = ANS(`草地寬只有 ${W} 公尺，路寬要小於 ${rat(W, 2)}，${X} = ${x1} 不合，所以道路寬 ${x0} 公尺`, [x0]);
+      const sol = [l0, l1, E(`${quad(1, -(x0 + x1), x0 * x1)} = 0`, x => (x - x0) * (x - x1), '展開、整理'), facLine(x0, x1), rootsLine([x0, x1]), okAns];
+      const truth = { lhs, rhs, intended: [x0, x1], feasible: x => x > 0 && 2 * x < W, ask: x => x, ans: [x0] };
+      const base = { sec: 'app', story, sol, truth };
+      const ansBoth = ANS(`所以道路寬 ${x0} 公尺或 ${x1} 公尺`, [x0, x1]);
+      if (err === 'ok') return { ...base, wrong: sol, bad: -1 };
+      if (err === 'reject') return { ...base, wrong: [...sol.slice(0, 5), ansBoth], bad: 5, fix: okAns,
+        cand: [ansBoth, ANS(`${X} = ${x0} 太小不合，所以道路寬 ${x1} 公尺`, [x1])],
+        why: `${X} = ${x1} 時，剩下的寬是 ${W} − 2 × ${x1} = ${num(W - 2 * x1)}，<b>長度不能是負的</b>，要捨去。` };
+      const wr = intRoots(1, -(L + W), L * W - G);
+      if (!wr) return null;
+      const fe = wr.filter(x => x > 0 && x < W);
+      if (fe.length !== 1) return null;
+      const wo = wr.find(x => x !== fe[0]);
+      return { ...base, wrong: [l0, E(`(${L} − ${X})(${W} − ${X}) = ${G}`, x => (L - x) * (W - x) - G, '長、寬扣掉路寬'),
+        E(`${quad(1, -(L + W), L * W - G)} = 0`, x => (L - x) * (W - x) - G, '展開、整理'), facLine(fe[0], wo), rootsLine([fe[0], wo]),
+        ANS(`${X} = ${wo} 太大不合，所以道路寬 ${fe[0]} 公尺`, [fe[0]])], bad: 1, fix: l1,
+        cand: [E(`(${L} − ${X})(${W} − ${X}) = ${G}`, x => (L - x) * (W - x) - G), E(`(${L} − 2${X})(${W} − ${X}) = ${G}`, x => (L - 2 * x) * (W - x) - G), E(`${L * W} − (${L} − 2${X})(${W} − 2${X}) = ${G}`, x => L * W - lhs(x) - G)],
+        why: `道路沿著四邊開，<b>左右兩邊都有路</b>，所以剩下的長是 ${L} − 2${X}、寬是 ${W} − 2${X}。只扣一個 ${X} 是十字形道路的情形。` };
+    }
+  };
+
+  T.crossRoad = {
+    sec: 'app', errs: ['setup', 'reject'],
+    make(err) {
+      const x0 = R(1, 4), W = R(x0 + 4, 20), L = R(W + 1, 30);
+      const G = (L - x0) * (W - x0), x1 = L + W - x0;
+      const story = `一塊長方形草地長 ${L} 公尺、寬 ${W} 公尺，在裡面開一條和兩邊平行、等寬的十字形道路，剩下的草地面積是 ${G} 平方公尺。道路寬幾公尺？`;
+      const lhs = x => (L - x) * (W - x), rhs = () => G;
+      const l0 = NOTE(`設道路寬 ${X} 公尺`, '設未知數');
+      const l1 = E(`(${L} − ${X})(${W} − ${X}) = ${G}`, x => lhs(x) - G, '把道路移到邊上，剩下的拼成長方形');
+      const okAns = ANS(`${X} = ${x1} 比草地的寬 ${W} 公尺還大，不合，所以道路寬 ${x0} 公尺`, [x0]);
+      const sol = [l0, l1, E(`${quad(1, -(L + W), L * W - G)} = 0`, x => lhs(x) - G, '展開、整理'), facLine(x0, x1), rootsLine([x0, x1]), okAns];
+      const truth = { lhs, rhs, intended: [x0, x1], feasible: x => x > 0 && x < W, ask: x => x, ans: [x0] };
+      const base = { sec: 'app', story, sol, truth };
+      const ansBoth = ANS(`所以道路寬 ${x0} 公尺或 ${x1} 公尺`, [x0, x1]);
+      if (err === 'ok') return { ...base, wrong: sol, bad: -1 };
+      if (err === 'reject') return { ...base, wrong: [...sol.slice(0, 5), ansBoth], bad: 5, fix: okAns,
+        cand: [ansBoth, ANS(`${X} = ${x0} 太小不合，所以道路寬 ${x1} 公尺`, [x1])],
+        why: `${X} = ${x1} 公尺比整塊草地的寬 ${W} 公尺還大，<b>路不可能比草地還寬</b>，要捨去。` };
+      if ((L + W) % 2) return null;
+      const wr = intRoots(4, -2 * (L + W), L * W - G);
+      if (!wr) return null;
+      const fe = wr.filter(x => x > 0 && 2 * x < W);
+      if (fe.length !== 1) return null;
+      const wo = wr.find(x => x !== fe[0]);
+      return { ...base, wrong: [l0, E(`(${L} − 2${X})(${W} − 2${X}) = ${G}`, x => (L - 2 * x) * (W - 2 * x) - G, '長、寬扣掉路寬'),
+        E(`${quad(1, -(fe[0] + wo), fe[0] * wo)} = 0`, x => (x - fe[0]) * (x - wo), '展開、整理'), facLine(fe[0], wo), rootsLine([fe[0], wo]),
+        ANS(`${X} = ${wo} 太大不合，所以道路寬 ${fe[0]} 公尺`, [fe[0]])], bad: 1, fix: l1,
+        cand: [E(`(${L} − 2${X})(${W} − 2${X}) = ${G}`, x => (L - 2 * x) * (W - 2 * x) - G), E(`${L * W} − (${L} − ${X})(${W} − ${X}) = ${G}`, x => L * W - lhs(x) - G)],
+        why: `十字形道路只有<b>一條直的、一條橫的</b>，把道路移到邊上，剩下的長是 ${L} − ${X}、寬是 ${W} − ${X}。長、寬各扣 2${X} 是沿著四周開路的情形。` };
+    }
+  };
+
+  T.age = {
+    sec: 'app', errs: ['reject'],
+    make(err) {
+      const n = pickOf([10, 10, 12, 8]), x0 = R(n + 2, n + 9), Pr = x0 * (x0 - n);
+      const story = `X-man 說：「把你今年的年齡和 ${n} 年前的年齡相乘，就是你今天的幸運數字。」小翊說：「我的幸運數字是 ${Pr}。」小翊今年幾歲？`;
+      const lhs = x => x * (x - n), rhs = () => Pr;
+      const okAns = ANS(`年齡不能是負數，${X} = ${num(n - x0)} 不合，所以小翊今年 ${x0} 歲`, [x0]);
+      const sol = [NOTE(`設小翊今年 ${X} 歲，${n} 年前是 (${lin(1, -n)}) 歲`, '設未知數'),
+        E(`${X}${P(lin(1, -n))} = ${Pr}`, x => lhs(x) - Pr, '列方程式'),
+        E(`${quad(1, -n, -Pr)} = 0`, x => lhs(x) - Pr, '整理成一般式'),
+        facLine(x0, n - x0), rootsLine([x0, n - x0]), okAns];
+      const truth = { lhs, rhs, intended: [x0, n - x0], feasible: x => x > n, ask: x => x, ans: [x0] };
+      const ansBoth = ANS(`所以小翊今年 ${x0} 歲或 ${num(n - x0)} 歲`, [x0, n - x0]);
+      if (err === 'ok') return { sec: 'app', story, sol, truth, wrong: sol, bad: -1 };
+      return { sec: 'app', story, sol, truth, wrong: [...sol.slice(0, 5), ansBoth], bad: 5, fix: okAns,
+        cand: [ansBoth, ANS(`${X} = ${x0} 不合，所以小翊今年 ${num(n - x0)} 歲`, [n - x0])],
+        why: `${X} = ${num(n - x0)} 表示年齡是負數，<b>不合理</b>，要捨去。應用問題解完方程式，一定要回頭檢查解合不合情境。` };
+    }
+  };
+
+  const BY_SEC = { fac: [], cs: [], app: [] };
+  Object.entries(T).forEach(([key, t]) => { t.key = key; BY_SEC[t.sec].push(t); });
+
+  /* ══ 檢查：每一行的解集合 ══════════════════════════ */
+  function coefOf(f) {
+    const c = f(0), p = f(1), m = f(-1);
+    const a = (p + m) / 2 - c, b = (p - m) / 2;
+    const sc = Math.max(1, Math.abs(a), Math.abs(b), Math.abs(c));
+    if (Math.abs(f(2) - (4 * a + 2 * b + c)) > 1e-7 * sc || Math.abs(f(-3) - (9 * a - 3 * b + c)) > 1e-7 * sc) throw new Error('不是二次以下的式子');
+    return [a, b, c];
+  }
+  function rootsOfF(f) {
+    const [a, b, c] = coefOf(f);
+    const sc = Math.max(1, Math.abs(a), Math.abs(b), Math.abs(c)), e = 1e-9 * sc;
+    if (Math.abs(a) < e) {
+      if (Math.abs(b) < e) return Math.abs(c) < e ? 'ALL' : [];
+      return [-c / b];
+    }
+    const D = b * b - 4 * a * c;
+    if (D < -1e-9 * sc * sc) return [];
+    if (Math.abs(D) <= 1e-9 * sc * sc) return [-b / (2 * a)];
+    const s = Math.sqrt(D);
+    return [(-b + s) / (2 * a), (-b - s) / (2 * a)];
+  }
+  function normSet(arr) {
+    const s = arr.slice().sort((x, y) => x - y), out = [];
+    s.forEach(v => { if (!out.length || Math.abs(out[out.length - 1] - v) > 1e-7 * Math.max(1, Math.abs(v))) out.push(v); });
+    return out;
+  }
+  const sameSet = (A, B) => {
+    if (A === 'ALL' || B === 'ALL') return A === B;
+    const a = normSet(A), b = normSet(B);
+    return a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) <= 1e-7 * Math.max(1, Math.abs(v)));
+  };
+  function lineSet(ln) {
+    let out = [];
+    for (const f of ln.fs) { const r = rootsOfF(f); if (r === 'ALL') return 'ALL'; out = out.concat(r); }
+    return out;
+  }
+  function truthOf(q) {
+    if (!q._t) {
+      const f = x => q.truth.lhs(x) - q.truth.rhs(x);
+      const [a, b, c] = coefOf(f).map(v => Math.round(v * 1e9) / 1e9);
+      const roots = rootsOfF(f);
+      const ans = q.sec === 'app' ? normSet(roots.filter(q.truth.feasible).map(q.truth.ask)) : null;
+      q._t = { f, coef: [a, b, c], roots, ans };
+    }
+    return q._t;
+  }
+  function lineOK(q, ln) {
+    const t = truthOf(q);
+    if (ln.k === 'note') return true;
+    if (ln.k === 'fact') return !!ln.ok(t.coef);
+    if (ln.k === 'ans') return sameSet(ln.vals, t.ans);
+    return sameSet(lineSet(ln), t.roots);
+  }
+
+  // 出題後的整理：挑戰選項＝正確寫法＋兩個誤答（必須真的是錯的、彼此不重複）
+  function finalize(q, t, err) {
+    q.tkey = t.key; q.err = err;
+    if (err === 'ok') { q.wrong = q.sol; q.bad = -1; }
+    if (q.bad >= 0) {
+      const seen = new Set([q.fix.h]);
+      const wrongs = [];
+      (q.cand || []).forEach(c => { if (!seen.has(c.h) && !lineOK(q, c)) { seen.add(c.h); wrongs.push(c); } });
+      if (wrongs.length < 2) return null;
+      q.opts = shuffle([{ ln: q.fix, ok: true }, ...wrongs.slice(0, 2).map(ln => ({ ln, ok: false }))]);
+    } else q.opts = [];
+    return q;
+  }
+
+  function validate(q) {
+    const errs = [];
+    const t = truthOf(q);
+    if (!sameSet(t.roots, q.truth.intended)) errs.push('原式的解和出題設定不一致');
+    if (q.sec === 'app' && !sameSet(t.ans, q.truth.ans)) errs.push('應用問題的答案和設定不一致');
+    if (q.sec !== 'app' && !(q.wrong[0].k === 'eq' && lineOK(q, q.wrong[0]))) errs.push('第 1 行不是原方程式');
+    const lim = q.bad < 0 ? q.wrong.length : q.bad;
+    for (let i = 0; i < lim; i++) if (!lineOK(q, q.wrong[i])) errs.push(`錯行之前的第 ${i + 1} 行不成立`);
+    if (q.bad >= 0) {
+      const b = q.wrong[q.bad];
+      if (!b || b.k === 'note') errs.push('錯行是說明行');
+      else if (lineOK(q, b)) errs.push('錯行其實沒錯');
+      if (q.sec !== 'app' && q.bad === 0) errs.push('錯行是題目');
+      if (!lineOK(q, q.fix)) errs.push('正確寫法不成立');
+      if (!q.why) errs.push('缺錯誤說明');
+      if (q.opts.length !== 3 || q.opts.filter(o => o.ok).length !== 1) errs.push('挑戰選項數不對');
+      q.opts.forEach(o => { if (lineOK(q, o.ln) !== o.ok) errs.push('挑戰選項對錯標錯'); });
+      if (new Set(q.opts.map(o => o.ln.h)).size !== 3) errs.push('挑戰選項重複');
+    }
+    q.sol.forEach((ln, i) => { if (!lineOK(q, ln)) errs.push(`正確解法第 ${i + 1} 行不成立`); });
+    if (q.wrong.length > 9) errs.push('行數太多');
+    const txt = [q.story || '', q.why || '', ...q.wrong.map(l => l.h + l.tip), ...q.sol.map(l => l.h), ...(q.opts || []).map(o => o.ln.h)].join('');
+    if (/undefined|NaN|Infinity|\[object|null/.test(txt)) errs.push('字串有壞值');
+    if (/-\d/.test(txt.replace(/<[^>]+>/g, ''))) errs.push('負號用了半形 -');
+    return errs;
+  }
+
+  function makeRaw(t, err) {
+    for (let i = 0; i < 400; i++) {
+      const q = t.make(err);
+      if (q && finalize(q, t, err)) return q;
+    }
+    throw new Error(`${t.key}/${err} 出不了題`);
+  }
+  function makeQ(tp = type) {
+    const sec = tp === 'mix' ? pickOf(['fac', 'cs', 'app']) : tp;
+    for (let i = 0; i < 50; i++) {
+      const t = pickOf(BY_SEC[sec]);
+      const err = coin(0.15) ? 'ok' : pickOf(t.errs);
+      const q = makeRaw(t, err);
+      if (validate(q).length === 0) return q;
+    }
+    throw new Error('出題失敗');
+  }
+
+  /* ── 音效 ── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) { const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return null; ac = new Ctx(); }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, kind = 'sine', vol = 0.16) {
+    const c = audio(); if (!c) return;
+    const t0 = c.currentTime + when, osc = c.createOscillator(), g = c.createGain();
+    osc.type = kind; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination); osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+  const sfxTap = () => tone(740, 0.05, 0, 'triangle', 0.06);
+  const sfxStep = () => { tone(520, 0.1, 0, 'triangle', 0.1); tone(780, 0.16, 0.08, 'triangle', 0.1); };
+
+  /* ── 狀態 ── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, curLimit = 30;
+  let sel = -1, stage = 'pick', choiceBtns = [];
+  const NAMES = ['小翊', '小妍', '小茹', '阿賢', '小鈺', '小明'];
+
+  const setView = v => { document.body.dataset.view = v; };
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      b.disabled = Number(b.dataset.step) < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+  function paintSettings() {
+    document.querySelectorAll('#type button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.type === type)));
+    document.querySelectorAll('#diff button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.diff === diff)));
+    $('type-note').textContent = TYPE_NOTE[type] + (diff === 'hard' ? '　挑戰：點對錯行之後，還要從三個選項選出這一行正確的寫法。' : '');
+    paintLimit();
+  }
+  function paintMute() { $('mute').textContent = $('mute2').textContent = muted ? '🔇' : '🔊'; }
+
+  /* ── 解題過程 ── */
+  function sheetHtml(lines, opt = {}) {
+    const { interactive = false, mark = null, given = true, from = 0, to = lines.length - 1 } = opt;
+    const shown = to - from + 1;
+    const two = shown >= 5;
+    const rows = Math.ceil(shown / 2);
+    const cells = lines.map((ln, i) => {
+      if (i < from || i > to) return '';
+      const cls = ['ln'];
+      if (i === 0 && given) cls.push('given');
+      if (interactive && i === sel) cls.push('sel');
+      let extra = '';
+      if (mark) {
+        if (i === mark.bad) { cls.push('bad'); if (mark.fix) extra = `<span class="fixto"><b>應改成</b>${mark.fix.h}</span>`; }
+        else if (mark.bad >= 0 && i > mark.bad) cls.push('after');
+        else cls.push('okline');
+      }
+      const tip = ln.tip ? `<span class="tip">${i === 0 && given ? '題目' : ln.tip}</span>` : (i === 0 && given ? '<span class="tip">題目</span>' : '');
+      return `<button type="button" class="${cls.join(' ')}" data-i="${i}" ${interactive ? '' : 'disabled'}><span class="no">${i + 1}</span><span class="m">${ln.h}</span>${tip}${extra}</button>`;
+    }).join('');
+    return { html: cells, two, rows };
+  }
+  function paintSheet(el, lines, opt) {
+    const { html, two, rows } = sheetHtml(lines, opt);
+    el.innerHTML = html;
+    el.classList.toggle('two', two);
+    el.style.gridTemplateRows = two ? `repeat(${rows}, auto)` : '';
+  }
+  const givenFirst = q => q.sec !== 'app';
+  function paintPlay() {
+    $('sheet').classList.toggle('story', cur.sec === 'app');
+    // 選正確寫法時只留錯行和它的上一行，讓三個選項放得下
+    const fix = stage === 'fix';
+    paintSheet($('sheet'), cur.wrong, {
+      interactive: !locked && stage === 'pick', given: givenFirst(cur), mark: fix ? { bad: cur.bad } : null,
+      from: fix ? Math.max(0, cur.bad - 1) : 0, to: fix ? cur.bad : cur.wrong.length - 1
+    });
+    $('submit').disabled = sel < 0;
+  }
+
+  /* ── 出題 ── */
+  function startQuestion() {
+    cur = makeQ(type);
+    cur.name = pickOf(NAMES);
+    curLimit = limit();
+    locked = false; sel = -1; stage = 'pick'; cur.picked = null; cur.pickedOpt = null;
+    $('rule').textContent = SEC_NAME[cur.sec];
+    if (cur.sec === 'app') {
+      $('ask').className = 'ask story';
+      $('ask').innerHTML = cur.story;
+      $('sub').innerHTML = `下面是${cur.name}的解法：點出<em>第一個寫錯</em>的那一行；都沒錯就按「全對」。`;
+    } else {
+      $('ask').className = 'ask';
+      $('ask').innerHTML = `${cur.name}的解題過程`;
+      $('sub').innerHTML = '從第 2 行往下檢查，點出<em>第一個寫錯</em>的那一行；都沒錯就按「全對」。';
+    }
+    $('choices').hidden = true; $('choices').innerHTML = ''; choiceBtns = [];
+    $('acts').hidden = false; $('acts').style.display = '';
+    $('msg').textContent = '';
+    paintPlay();
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + curLimit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function pickLine(i) {
+    if (locked || stage !== 'pick' || !cur.wrong[i]) return;
+    if (i === 0 && givenFirst(cur)) { $('msg').textContent = '第 1 行是題目本身，從第 2 行開始檢查。'; return; }
+    sel = i; sfxTap(); $('msg').textContent = '';
+    paintPlay();
+  }
+  $('sheet').addEventListener('click', e => {
+    const b = e.target.closest('[data-i]');
+    if (b) pickLine(Number(b.dataset.i));
+  });
+  $('submit').addEventListener('click', () => submit());
+  $('allok').addEventListener('click', () => submit('all'));
+
+  function submit(mode) {
+    if (locked || stage !== 'pick') return;
+    if (mode === 'all') { cur.picked = 'all'; judge(cur.bad < 0); return; }
+    if (sel < 0) { $('msg').textContent = '先點一行，再按送出。'; return; }
+    cur.picked = sel;
+    if (sel !== cur.bad) { judge(false); return; }
+    if (diff !== 'hard') { judge(true); return; }
+    // 挑戰：選正確寫法
+    sfxStep();
+    stage = 'fix';
+    $('sub').innerHTML = `沒錯，<em>第 ${cur.bad + 1} 行</em>錯了！這一行應該改成哪一個？`;
+    $('acts').style.display = 'none';
+    $('msg').textContent = '';
+    paintPlay();
+    $('choices').innerHTML = cur.opts.map((o, i) => `<button type="button" class="choice" data-o="${i}"><span class="k">${i + 1}</span>${o.ln.h}</button>`).join('');
+    $('choices').hidden = false;
+    choiceBtns = Array.from($('choices').querySelectorAll('.choice'));
+  }
+  $('choices').addEventListener('click', e => {
+    const b = e.target.closest('[data-o]');
+    if (b) chooseFix(Number(b.dataset.o));
+  });
+  function chooseFix(i) {
+    if (locked || stage !== 'fix' || !cur.opts[i]) return;
+    cur.pickedOpt = cur.opts[i];
+    judge(cur.opts[i].ok);
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      $('bar').style.transform = `scaleX(${left / (curLimit * 1000)})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 5 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { cur.timeout = true; judge(false); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 結果的說明 ── */
+  function toFrac(v) {
+    for (let d = 1; d <= 200; d++) { const n = Math.round(v * d); if (Math.abs(n / d - v) < 1e-9) return [n, d]; }
+    return null;
+  }
+  const valH = v => { const f = toFrac(v); return f ? rat(...f) : v.toFixed(3); };
+  function checkHtml(q) {
+    const t = truthOf(q);
+    if (!t.roots.length) return '<div class="soft">這個方程式沒有解，所以不用代回驗算。</div>';
+    const rs = normSet(t.roots);
+    if (rs.every(v => toFrac(v))) {
+      return rs.map(v => `<div>${X} = ${valH(v)} 代回${q.sec === 'app' ? '方程式' : '原式'}：左邊 = ${valH(q.truth.lhs(v))}，右邊 = ${valH(q.truth.rhs(v))} ✔</div>`).join('');
+    }
+    return `<div>用計算機算近似值：${rs.map(v => `${X} ≈ ${v.toFixed(3)}`).join('、')}，代回原式左右兩邊相等 ✔</div>`;
+  }
+  function pickFeedback(q) {
+    if (q.timeout) return '';
+    if (q.picked === 'all') return q.bad < 0 ? '' : `<div class="warn">這份解法<b>有錯</b>，從${lineNo(q.bad)}開始錯。</div>`;
+    if (typeof q.picked === 'number' && q.picked !== q.bad) {
+      const i = q.picked, ln = q.wrong[i];
+      if (q.bad < 0) return `<div class="warn">你點了${lineNo(i)}，可是這份解法<b>每一行都對</b>，要按「全對」。</div>`;
+      if (i < q.bad) return `<div class="warn">你點了${lineNo(i)}，這一行<b>沒有錯</b>${ln.tip ? `（${ln.tip}）` : ''}；第一個錯的是${lineNo(q.bad)}。</div>`;
+      return `<div class="warn">你點了${lineNo(i)}，它是順著前面的錯繼續算下來的；<b>錯是從${lineNo(q.bad)}開始</b>。</div>`;
+    }
+    if (q.pickedOpt && !q.pickedOpt.ok) return `<div class="warn">錯行抓對了，可是你選的「${q.pickedOpt.ln.h}」也不對，應該是「${q.fix.h}」。</div>`;
+    return '';
+  }
+
+  function judge(win) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    choiceBtns.forEach(b => { b.disabled = true; });
+    document.body.classList.remove('urgent');
+    const q = cur;
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+    paintPlay();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = q.timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+    const chip = $('sol-chip');
+    chip.classList.toggle('ng', q.bad >= 0);
+    chip.textContent = q.bad < 0 ? '✔ 整份解法都對' : `✘ 從${lineNo(q.bad)}開始錯`;
+    paintSheet($('sol-sheet'), q.wrong, { given: givenFirst(q), mark: { bad: q.bad, fix: q.bad >= 0 ? q.fix : null } });
+
+    let why = pickFeedback(q);
+    if (q.bad >= 0) {
+      why += `<div>${q.why}</div>`;
+      // 錯行之前和正確解法一樣，只列從錯行開始的正確寫法
+      const { html } = sheetHtml(q.sol, { given: givenFirst(q), from: q.bad });
+      why += `<div class="sec-title">✔ 從${lineNo(q.bad)}起的正確寫法</div><div class="sheet">${html}</div>`;
+    }
+    why += `<div class="sec-title">🔁 驗算</div>${checkHtml(q)}`;
+    if (q.sec === 'app') why += `<div class="soft">應用問題的四個步驟：設未知數 → 列方程式 → 解方程式 → 檢查解合不合情境，再寫答案。</div>`;
+    $('sol-why').innerHTML = why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('verdict').scrollTop = 0;
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => { cancelAnimationFrame(raf); locked = true; setView('menu'); });
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => b.addEventListener('click', () => {
+    const k = limitKey();
+    limits[k] = clampLimit(limits[k] + Number(b.dataset.step));
+    store.set(`eh-limit-${k}`, String(limits[k]));
+    paintLimit();
+  }));
+  document.querySelectorAll('#type button').forEach(b => b.addEventListener('click', () => {
+    type = b.dataset.type; store.set('eh-type', type); paintSettings();
+  }));
+  document.querySelectorAll('#diff button').forEach(b => b.addEventListener('click', () => {
+    diff = b.dataset.diff; store.set('eh-diff', diff); paintSettings();
+  }));
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted; store.set('eh-muted', muted ? '1' : '0'); paintMute();
+  }));
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      if (stage === 'fix') {
+        const i = ['1', '2', '3'].indexOf(e.key);
+        if (i >= 0) { e.preventDefault(); chooseFix(i); }
+        return;
+      }
+      if (/^[1-9]$/.test(e.key)) { e.preventDefault(); pickLine(Number(e.key) - 1); }
+      else if (e.key === '0') { e.preventDefault(); submit('all'); }
+      else if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu' && (e.key === ' ' || e.key === 'Enter')) {
+      if (document.activeElement && document.activeElement.closest('button, a') && document.activeElement !== $('start')) return;
+      e.preventDefault(); audio(); startQuestion();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）───────
+     每個範本 × 每種錯誤（含全對）各出 n 題，不重抽、直接檢查：
+     原方程式（或正確列式）用「取樣求係數 → 判別式公式」獨立算出的解，要和出題時設定的根一致；
+     應用問題再用合理性條件篩選、換算成題目問的量，要和設定的答案一致；
+     錯行之前每一行的解集合都等於原式的解、錯行不等於；全對題每一行都成立；
+     正確解法每一行都成立；挑戰選項恰好一個成立、彼此不重複。 */
+  window.__errorHunt = {
+    makeQ, validate, lineOK, T,
+    get current() { return cur; },
+    selfTest(n = 300) {
+      const report = {}, errors = [];
+      const t0 = performance.now();
+      Object.values(T).forEach(t => {
+        ['ok', ...t.errs].forEach(err => {
+          let bad = 0;
+          for (let i = 0; i < n; i++) {
+            let q;
+            try { q = makeRaw(t, err); } catch (e) { errors.push([t.key, err, 'throw', e.message]); bad++; continue; }
+            let es;
+            try { es = validate(q); } catch (e) { es = ['檢查時出錯：' + e.message]; }
+            if (es.length) { bad++; if (errors.length < 30) errors.push([t.key, err, es.join('；'), q.wrong.map(l => l.h.replace(/<[^>]+>/g, '')).join(' | ')]); }
+            if (err === 'ok' && q.bad !== -1) { bad++; errors.push([t.key, err, '全對題卻有錯行']); }
+            if (err !== 'ok' && q.bad < 0) { bad++; errors.push([t.key, err, '錯題卻沒有錯行']); }
+          }
+          report[`${t.key}/${err}`] = bad ? `${bad} 題有問題` : `${n} 題 OK`;
+        });
+      });
+      ['fac', 'cs', 'app', 'mix'].forEach(tp => { for (let i = 0; i < n; i++) { try { makeQ(tp); } catch (e) { errors.push([tp, 'makeQ', e.message]); } } });
+      return { report, errors: errors.slice(0, 30), errorCount: errors.length, ms: Math.round(performance.now() - t0) };
+    }
+  };
+
+  paintSettings();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>
