@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>乘法公式小抄 - 面積拼圖</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="用面積看懂分配律、和的平方、差的平方、平方差四個乘法公式，附數字速算例子與常見錯誤對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --violet: #c4b5fd;
+      --blue: #7dd3fc;
+      --pink: #f9a8d4;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    i { font-family: "Times New Roman", "Noto Serif", serif; font-style: italic; }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 8px 0 16px;
+    }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+
+    .btn {
+      padding: 9px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.98rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn-play {
+      border: 0;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-weight: 800;
+    }
+    .btn-play:hover { filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+    .lead strong { color: var(--text); }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 1.3rem;
+      color: var(--accent-2);
+      border-left: 4px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      padding: 18px;
+    }
+    .card.dist { border-top: 4px solid var(--pink); }
+    .card.sum { border-top: 4px solid var(--accent-2); }
+    .card.diff { border-top: 4px solid var(--lose); }
+    .card.dsq { border-top: 4px solid var(--violet); }
+    .card .name { color: var(--muted); font-size: 0.95rem; }
+    .card .law { font-size: clamp(1.2rem, 3.2vw, 1.45rem); font-weight: 700; margin: 2px 0 8px; }
+    .card .say { color: var(--muted); font-size: 0.98rem; margin: 0 0 10px; }
+    .card .say strong { color: var(--text); }
+    .card .fig { width: 100%; max-width: 260px; height: 170px; margin: 8px auto 0; }
+    .card .fig svg { width: 100%; height: 100%; display: block; }
+    .hl { color: var(--accent-2); font-weight: 700; }
+
+    .note {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 14px 18px;
+      margin: 14px 0;
+    }
+    .note b { color: var(--accent-2); }
+
+    .calc {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .calc div {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 12px 16px;
+      font-size: 1.05rem;
+      line-height: 1.9;
+    }
+    .calc b { color: var(--accent-2); }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+    }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions">
+        <a class="btn btn-play" href="./">🎮 開始挑戰</a>
+      </div>
+    </header>
+
+    <h1>乘法公式小抄</h1>
+    <p class="lead">康軒 2 上 1-1 乘法公式。長方形的面積是<strong>長 × 寬</strong>，把一塊大圖切成幾小塊，<strong>大圖面積 = 小塊面積加起來</strong>，四個公式都是這樣來的。</p>
+
+    <h2>四個公式，四張圖</h2>
+    <div class="grid">
+      <div class="card dist">
+        <div class="name">分配律</div>
+        <div class="law">(<i>a</i> + <i>b</i>)(<i>c</i> + <i>d</i>) = <i>ac</i> + <i>ad</i> + <i>bc</i> + <i>bd</i></div>
+        <p class="say">大長方形切成<strong>甲、乙、丙、丁</strong>四塊，每一塊都是「一段長 × 一段寬」，四塊都要算到。</p>
+        <div class="fig">
+          <svg viewBox="-26 -18 150 120" role="img" aria-label="長 a 加 b、寬 c 加 d 的長方形切成四塊">
+            <g font-weight="700" text-anchor="middle" dominant-baseline="central" font-size="9">
+              <rect x="0" y="0" width="64" height="48" fill="#bae6fd" stroke="#0b1020"/>
+              <rect x="0" y="48" width="64" height="30" fill="#ddd6fe" stroke="#0b1020"/>
+              <rect x="64" y="0" width="34" height="48" fill="#fbcfe8" stroke="#0b1020"/>
+              <rect x="64" y="48" width="34" height="30" fill="#bbf7d0" stroke="#0b1020"/>
+              <g fill="#0f172a" font-family="Times New Roman, serif" font-style="italic" font-size="11">
+                <text x="32" y="24">ac</text><text x="32" y="63">ad</text><text x="81" y="24">bc</text><text x="81" y="63">bd</text>
+              </g>
+              <g fill="#334155" font-size="6.5" text-anchor="start">
+                <text x="3" y="6">甲</text><text x="3" y="54">乙</text><text x="67" y="6">丙</text><text x="67" y="54">丁</text>
+              </g>
+              <g fill="#e2e8f0" font-family="Times New Roman, serif" font-style="italic" font-size="10">
+                <text x="32" y="-8">a</text><text x="81" y="-8">b</text><text x="-9" y="24">c</text><text x="-9" y="63">d</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <div class="card sum">
+        <div class="name">和的平方公式</div>
+        <div class="law">(<i>a</i> + <i>b</i>)² = <i>a</i>² + 2<i>ab</i> + <i>b</i>²</div>
+        <p class="say">大正方形 = 1 塊 <i>a</i>² + <strong>2 塊</strong> <i>ab</i> + 1 塊 <i>b</i>²。中間那兩條長方形<strong>別忘了</strong>。</p>
+        <div class="fig">
+          <svg viewBox="-24 -18 140 124" role="img" aria-label="邊長 a 加 b 的正方形切成 a 平方、兩塊 ab、b 平方">
+            <g font-weight="700" text-anchor="middle" dominant-baseline="central">
+              <rect x="0" y="0" width="64" height="64" fill="#fde68a" stroke="#0b1020"/>
+              <rect x="64" y="0" width="30" height="64" fill="#7dd3fc" stroke="#0b1020"/>
+              <rect x="0" y="64" width="64" height="30" fill="#7dd3fc" stroke="#0b1020"/>
+              <rect x="64" y="64" width="30" height="30" fill="#3b82f6" stroke="#0b1020"/>
+              <g fill="#0f172a" font-family="Times New Roman, serif" font-style="italic" font-size="12">
+                <text x="32" y="32">a²</text><text x="79" y="32">ab</text><text x="32" y="79">ab</text><text x="79" y="79">b²</text>
+              </g>
+              <g fill="#e2e8f0" font-family="Times New Roman, serif" font-style="italic" font-size="10">
+                <text x="32" y="-8">a</text><text x="79" y="-8">b</text><text x="-9" y="32">a</text><text x="-9" y="79">b</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <div class="card diff">
+        <div class="name">差的平方公式</div>
+        <div class="law">(<i>a</i> − <i>b</i>)² = <i>a</i>² − 2<i>ab</i> + <i>b</i>²</div>
+        <p class="say">從 <i>a</i>² 剪掉<strong>兩條</strong> <i>ab</i>，左下角的 <i>b</i>² 被<strong>剪了兩次</strong>，所以要<strong>補回一次</strong>。</p>
+        <div class="fig">
+          <svg viewBox="-28 -18 144 124" role="img" aria-label="邊長 a 的正方形剪掉左邊和下面兩條，留下邊長 a 減 b 的正方形">
+            <defs>
+              <pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="5" height="5" fill="rgba(239,68,68,0.18)"/>
+                <line x1="0" y1="0" x2="0" y2="5" stroke="rgba(239,68,68,0.8)" stroke-width="1.6"/>
+              </pattern>
+            </defs>
+            <g font-weight="700" text-anchor="middle" dominant-baseline="central">
+              <rect x="0" y="0" width="28" height="66" fill="url(#hatch)" stroke="rgba(239,68,68,0.7)"/>
+              <rect x="28" y="66" width="66" height="28" fill="url(#hatch)" stroke="rgba(239,68,68,0.7)"/>
+              <rect x="0" y="66" width="28" height="28" fill="rgba(185,28,28,0.8)" stroke="#ef4444"/>
+              <rect x="28" y="0" width="66" height="66" fill="#fde68a" stroke="#f59e0b" stroke-width="1.6" stroke-dasharray="4 3"/>
+              <text x="61" y="33" fill="#0f172a" font-size="11"><tspan font-family="Times New Roman, serif" font-style="italic">(a − b)²</tspan></text>
+              <text x="14" y="80" fill="#fff" font-size="6.5">2 次</text>
+              <g fill="#e2e8f0" font-family="Times New Roman, serif" font-style="italic" font-size="10">
+                <text x="14" y="-8">b</text><text x="61" y="-8">a − b</text><text x="-12" y="33">a − b</text><text x="-12" y="80">b</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <div class="card dsq">
+        <div class="name">平方差公式</div>
+        <div class="law">(<i>a</i> + <i>b</i>)(<i>a</i> − <i>b</i>) = <i>a</i>² − <i>b</i>²</div>
+        <p class="say"><i>a</i>² 剪掉角落的 <i>b</i>² 剩下 L 型；把<strong>乙</strong>轉過來接在甲的右邊，拼成長 <i>a</i> + <i>b</i>、寬 <i>a</i> − <i>b</i> 的長方形，<strong>面積不變</strong>。</p>
+        <div class="fig" style="max-width:380px">
+          <svg viewBox="-22 -14 270 112" role="img" aria-label="L 型分成甲乙兩塊，乙轉過來接到甲右邊變成長方形">
+            <g font-weight="700" text-anchor="middle" dominant-baseline="central" font-size="10">
+              <rect x="0" y="0" width="56" height="24" fill="#c4b5fd" stroke="#0b1020"/>
+              <rect x="56" y="0" width="24" height="24" fill="none" stroke="#64748b" stroke-dasharray="3 2"/>
+              <rect x="0" y="24" width="80" height="56" fill="#7dd3fc" stroke="#0b1020"/>
+              <text x="28" y="12" fill="#0f172a">乙</text><text x="40" y="52" fill="#0f172a">甲</text>
+              <path d="M90 52 h16" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arr)"/>
+              <defs><marker id="arr" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker></defs>
+              <rect x="116" y="24" width="80" height="56" fill="#7dd3fc" stroke="#0b1020"/>
+              <rect x="196" y="24" width="24" height="56" fill="#c4b5fd" stroke="#0b1020"/>
+              <rect x="116" y="24" width="104" height="56" fill="none" stroke="#f59e0b" stroke-width="2"/>
+              <text x="156" y="52" fill="#0f172a">甲</text><text x="208" y="52" fill="#0f172a">乙</text>
+              <g fill="#e2e8f0" font-family="Times New Roman, serif" font-style="italic">
+                <text x="40" y="91">a</text><text x="-10" y="12">b</text><text x="-12" y="52">a−b</text>
+                <text x="168" y="91">a + b</text><text x="236" y="52">a − b</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>用分配律也推得出來：</b>(<i>a</i> + <i>b</i>)² = (<i>a</i> + <i>b</i>)(<i>a</i> + <i>b</i>) = <i>a</i>² + <i>ab</i> + <i>ba</i> + <i>b</i>² = <i>a</i>² + 2<i>ab</i> + <i>b</i>²。<br>
+      公式裡的 <i>a</i>、<i>b</i> 可以換成任何數或文字，例如 (<i>x</i> + 3)² = <i>x</i>² + 2 × 3<i>x</i> + 3² = <i>x</i>² + 6<i>x</i> + 9。
+    </div>
+
+    <h2>數字速算：拆成整十、整百</h2>
+    <div class="calc">
+      <div>102² = (100 + 2)²<br>= 100² + 2 × 100 × 2 + 2²<br>= 10000 + 400 + 4 = <b>10404</b></div>
+      <div>98² = (100 − 2)²<br>= 100² − 2 × 100 × 2 + 2²<br>= 10000 − 400 + 4 = <b>9604</b></div>
+      <div>203 × 197 = (200 + 3)(200 − 3)<br>= 200² − 3²<br>= 40000 − 9 = <b>39991</b></div>
+      <div>101 × 32 = (100 + 1)(30 + 2)<br>= 3000 + 200 + 30 + 2<br>= <b>3232</b></div>
+    </div>
+
+    <h2>公式反過來用</h2>
+    <div class="note">
+      61² + 2 × 61 × 39 + 39² = (61 + 39)² = 100² = <b>10000</b><br>
+      655² − 345² = (655 + 345)(655 − 345) = 1000 × 310 = <b>310000</b>
+    </div>
+
+    <h2>常見錯誤對照表</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>遊戲的錯誤選項大多是左邊這幾種，代一組數字進去就看得出來。</caption>
+        <thead>
+          <tr><th style="width:46%">常見的寫法</th><th>正確</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="bad">(<i>a</i> + <i>b</i>)² = <i>a</i>² + <i>b</i>²</td>
+            <td class="good">少了中間兩塊：<i>a</i>² + <b>2<i>ab</i></b> + <i>b</i>²。試 (5 + 1)² = 36，5² + 1² = 26</td>
+          </tr>
+          <tr>
+            <td class="bad">(<i>a</i> + <i>b</i>)² = <i>a</i>² + <i>ab</i> + <i>b</i>²</td>
+            <td class="good">長方形 <i>ab</i> 有<b>兩塊</b></td>
+          </tr>
+          <tr>
+            <td class="bad">(<i>a</i> − <i>b</i>)² = <i>a</i>² − <i>b</i>²</td>
+            <td class="good"><i>a</i>² − 2<i>ab</i> + <i>b</i>²。試 (7 − 2)² = 25，7² − 2² = 45</td>
+          </tr>
+          <tr>
+            <td class="bad">(<i>a</i> − <i>b</i>)² = <i>a</i>² − 2<i>ab</i> − <i>b</i>²</td>
+            <td class="good">角落剪了兩次，要<b>補回</b>：+ <i>b</i>²</td>
+          </tr>
+          <tr>
+            <td class="bad">(<i>a</i> + <i>b</i>)(<i>c</i> + <i>d</i>) = <i>ac</i> + <i>bd</i></td>
+            <td class="good">四塊都要算：<i>ac</i> + <i>ad</i> + <i>bc</i> + <i>bd</i></td>
+          </tr>
+          <tr>
+            <td class="bad">長 <i>x</i>、寬 3 的長方形面積是 <i>x</i> + 3</td>
+            <td class="good">面積是<b>長 × 寬</b> = 3<i>x</i>；<i>x</i> + 3 是兩邊加起來</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a>
+    </footer>
+  </div>
+</body>
+</html>

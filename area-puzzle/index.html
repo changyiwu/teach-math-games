@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>面積拼圖 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="用面積拼出乘法公式：把色塊拼滿正方形、從大正方形剪掉長條再補回角落、把 L 型剪開重組成長方形，最後選出展開式。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --violet: #a78bfa;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    i, .v { font-family: "Times New Roman", "Noto Serif", serif; font-style: italic; }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .unit { margin: 0 0 8px; opacity: 0.75; font-size: 0.95rem; }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 40ch;
+      line-height: 1.7;
+    }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; flex-wrap: wrap; justify-content: center; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+
+    .level-note { margin: -6px 0 0; color: var(--muted); font-size: 0.9rem; max-width: 46ch; line-height: 1.6; }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys {
+      color: var(--muted);
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer {
+      flex: 0 0 auto;
+      height: 10px;
+      background: rgba(15, 23, 42, 0.8);
+    }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(6px, 1.4vh, 14px);
+      padding: 12px 16px 16px;
+      min-height: 0;
+    }
+
+    .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; max-width: 1100px; }
+
+    .rule-tag {
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+      background: var(--panel);
+      white-space: nowrap;
+    }
+
+    .ask {
+      font-size: clamp(1.1rem, 3vw, 1.9rem);
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.45;
+    }
+    .ask em { font-style: normal; color: var(--accent-2); }
+
+    .count {
+      position: absolute;
+      top: 54px;
+      right: 18px;
+      font-size: clamp(2.4rem, 7vw, 4.4rem);
+      font-weight: 800;
+      color: var(--accent-2);
+      opacity: 0.85;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    /* 舞台：左邊面積圖、右邊色塊／選項（窄螢幕上下排） */
+    .stage {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      max-width: 1500px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(8px, 2vw, 28px);
+    }
+    .pic {
+      flex: 1 1 0;
+      min-height: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pic svg { width: 100%; height: 100%; max-height: 100%; display: block; }
+    .pic [data-cell], .pic [data-piece] { cursor: pointer; }
+    .pic .yi { transition: transform 0.75s cubic-bezier(0.45, 0, 0.25, 1); }
+
+    .side {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(8px, 1.4vh, 14px);
+      width: min(100%, 560px);
+    }
+    .side-title { color: var(--muted); font-size: clamp(0.9rem, 2vw, 1.05rem); }
+
+    .palette {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: clamp(8px, 1.4vw, 14px);
+    }
+    .tile, .op, .ans {
+      border: 2px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s, background 0.15s;
+    }
+    .tile {
+      min-width: clamp(76px, 12vw, 120px);
+      padding: clamp(10px, 2vh, 18px) 14px;
+      font-size: clamp(1.3rem, 3.4vw, 2.1rem);
+      font-weight: 700;
+    }
+    .tile:hover, .op:hover:not(:disabled), .ans:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--cyan); }
+    .tile[aria-pressed="true"] { border-color: var(--accent-2); background: rgba(245, 158, 11, 0.2); box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25); }
+
+    .ops { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(8px, 1.4vw, 12px); width: 100%; }
+    .op {
+      padding: clamp(10px, 1.8vh, 16px) 10px;
+      font-size: clamp(1rem, 2.4vw, 1.3rem);
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .op small { display: block; color: var(--muted); font-weight: 400; font-size: 0.85em; }
+    .op[aria-pressed="true"] { border-color: var(--lose); background: rgba(239, 68, 68, 0.16); }
+    .op.plus[aria-pressed="true"] { border-color: var(--win); background: rgba(34, 197, 94, 0.16); }
+    .op:disabled { opacity: 0.45; cursor: default; }
+    .op.wide { grid-column: 1 / -1; }
+
+    .tally {
+      min-height: 1.6em;
+      font-size: clamp(1.1rem, 2.8vw, 1.6rem);
+      font-weight: 700;
+      text-align: center;
+    }
+    .msg {
+      min-height: 1.5em;
+      font-size: clamp(0.95rem, 2.2vw, 1.15rem);
+      text-align: center;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+    .msg.bad { color: #fca5a5; }
+    .msg.good { color: #86efac; }
+    .msg em { font-style: normal; color: var(--accent-2); }
+
+    .answers {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: clamp(8px, 1.4vh, 14px);
+      width: 100%;
+    }
+    .ans {
+      position: relative;
+      padding: clamp(10px, 2vh, 18px) 12px clamp(10px, 2vh, 18px) 40px;
+      font-size: clamp(1.25rem, 3.2vw, 2rem);
+      font-weight: 700;
+      text-align: left;
+    }
+    .ans .k {
+      position: absolute;
+      top: 50%;
+      left: 14px;
+      transform: translateY(-50%);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      font-family: inherit;
+    }
+    .ans:disabled { opacity: 0.45; cursor: default; }
+
+    @media (min-aspect-ratio: 5/4) and (min-width: 720px) {
+      .head { padding: 0 110px; }
+      .stage { flex-direction: row; }
+      .pic { height: 100%; flex: 1 1 0; }
+      .side { width: min(42vw, 560px); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      75% { transform: translateX(8px); }
+    }
+    .shake { animation: shake 0.25s 2; }
+
+    /* ── 結果 ───────────────────────────────── */
+    .verdict {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 24px 16px;
+      background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95));
+      backdrop-filter: blur(3px);
+      overflow-y: auto;
+    }
+    body[data-view="result"] .verdict { display: flex; }
+    .verdict > * { flex-shrink: 0; }
+    /* 內容比畫面高時從頂端開始捲，不會切掉標題 */
+    .verdict, .menu-body { justify-content: flex-start; }
+    .verdict > :first-child, .menu-body > :first-child { margin-top: auto; }
+    .verdict > :last-child, .menu-body > :last-child { margin-bottom: auto; }
+
+    .verdict h2 {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .solution {
+      width: min(1000px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: clamp(12px, 2.6vw, 22px);
+      text-align: center;
+    }
+    .sol-pic { width: min(420px, 80vw); height: min(280px, 32vh); margin: 0 auto 10px; }
+    .sol-pic svg { width: 100%; height: 100%; display: block; }
+    .solution .answer-chip {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 4px 18px;
+      border-radius: 999px;
+      font-size: clamp(1.1rem, 3vw, 1.7rem);
+      font-weight: 800;
+      color: var(--win);
+      border: 2px solid currentColor;
+    }
+    .solution .why {
+      color: var(--text);
+      font-size: clamp(1rem, 2.4vw, 1.25rem);
+      line-height: 1.9;
+      opacity: 0.95;
+    }
+    .solution .why em { font-style: normal; color: var(--accent-2); font-weight: 700; }
+    .solution .why .warn { color: #fca5a5; }
+    .solution .why .soft { color: var(--muted); font-size: 0.92em; }
+
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    .nw { white-space: nowrap; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; font-size: 2.2rem; }
+      .head { padding-right: 52px; }
+      .seg button { padding: 8px 12px; }
+    }
+
+    @media (max-height: 640px) {
+      .sol-pic { height: 200px; }
+      .verdict { gap: 8px; padding-top: 12px; }
+      .verdict h2 { font-size: 2.2rem; }
+    }
+
+    @media (max-height: 560px) {
+      .tile { padding: 6px 12px; }
+      .op { padding: 6px 8px; }
+      .ans { padding-top: 6px; padding-bottom: 6px; }
+      .sol-pic { height: 170px; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">面積拼圖</h1>
+      <p class="unit">📘 第3冊・第1章 乘法公式與多項式・第1節 乘法公式</p>
+      <p class="hint">用面積把乘法公式<strong>拼出來</strong>：拼滿正方形、剪掉長條再補回角落、把 L 型剪開重組，<span class="limit-val">45</span> 秒內再選出正確的展開式。</p>
+
+      <div class="ctl-row">
+        <div class="seg" id="level" role="group" aria-label="題型">
+          <button type="button" data-level="dist" aria-pressed="false">分配律</button>
+          <button type="button" data-level="sum" aria-pressed="false">和的平方</button>
+          <button type="button" data-level="diff" aria-pressed="false">差的平方</button>
+          <button type="button" data-level="dsq" aria-pressed="false">平方差</button>
+          <button type="button" data-level="all" aria-pressed="true">混合</button>
+        </div>
+      </div>
+      <div class="ctl-row">
+        <div class="seg" id="size" role="group" aria-label="難度">
+          <button type="button" data-size="easy" aria-pressed="true">文字 a、b</button>
+          <button type="button" data-size="normal" aria-pressed="false">代數磚 x</button>
+          <button type="button" data-size="hard" aria-pressed="false">數字速算</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-5" aria-label="減少 5 秒">−</button>
+          <b class="limit-val">45</b>秒
+          <button type="button" data-step="5" aria-label="增加 5 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+
+      <button type="button" class="big-btn" id="start">🧩 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看乘法公式小抄</a>
+      <p class="keys">鍵盤：選展開式時按 <kbd>1</kbd>～<kbd>4</kbd>　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <!-- ── 作答 ───────────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="count" id="count">45</div>
+
+    <div class="play-body">
+      <div class="head">
+        <div class="rule-tag" id="rule">和的平方</div>
+        <div class="ask" id="ask"></div>
+      </div>
+      <div class="stage">
+        <div class="pic" id="pic"></div>
+        <div class="side" id="side"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 判定 ───────────────────────────── -->
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="sol-pic" id="sol-pic"></div>
+      <div class="answer-chip" id="sol-ans"></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器，限時依題型各自記）── */
+  const LEVELS = ['dist', 'sum', 'diff', 'dsq', 'all'];
+  const SIZE_KEYS = ['easy', 'normal', 'hard'];
+  const LIMIT_DEFAULT = { dist: 45, sum: 45, diff: 50, dsq: 45, all: 50 };
+  const LIMIT_MIN = 15, LIMIT_MAX = 120;
+  const RULE = { dist: '分配律', sum: '和的平方', diff: '差的平方', dsq: '平方差' };
+  const LEVEL_NOTE = {
+    dist: '(a + b)(c + d)：把大長方形的四格拼滿。',
+    sum: '(a + b)²：把大正方形的四格拼滿。',
+    diff: '(a − b)²：從 a² 剪掉長條，剪過頭的再補回來。',
+    dsq: '(a + b)(a − b)：剪掉角落，再把 L 型重組成長方形。',
+    all: '四種公式混在一起出。'
+  };
+  const SIZE_NOTE = {
+    easy: '文字 a、b：照課本的面積圖推公式。',
+    normal: '代數磚 x：像 (x + 3)²，數一數有幾條 x、幾個小方塊。',
+    hard: '數字速算：像 102²、98²、203 × 197，拆成整百再用公式算。'
+  };
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 私密視窗等情況：不記也能玩 */ } }
+  };
+
+  function clampLimit(v) { return Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v)); }
+
+  let level = LEVELS.includes(store.get('area-level')) ? store.get('area-level') : 'all';
+  let size = SIZE_KEYS.includes(store.get('area-size')) ? store.get('area-size') : 'easy';
+  const limits = {};
+  LEVELS.forEach(l => {
+    const v = parseInt(store.get(`area-limit-${l}`), 10);
+    limits[l] = clampLimit(Number.isFinite(v) ? v : LIMIT_DEFAULT[l]);
+  });
+  let muted = store.get('area-muted') === '1';
+  const limit = () => limits[level];
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  const F = n => (Math.round(n * 1000) / 1000).toString();
+
+  /* ══ 多項式：[{ c: 係數, v: { 文字: 次數 } }] ══════════════ */
+  const T = (c, v = {}) => [{ c, v }];
+  const vkey = v => Object.keys(v).filter(k => v[k]).sort().map(k => (v[k] > 1 ? `${k}^${v[k]}` : k)).join('');
+  function combine(p) {
+    const m = new Map();
+    p.forEach(t => {
+      const k = vkey(t.v);
+      const e = m.get(k);
+      if (e) e.c += t.c; else m.set(k, { c: t.c, v: { ...t.v } });
+    });
+    return [...m.values()].filter(t => t.c !== 0);
+  }
+  const add = (...ps) => combine(ps.flat());
+  const neg = p => p.map(t => ({ c: -t.c, v: t.v }));
+  const sub = (p, q) => add(p, neg(q));
+  const scale = (p, k) => combine(p.map(t => ({ c: t.c * k, v: t.v })));
+  function mul(p, q) {
+    const out = [];
+    p.forEach(s => q.forEach(t => {
+      const v = { ...s.v };
+      Object.keys(t.v).forEach(k => { v[k] = (v[k] || 0) + t.v[k]; });
+      out.push({ c: s.c * t.c, v });
+    }));
+    return combine(out);
+  }
+  const deg = v => Object.values(v).reduce((s, x) => s + x, 0);
+  // 降冪；同次數照字母（ab、ac、ad、bc、bd，和課本一樣）
+  const order = p => combine(p).sort((s, t) => (deg(t.v) - deg(s.v)) || (vkey(s.v) < vkey(t.v) ? -1 : vkey(s.v) > vkey(t.v) ? 1 : 0));
+  const SUP = { 2: '²', 3: '³' };
+
+  // mode：'html'（文字斜體）、'svg'（tspan 斜體）、'plain'（比對用）
+  function fmt(p, mode = 'html') {
+    const ts = order(p);
+    if (!ts.length) return '0';
+    return ts.map((t, i) => {
+      const a = Math.abs(t.c);
+      const vs = Object.keys(t.v).filter(k => t.v[k]).sort();
+      let body = (a === 1 && vs.length) ? '' : String(a);
+      vs.forEach(k => {
+        const pw = t.v[k] > 1 ? SUP[t.v[k]] : '';
+        if (mode === 'html') body += `<i>${k}</i>${pw}`;
+        else if (mode === 'svg') body += `<tspan font-style="italic" font-family="Times New Roman, serif">${k}</tspan>${pw}`;
+        else body += k + pw;
+      });
+      const sign = t.c < 0 ? (i ? ' − ' : '−') : (i ? ' + ' : '');
+      return sign + body;
+    }).join('');
+  }
+  const pkey = p => fmt(p, 'plain');
+  function evalP(p, vals) {
+    return p.reduce((s, t) => s + t.c * Object.keys(t.v).reduce((m, k) => m * Math.pow(vals[k], t.v[k]), 1), 0);
+  }
+
+  /* ══ 邊長 ══════════════════════════════════════════
+     { p: 多項式, vis: 畫圖時的長度, grid: 是不是要畫 1 單位的格線（代數磚的數字邊）} */
+  const len = (p, vis, grid = false) => ({ p, vis, grid });
+  const lsum = (X, Y) => len(add(X.p, Y.p), X.vis + Y.vis);
+  const ldif = (X, Y) => len(sub(X.p, Y.p), X.vis - Y.vis);
+  const isNum = L => L.p.length <= 1 && (!L.p.length || !Object.keys(L.p[0].v).length);
+  const numOf = L => (L.p.length ? L.p[0].c : 0);
+
+  function pickLens(type) {
+    if (size === 'easy') {
+      return {
+        A: len(T(1, { a: 1 }), rnd(6.3, 6.9)),
+        B: len(T(1, { b: 1 }), rnd(2.6, 3.0)),
+        C: len(T(1, { c: 1 }), rnd(5.4, 5.9)),
+        D: len(T(1, { d: 1 }), rnd(3.1, 3.5))
+      };
+    }
+    if (size === 'normal') {
+      // x 不是整數格：比數字那一段長一些，邊上不畫格線
+      let m = 0, n;
+      if (type === 'sum') n = R(1, 6);
+      else if (type === 'diff') n = R(1, 5);
+      else if (type === 'dsq') n = R(2, 6);
+      else { m = R(1, 6); do { n = R(1, 6); } while (n === m); }
+      const big = Math.max(m, n);
+      const xv = Math.max(5.7, big + 2.7) + rnd(0, 0.5);
+      const X = len(T(1, { x: 1 }), xv);
+      const B = type === 'dist' ? len(T(m), m, true) : len(T(n), n, true);
+      return { A: X, B, C: len(T(1, { x: 1 }), xv), D: len(T(n), n, true) };
+    }
+    // 數字速算：圖上數字段太細就放寬，並標「未依比例」
+    let a, b, c = 0, d = 0;
+    if (type === 'sum') { a = pickOf([10, 20, 30, 40, 50, 100, 200, 300]); b = R(1, a === 10 ? 3 : 4); }
+    else if (type === 'diff') { a = pickOf([20, 30, 50, 100, 200, 300, 500]); b = R(1, 3); }
+    else if (type === 'dsq') { a = pickOf([20, 30, 40, 50, 100, 200, 300]); b = R(1, 4); }
+    else { a = pickOf([100, 200]); b = R(1, 4); c = pickOf([20, 30, 50, 60]); d = R(1, 4); }
+    const AV = 8;
+    const bv = Math.max(AV * b / a, 1.4);
+    const cv = c ? Math.min(Math.max(AV * c / a, 4.6), 8) : 0;
+    const dv = d ? Math.max(AV * d / a, 1.4) : 0;
+    const scaled = Math.abs(bv - AV * b / a) < 0.05 && (!c || Math.abs(cv - AV * c / a) < 0.05) && (!d || Math.abs(dv - AV * d / a) < 0.05);
+    return {
+      A: len(T(a), AV), B: len(T(b), bv), C: len(T(c), cv), D: len(T(d), dv),
+      nums: { a, b, c, d }, notScale: !scaled
+    };
+  }
+
+  /* ══ 題目 ══════════════════════════════════════════ */
+  const L = (X, mode = 'html') => fmt(X.p, mode);
+
+  function titleOf(type, q, mode = 'html') {
+    const { A, B, C, D, nums } = q;
+    if (nums) {
+      const { a, b, c, d } = nums;
+      return {
+        sum: `${a + b}²`, diff: `${a - b}²`, dsq: `${a + b} × ${a - b}`, dist: `${a + b} × ${c + d}`
+      }[type];
+    }
+    return {
+      sum: `(${L(A, mode)} + ${L(B, mode)})²`,
+      diff: `(${L(A, mode)} − ${L(B, mode)})²`,
+      dsq: `(${L(A, mode)} + ${L(B, mode)})(${L(A, mode)} − ${L(B, mode)})`,
+      dist: `(${L(A, mode)} + ${L(B, mode)})(${L(C, mode)} + ${L(D, mode)})`
+    }[type];
+  }
+  // 數字題拆開後的寫法：102² → (100 + 2)²
+  function formOf(type, q) {
+    if (!q.nums) return '';
+    const { a, b, c, d } = q.nums;
+    return {
+      sum: `(${a} + ${b})²`, diff: `(${a} − ${b})²`, dsq: `(${a} + ${b})(${a} − ${b})`, dist: `(${a} + ${b})(${c} + ${d})`
+    }[type];
+  }
+
+  // 展開式的四個選項：一個正解、三個常見錯誤
+  function optionsOf(type, q) {
+    const { A, B, C, D } = q;
+    const AA = mul(A.p, A.p), AB = mul(A.p, B.p), BB = mul(B.p, B.p);
+    const a = q.nums ? String(q.nums.a) : L(A), b = q.nums ? String(q.nums.b) : L(B);
+    let list;
+    if (type === 'sum') {
+      list = [
+        { p: add(AA, scale(AB, 2), BB), trap: '' },
+        { p: add(AA, BB), trap: `漏掉了中間的兩塊長方形。(<i>a</i> + <i>b</i>)² <em>不是</em> <i>a</i>² + <i>b</i>²。` },
+        { p: add(AA, AB, BB), trap: `中間的長方形 ${fmt(AB)} 有<em>兩塊</em>，要算 2 次。` },
+        { p: add(AA, scale(AB, 2)), trap: `右下角的小正方形 ${fmt(BB)} 忘了算。` }
+      ];
+    } else if (type === 'diff') {
+      list = [
+        { p: add(AA, scale(AB, -2), BB), trap: '' },
+        { p: sub(AA, BB), trap: `(<i>a</i> − <i>b</i>)² <em>不是</em> <i>a</i>² − <i>b</i>²：要剪掉兩條長方形，角落再補回來。` },
+        { p: sub(add(AA, scale(AB, -2)), BB), trap: `角落被剪了兩次，要<em>補回</em> ${fmt(BB)}，是加不是減。` },
+        { p: add(AA, scale(AB, -2)), trap: `剪兩條長方形時角落被剪了兩次，忘了<em>補回</em> ${fmt(BB)}。` }
+      ];
+    } else if (type === 'dsq') {
+      list = [
+        { p: sub(AA, BB), trap: '' },
+        { p: add(AA, BB), trap: `剪掉的小正方形 ${fmt(BB)} 要<em>減掉</em>。` },
+        { p: add(AA, scale(AB, -2), BB), trap: `這是 (${a} − ${b})² 的展開，不是 (${a} + ${b})(${a} − ${b})。` },
+        { p: add(AA, scale(AB, 2), BB), trap: `這是 (${a} + ${b})² 的展開，不是 (${a} + ${b})(${a} − ${b})。` }
+      ];
+    } else {
+      const AC = mul(A.p, C.p), AD = mul(A.p, D.p), BC = mul(B.p, C.p), BD = mul(B.p, D.p);
+      list = [
+        { p: add(AC, AD, BC, BD), trap: '' },
+        { p: add(AC, BD), trap: `只乘了「前乘前、後乘後」，另外兩塊（乙、丙）沒算到。` },
+        { p: add(AC, AD), trap: `只把 ${a} 分配進去了，${b} 也要乘進去（丙、丁兩塊）。` },
+        { p: add(AC, AD, BC), trap: `右下角的丁 ${fmt(BD)} 漏掉了。` }
+      ];
+    }
+    return list.map((o, i) => ({ ...o, key: pkey(o.p), html: fmt(o.p), right: i === 0 }));
+  }
+
+  /* 拼圖格子：分配律、和的平方 */
+  function buildCells(type, q) {
+    const cols = [q.A, q.B];
+    const rows = type === 'dist' ? [q.C, q.D] : [q.A, q.B];
+    const NAMES = [['甲', '乙'], ['丙', '丁']];
+    const KIND_SUM = [['big', 'mid'], ['mid', 'small']];
+    const cells = [];
+    let x = 0;
+    cols.forEach((cl, i) => {
+      let y = 0;
+      rows.forEach((rw, j) => {
+        const p = mul(cl.p, rw.p);
+        cells.push({
+          i, j, x, y, w: cl.vis, h: rw.vis, col: cl, row: rw, p, key: pkey(p),
+          kind: type === 'dist' ? `d${i}${j}` : KIND_SUM[i][j],
+          name: type === 'dist' ? NAMES[i][j] : ''
+        });
+        y += rw.vis;
+      });
+      x += cl.vis;
+    });
+    return { cols, rows, cells };
+  }
+
+  // 色塊庫：正解的面積＋兩個常見錯誤（把長＋寬當面積、塊數算錯）
+  function paletteOf(type, q, cells) {
+    const { A, B, C, D } = q;
+    const want = [];
+    cells.forEach(c => { if (!want.some(w => w.key === c.key)) want.push({ key: c.key, p: c.p }); });
+    let cand;
+    if (type === 'sum') cand = [scale(mul(A.p, B.p), 2), add(A.p, B.p), scale(B.p, 2)];
+    else cand = [add(A.p, C.p), add(B.p, D.p), mul(A.p, B.p), mul(C.p, D.p), mul(A.p, add(B.p, D.p))];
+    const extra = [];
+    shuffle(cand).forEach(p => {
+      const k = pkey(p);
+      if (extra.length < 2 && !want.some(w => w.key === k) && !extra.some(e => e.key === k)) extra.push({ key: k, p });
+    });
+    return shuffle(want.concat(extra)).map(t => ({ ...t, html: fmt(t.p) }));
+  }
+
+  // 差的平方：剪掉／補回的動作。cells：TL、TR（目標）、BL（角落）、BR
+  const DIFF_OPS = [
+    { id: 'cutV', sign: -1, cells: [0, 2], name: '剪掉左邊直條', area: 'AB' },
+    { id: 'cutH', sign: -1, cells: [2, 3], name: '剪掉下面橫條', area: 'AB' },
+    { id: 'addC', sign: 1, cells: [2], name: '補回左下角', area: 'BB' },
+    { id: 'cutC', sign: -1, cells: [2], name: '剪掉左下角', area: 'BB' }
+  ];
+  function removedOf(applied) {
+    const r = [0, 0, 0, 0];
+    DIFF_OPS.forEach(o => { if (applied.has(o.id)) o.cells.forEach(c => { r[c] -= o.sign; }); });
+    return r;
+  }
+  const diffSolved = applied => { const r = removedOf(applied); return r[0] === 1 && r[1] === 0 && r[2] === 1 && r[3] === 1; };
+
+  function makeQ(type) {
+    const q = { type, ...pickLens(type), mistakes: 0, phase: 1 };
+    q.rule = RULE[type];
+    q.title = titleOf(type, q);
+    q.form = formOf(type, q);
+    q.opts = shuffle(optionsOf(type, q));
+    q.ans = q.opts.find(o => o.right).key;
+    q.AmB = ldif(q.A, q.B);
+    if (type === 'sum' || type === 'dist') {
+      q.mode = 'build';
+      Object.assign(q, buildCells(type, q));
+      q.palette = paletteOf(type, q, q.cells);
+      q.placed = q.cells.map(() => false);
+      q.selTile = null;
+      q.selCell = -1;
+    } else if (type === 'diff') {
+      q.mode = 'cut';
+      q.applied = new Set();
+      q.order = [];
+      q.opsShown = shuffle(DIFF_OPS);
+    } else {
+      q.mode = 'move';
+      q.step = 0;
+      q.cutOpts = shuffle(['corner', 'strip']);
+    }
+    return q;
+  }
+
+  /* ══ 畫圖 ══════════════════════════════════════════ */
+  const FILL = {
+    big: '#fde68a', mid: '#7dd3fc', small: '#3b82f6',
+    d00: '#bae6fd', d01: '#ddd6fe', d10: '#fbcfe8', d11: '#bbf7d0',
+    paper: '#e0f2fe', jia: '#7dd3fc', yi: '#c4b5fd', target: '#fde68a'
+  };
+  const INK = '#0f172a';
+  const EDGE = '#0b1020';
+  const LBL = '#e2e8f0';
+
+  function textEl(x, y, s, fs, fill = LBL, extra = '') {
+    return `<text x="${F(x)}" y="${F(y)}" font-size="${F(fs)}" fill="${fill}" text-anchor="middle" dominant-baseline="central" font-weight="700" ${extra}>${s}</text>`;
+  }
+  // 依格子大小縮字，長字串（如 10000）不會超出格子
+  function fitFs(plain, w, h, fs) {
+    const n = Math.max(1, plain.length);
+    return Math.max(0.28, Math.min(fs * 1.35, (w * 0.86) / (n * 0.58), h * 0.62));
+  }
+  function gridLines(x, y, w, h, colGrid, rowGrid, nW, nH, stroke) {
+    let s = '';
+    if (colGrid) for (let k = 1; k < nW; k++) s += `<line x1="${F(x + k)}" y1="${F(y)}" x2="${F(x + k)}" y2="${F(y + h)}" stroke="${stroke}" stroke-width="0.03"/>`;
+    if (rowGrid) for (let k = 1; k < nH; k++) s += `<line x1="${F(x)}" y1="${F(y + k)}" x2="${F(x + w)}" y2="${F(y + k)}" stroke="${stroke}" stroke-width="0.03"/>`;
+    return s;
+  }
+  function cellGrid(x, y, col, row, stroke) {
+    return gridLines(x, y, col.vis, row.vis, col.grid, row.grid, numOf(col), numOf(row), stroke);
+  }
+
+  // 邊長標示：上、左標每一段，下、右標總長
+  function sideTop(segs, y, fs) {
+    let s = '', x = 0;
+    segs.forEach(sg => {
+      s += `<line x1="${F(x + 0.06)}" y1="${F(y)}" x2="${F(x + sg.vis - 0.06)}" y2="${F(y)}" stroke="#64748b" stroke-width="0.04"/>`;
+      s += `<line x1="${F(x + 0.06)}" y1="${F(y - 0.18)}" x2="${F(x + 0.06)}" y2="${F(y + 0.18)}" stroke="#64748b" stroke-width="0.04"/>`;
+      s += `<line x1="${F(x + sg.vis - 0.06)}" y1="${F(y - 0.18)}" x2="${F(x + sg.vis - 0.06)}" y2="${F(y + 0.18)}" stroke="#64748b" stroke-width="0.04"/>`;
+      s += textEl(x + sg.vis / 2, y - fs * 0.85, sg.txt, fs, sg.color || LBL);
+      x += sg.vis;
+    });
+    return s;
+  }
+  function sideLeft(segs, x, fs, y0 = 0, anchorRight = true) {
+    let s = '', y = y0;
+    segs.forEach(sg => {
+      s += `<line x1="${F(x)}" y1="${F(y + 0.06)}" x2="${F(x)}" y2="${F(y + sg.vis - 0.06)}" stroke="#64748b" stroke-width="0.04"/>`;
+      s += `<line x1="${F(x - 0.18)}" y1="${F(y + 0.06)}" x2="${F(x + 0.18)}" y2="${F(y + 0.06)}" stroke="#64748b" stroke-width="0.04"/>`;
+      s += `<line x1="${F(x - 0.18)}" y1="${F(y + sg.vis - 0.06)}" x2="${F(x + 0.18)}" y2="${F(y + sg.vis - 0.06)}" stroke="#64748b" stroke-width="0.04"/>`;
+      const tx = anchorRight ? x - fs * 0.35 : x + fs * 0.35;
+      s += `<text x="${F(tx)}" y="${F(y + sg.vis / 2)}" font-size="${F(fs)}" fill="${sg.color || LBL}" text-anchor="${anchorRight ? 'end' : 'start'}" dominant-baseline="central" font-weight="700">${sg.txt}</text>`;
+      y += sg.vis;
+    });
+    return s;
+  }
+  // 依內容大小算 viewBox；左邊、右邊留給邊長文字
+  function wrapSvg(q, W, H, body, fs, label) {
+    const mx = fs * 4.6, my = fs * 2.4;
+    const note = q.notScale ? textEl(W / 2, H + fs * 2.1, '（示意圖，未依比例）', fs * 0.72, '#94a3b8', 'font-weight="400"') : '';
+    const extraY = q.notScale ? fs * 1.4 : 0;
+    return `<svg viewBox="${F(-mx)} ${F(-my)} ${F(W + mx * 2)} ${F(H + my * 2 + extraY)}" role="img" aria-label="${label}">${body}${note}</svg>`;
+  }
+  const seg = (Lx, color) => ({ vis: Lx.vis, txt: L(Lx, 'svg'), color });
+  const fsOf = (W, H) => Math.max(0.42, Math.max(W, H) * 0.052);
+
+  // ── 拼圖（分配律、和的平方）
+  function drawBuild(q, final) {
+    const W = q.cols.reduce((s, c) => s + c.vis, 0), H = q.rows.reduce((s, c) => s + c.vis, 0);
+    const fs = fsOf(W, H);
+    let g = '';
+    q.cells.forEach((c, idx) => {
+      const on = final || q.placed[idx];
+      const sel = !final && q.selCell === idx;
+      const fill = on ? FILL[c.kind] : 'rgba(148,163,184,0.07)';
+      g += `<g ${final || on ? '' : `data-cell="${idx}"`}>`;
+      g += `<rect x="${F(c.x)}" y="${F(c.y)}" width="${F(c.w)}" height="${F(c.h)}" fill="${fill}" stroke="${sel ? '#22d3ee' : (on ? EDGE : 'rgba(148,163,184,0.6)')}" stroke-width="${sel ? 0.14 : 0.06}" ${on ? '' : 'stroke-dasharray="0.25 0.18"'}/>`;
+      g += cellGrid(c.x, c.y, c.col, c.row, on ? 'rgba(15,23,42,0.3)' : 'rgba(148,163,184,0.22)');
+      if (c.name && c.w > fs * 1.1) g += `<text x="${F(c.x + fs * 0.3)}" y="${F(c.y + fs * 0.7)}" font-size="${F(fs * 0.62)}" fill="${on ? '#334155' : '#64748b'}" font-weight="700">${c.name}</text>`;
+      if (on) g += textEl(c.x + c.w / 2, c.y + c.h / 2, fmt(c.p, 'svg'), fitFs(pkey(c.p), c.w, c.h, fs), INK);
+      else g += textEl(c.x + c.w / 2, c.y + c.h / 2, '?', fitFs('?', c.w, c.h, fs), '#64748b');
+      g += '</g>';
+    });
+    g += `<rect x="0" y="0" width="${F(W)}" height="${F(H)}" fill="none" stroke="#e2e8f0" stroke-width="0.08"/>`;
+    g += sideTop(q.cols.map(c => seg(c)), -fs * 0.5, fs);
+    g += sideLeft(q.rows.map(c => seg(c)), -fs * 0.5, fs);
+    const colT = q.cols.length === 2 ? lsum(q.cols[0], q.cols[1]) : q.cols[0];
+    const rowT = lsum(q.rows[0], q.rows[1]);
+    g += textEl(W / 2, H + fs * 1.05, L(colT, 'svg'), fs, '#fbbf24');
+    g += `<text x="${F(W + fs * 0.4)}" y="${F(H / 2)}" font-size="${F(fs)}" fill="#fbbf24" text-anchor="start" dominant-baseline="central" font-weight="700">${L(rowT, 'svg')}</text>`;
+    return wrapSvg(q, W, H, g, fs, '面積拼圖');
+  }
+
+  // ── 差的平方：大正方形 A，左邊直條寬 B、下面橫條高 B
+  function drawCut(q, final) {
+    const S = q.A.vis, b = q.B.vis, m = S - b;
+    const fs = fsOf(S, S);
+    const parts = [
+      { x: 0, y: 0, w: b, h: m, col: q.B, row: q.AmB },
+      { x: b, y: 0, w: m, h: m, col: q.AmB, row: q.AmB },
+      { x: 0, y: m, w: b, h: b, col: q.B, row: q.B },
+      { x: b, y: m, w: m, h: b, col: q.AmB, row: q.B }
+    ];
+    const r = final ? [1, 0, 1, 1] : removedOf(q.applied);
+    const id = `hatch${++uid}`;
+    let g = `<defs><pattern id="${id}" width="0.4" height="0.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="0.4" height="0.4" fill="rgba(239,68,68,0.18)"/><line x1="0" y1="0" x2="0" y2="0.4" stroke="rgba(239,68,68,0.75)" stroke-width="0.12"/></pattern></defs>`;
+    parts.forEach((c, i) => {
+      const k = r[i];
+      let fill, stroke = EDGE, word = '', wc = INK;
+      if (i === 1) { fill = FILL.target; }
+      else if (k === 0) { fill = FILL.paper; }
+      else if (k === 1) { fill = `url(#${id})`; stroke = 'rgba(239,68,68,0.6)'; word = final ? '' : '剪掉'; wc = '#fecaca'; }
+      else if (k >= 2) { fill = 'rgba(185,28,28,0.75)'; stroke = '#ef4444'; word = `剪了 ${k} 次`; wc = '#fff'; }
+      else { fill = 'rgba(34,197,94,0.55)'; stroke = '#22c55e'; word = '多補了'; wc = '#fff'; }
+      g += `<rect x="${F(c.x)}" y="${F(c.y)}" width="${F(c.w)}" height="${F(c.h)}" fill="${fill}" stroke="${stroke}" stroke-width="0.06"/>`;
+      if (k <= 0 || i === 1) g += cellGrid(c.x, c.y, c.col, c.row, 'rgba(15,23,42,0.28)');
+      if (word) g += textEl(c.x + c.w / 2, c.y + c.h / 2, word, fitFs(word + '字', c.w, c.h, fs) * 0.85, wc);
+    });
+    // 目標：(a − b)²
+    g += `<rect x="${F(b)}" y="0" width="${F(m)}" height="${F(m)}" fill="none" stroke="#f59e0b" stroke-width="0.14" stroke-dasharray="0.4 0.25"/>`;
+    const tgt = `(${L(q.A, 'svg')} − ${L(q.B, 'svg')})²`;
+    g += textEl(b + m / 2, m / 2, tgt, fitFs(`(${pkey(q.A.p)}-${pkey(q.B.p)})²`, m, m, fs), INK);
+    g += `<rect x="0" y="0" width="${F(S)}" height="${F(S)}" fill="none" stroke="#e2e8f0" stroke-width="0.08"/>`;
+    g += sideTop([seg(q.B), seg(q.AmB)], -fs * 0.5, fs);
+    g += sideLeft([seg(q.AmB), seg(q.B)], -fs * 0.5, fs);
+    g += textEl(S / 2, S + fs * 1.05, L(q.A, 'svg'), fs, '#fbbf24');
+    g += `<text x="${F(S + fs * 0.4)}" y="${F(S / 2)}" font-size="${F(fs)}" fill="#fbbf24" text-anchor="start" dominant-baseline="central" font-weight="700">${L(q.A, 'svg')}</text>`;
+    return wrapSvg(q, S, S, g, fs, '差的平方面積圖');
+  }
+
+  // ── 平方差：step 0 整張 A²；1 剪掉右上角 B²，分成甲、乙；2 乙轉過來接在甲右邊
+  let uid = 0;
+  function drawMove(q, stepOverride) {
+    const step = stepOverride ?? q.step;
+    const S = q.A.vis, b = q.B.vis, m = S - b;
+    const W = S + b, H = S;
+    const fs = fsOf(W, H);
+    let g = '';
+    const lblA = L(q.A, 'svg'), lblB = L(q.B, 'svg'), lblM = L(q.AmB, 'svg');
+    if (step === 0) {
+      g += `<rect x="0" y="0" width="${F(S)}" height="${F(S)}" fill="${FILL.paper}" stroke="${EDGE}" stroke-width="0.06"/>`;
+      g += gridLines(0, 0, S, S, false, false, 0, 0, '');
+      g += `<rect x="${F(m)}" y="0" width="${F(b)}" height="${F(b)}" fill="rgba(59,130,246,0.55)" stroke="#1d4ed8" stroke-width="0.06" stroke-dasharray="0.25 0.18"/>`;
+      g += cellGrid(m, 0, q.B, q.B, 'rgba(15,23,42,0.3)');
+      g += textEl(m + b / 2, b / 2, `${lblB}²`, fitFs(pkey(q.B.p) + '²', b, b, fs), INK);
+      g += textEl(m / 2, S / 2 + b / 2, `${lblA}²`, fs * 1.4, INK);
+      g += sideTop([{ vis: m, txt: lblM }, { vis: b, txt: lblB }], -fs * 0.5, fs);
+      g += sideLeft([{ vis: S, txt: lblA }], -fs * 0.5, fs);
+    } else {
+      // 甲：下面 A × (A − B)
+      g += `<rect x="0" y="${F(b)}" width="${F(S)}" height="${F(m)}" fill="${FILL.jia}" stroke="${EDGE}" stroke-width="0.06"/>`;
+      g += cellGrid(0, b, q.A, q.AmB, 'rgba(15,23,42,0.3)');
+      g += textEl(S / 2, b + m / 2, '甲', fs * 1.3, INK);
+      // 乙：左上 (A − B) × B；step 2 轉 90° 接到右邊
+      const cx = m / 2, cy = b / 2, tx = S + b / 2 - cx, ty = b + m / 2 - cy;
+      const moved = step === 2;
+      if (step === 1) g += `<rect x="${F(m)}" y="0" width="${F(b)}" height="${F(b)}" fill="none" stroke="#64748b" stroke-width="0.05" stroke-dasharray="0.25 0.18"/>`;
+      g += `<g class="yi" data-piece="yi" style="transform-origin:${F(cx)}px ${F(cy)}px;${moved ? `transform:translate(${F(tx)}px,${F(ty)}px) rotate(90deg)` : ''}">`;
+      g += `<rect x="0" y="0" width="${F(m)}" height="${F(b)}" fill="${FILL.yi}" stroke="${EDGE}" stroke-width="0.06"/>`;
+      g += cellGrid(0, 0, q.AmB, q.B, 'rgba(15,23,42,0.3)');
+      g += textEl(m / 2, b / 2, '乙', Math.min(fs * 1.3, b * 0.7), INK, moved ? `transform="rotate(-90 ${F(m / 2)} ${F(b / 2)})"` : '');
+      g += '</g>';
+      if (!moved) {
+        g += sideTop([{ vis: m, txt: lblM, color: '#c4b5fd' }, { vis: b, txt: '' }], -fs * 0.5, fs);
+        g += sideLeft([{ vis: b, txt: lblB, color: '#c4b5fd' }, { vis: m, txt: lblM }], -fs * 0.5, fs);
+        g += textEl(S / 2, S + fs * 1.05, lblA, fs);
+        g += `<text x="${F(S + fs * 0.4)}" y="${F(b + m / 2)}" font-size="${F(fs)}" fill="${LBL}" text-anchor="start" dominant-baseline="central" font-weight="700">${lblM}</text>`;
+      } else {
+        g += `<rect x="0" y="${F(b)}" width="${F(W)}" height="${F(m)}" fill="none" stroke="#f59e0b" stroke-width="0.12"/>`;
+        g += sideTop([{ vis: S, txt: lblA }, { vis: b, txt: lblB, color: '#c4b5fd' }], b - fs * 0.5, fs);
+        g += textEl(W / 2, S + fs * 1.05, `${lblA} + ${lblB}`, fs, '#fbbf24');
+        g += sideLeft([{ vis: m, txt: lblM }], -fs * 0.5, fs, b);
+        g += `<text x="${F(W + fs * 0.4)}" y="${F(b + m / 2)}" font-size="${F(fs)}" fill="#fbbf24" text-anchor="start" dominant-baseline="central" font-weight="700">${lblA} − ${lblB}</text>`;
+      }
+    }
+    return wrapSvg(q, W, H, g, fs, '平方差面積圖');
+  }
+
+  function drawFig(q, final = false) {
+    if (q.mode === 'build') return drawBuild(q, final);
+    if (q.mode === 'cut') return drawCut(q, final);
+    return drawMove(q, final ? 2 : undefined);
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+  const sfxPut = () => tone(740, 0.07, 0, 'triangle', 0.1);
+  const sfxBad = () => tone(220, 0.14, 0, 'square', 0.07);
+  const sfxDone = () => { tone(523, 0.1, 0, 'triangle', 0.1); tone(784, 0.18, 0.08, 'triangle', 0.1); };
+
+  /* ── 狀態 ───────────────────────────── */
+  const TYPES = ['dist', 'sum', 'diff', 'dsq'];
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, curLimit = 45;
+  let ansBtns = [];
+  let lastType = '';
+
+  function setView(v) { document.body.dataset.view = v; }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.level === level)));
+    document.querySelectorAll('#size button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.size === size)));
+    $('level-note').textContent = `${LEVEL_NOTE[level]}${SIZE_NOTE[size]}`;
+    paintLimit();
+  }
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+
+  function nextType() {
+    if (level !== 'all') return level;
+    let t;
+    do { t = pickOf(TYPES); } while (t === lastType);
+    lastType = t;
+    return t;
+  }
+
+  /* ── 出題與第一階段：拼／剪 ─────────────── */
+  function setMsg(html, cls = '') {
+    const m = $('msg');
+    if (!m) return;
+    m.className = `msg ${cls}`;
+    m.innerHTML = html;
+  }
+  function paintPic() { $('pic').innerHTML = drawFig(cur); }
+
+  function startQuestion() {
+    cur = makeQ(nextType());
+    curLimit = limit();
+    $('rule').textContent = cur.rule;
+    renderPhase1();
+    locked = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + curLimit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function titleWithForm(q) {
+    return q.form ? `${q.title} = ${q.form}` : q.title;
+  }
+
+  function renderPhase1() {
+    const q = cur;
+    ansBtns = [];
+    paintPic();
+    if (q.mode === 'build') {
+      const shape = q.type === 'sum' ? '大正方形' : '大長方形';
+      $('ask').innerHTML = `把 <em class="nw">${titleWithForm(q)}</em> 的${shape}拼滿`;
+      $('side').innerHTML = `
+        <div class="side-title">先點一塊，再點它要放的格子（長 × 寬 = 面積）</div>
+        <div class="palette">${q.palette.map(t => `<button type="button" class="tile" data-tile="${t.key}" aria-pressed="false">${t.html}</button>`).join('')}</div>
+        <div class="msg" id="msg">每一格的長、寬看圖邊上的標示。</div>`;
+      $('side').querySelectorAll('.tile').forEach(b => b.addEventListener('click', () => pickTile(b.dataset.tile)));
+    } else if (q.mode === 'cut') {
+      $('ask').innerHTML = `從 <span class="nw">${fmt(mul(q.A.p, q.A.p))}</span> 剪一剪、補一補，只留下黃色的 <em class="nw">${titleWithForm(q)}</em>`;
+      const areaTxt = o => (o.area === 'AB' ? fmt(mul(q.A.p, q.B.p)) : fmt(mul(q.B.p, q.B.p)));
+      $('side').innerHTML = `
+        <div class="side-title">點一下做動作，再點一次取消</div>
+        <div class="ops">${q.opsShown.map(o => `<button type="button" class="op ${o.sign > 0 ? 'plus' : ''}" data-op="${o.id}" aria-pressed="false">${o.sign > 0 ? '➕' : '✂️'} ${o.name}<small>面積 ${areaTxt(o)}</small></button>`).join('')}</div>
+        <div class="tally" id="tally"></div>
+        <div class="msg" id="msg">紅色斜線是剪掉的部分。</div>`;
+      $('side').querySelectorAll('.op').forEach(b => b.addEventListener('click', () => toggleOp(b.dataset.op)));
+      paintTally();
+    } else {
+      renderMove();
+    }
+  }
+
+  // ── 拼圖
+  function pickTile(key) {
+    if (locked || cur.phase !== 1) return;
+    cur.selTile = cur.selTile === key ? null : key;
+    $('side').querySelectorAll('.tile').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tile === cur.selTile)));
+    if (cur.selTile && cur.selCell >= 0) tryPlace(cur.selCell, cur.selTile);
+  }
+  function pickCell(idx) {
+    if (locked || cur.phase !== 1 || cur.placed[idx]) return;
+    if (cur.selTile) { tryPlace(idx, cur.selTile); return; }
+    cur.selCell = cur.selCell === idx ? -1 : idx;
+    paintPic();
+    setMsg(cur.selCell >= 0 ? '這一格要放哪一塊？點下面的色塊。' : '');
+  }
+  function tryPlace(idx, key) {
+    const c = cur.cells[idx];
+    const tile = cur.palette.find(t => t.key === key);
+    cur.selCell = -1;
+    if (c.key === key) {
+      cur.placed[idx] = true;
+      sfxPut();
+      setMsg(`✓ 長 ${L(c.col)}、寬 ${L(c.row)}，面積 <em>${fmt(c.p)}</em>`, 'good');
+      paintPic();
+      // 同一種還有空格就保留選取（和的平方有兩塊 ab）
+      if (!cur.cells.some((d, j) => !cur.placed[j] && d.key === key)) {
+        cur.selTile = null;
+        $('side').querySelectorAll('.tile').forEach(b => b.setAttribute('aria-pressed', 'false'));
+      }
+      if (cur.placed.every(Boolean)) finishPhase1();
+    } else {
+      cur.mistakes += 1;
+      sfxBad();
+      paintPic();
+      setMsg(`✗ 這一格長 ${L(c.col)}、寬 ${L(c.row)}，${tile.html} 放不進去。<br>面積 = 長 × 寬，再算一次！`, 'bad');
+      const pic = $('pic');
+      pic.classList.remove('shake'); void pic.offsetWidth; pic.classList.add('shake');
+    }
+  }
+
+  // ── 差的平方
+  function paintTally() {
+    const q = cur;
+    const AA = fmt(mul(q.A.p, q.A.p));
+    const parts = q.order.map(id => {
+      const o = DIFF_OPS.find(x => x.id === id);
+      const area = o.area === 'AB' ? fmt(mul(q.A.p, q.B.p)) : fmt(mul(q.B.p, q.B.p));
+      return `${o.sign > 0 ? ' + ' : ' − '}${area}`;
+    }).join('');
+    $('tally').innerHTML = `<span class="nw">${AA}${parts}</span>`;
+  }
+  function toggleOp(id) {
+    if (locked || cur.phase !== 1) return;
+    const q = cur;
+    if (q.applied.has(id)) { q.applied.delete(id); q.order = q.order.filter(x => x !== id); }
+    else { q.applied.add(id); q.order.push(id); }
+    $('side').querySelectorAll('.op').forEach(b => b.setAttribute('aria-pressed', String(q.applied.has(b.dataset.op))));
+    paintPic();
+    paintTally();
+    const r = removedOf(q.applied);
+    if (diffSolved(q.applied)) { sfxPut(); finishPhase1(); return; }
+    sfxPut();
+    if (r[2] >= 2) setMsg(`左下角的小正方形被<em>剪了 ${r[2]} 次</em>，可是它只有一塊……`, 'bad');
+    else if (r.some(k => k < 0)) setMsg('補得太多了：那裡本來就還在。', 'bad');
+    else if (r[0] === 1 && r[3] === 1 && r[2] === 1) setMsg('');
+    else setMsg('還有不是黃色的部分沒剪掉。');
+  }
+
+  // ── 平方差
+  function renderMove() {
+    const q = cur;
+    const AA = fmt(mul(q.A.p, q.A.p)), BB = fmt(mul(q.B.p, q.B.p)), AB = fmt(mul(q.A.p, q.B.p));
+    if (q.step === 0) {
+      $('ask').innerHTML = `拼 <em class="nw">${titleWithForm(q)}</em>：先剪掉一塊，剩下 <em class="nw">${AA} − ${BB}</em>`;
+      const btn = k => (k === 'corner'
+        ? `<button type="button" class="op" data-cut="corner">✂️ 剪掉右上角的小正方形<small>面積 ${BB}</small></button>`
+        : `<button type="button" class="op" data-cut="strip">✂️ 剪掉上面一整條<small>面積 ${AB}</small></button>`);
+      $('side').innerHTML = `
+        <div class="side-title">剪哪一塊？</div>
+        <div class="ops">${q.cutOpts.map(btn).join('')}</div>
+        <div class="msg" id="msg"></div>`;
+      $('side').querySelectorAll('[data-cut]').forEach(b => b.addEventListener('click', () => doCut(b.dataset.cut, b)));
+    } else if (q.step === 1) {
+      $('ask').innerHTML = `剩下 L 型 <em class="nw">${AA} − ${BB}</em>：把<em>乙</em>轉 90°，接到甲的右邊`;
+      $('side').innerHTML = `
+        <div class="side-title">點下面的按鈕，或直接點圖上的乙</div>
+        <div class="ops"><button type="button" class="op wide" id="move-yi">↻ 把乙轉過來，接到甲的右邊</button></div>
+        <div class="msg" id="msg">乙的長是 ${L(q.AmB)}，剛好和甲的寬一樣。</div>`;
+      $('move-yi').addEventListener('click', doMove);
+    }
+  }
+  function doCut(k, btn) {
+    if (locked || cur.phase !== 1 || cur.step !== 0) return;
+    const q = cur;
+    if (k === 'corner') {
+      sfxPut();
+      q.step = 1;
+      paintPic();
+      renderMove();
+    } else {
+      q.mistakes += 1;
+      sfxBad();
+      btn.disabled = true;
+      setMsg(`✗ 剪掉一整條是減掉 ${fmt(mul(q.A.p, q.B.p))}，剩下的不是 ${fmt(mul(q.A.p, q.A.p))} − ${fmt(mul(q.B.p, q.B.p))}。`, 'bad');
+    }
+  }
+  function doMove() {
+    if (locked || cur.phase !== 1 || cur.step !== 1) return;
+    const q = cur;
+    q.step = 1.5;
+    const yi = $('pic').querySelector('.yi');
+    const S = q.A.vis, b = q.B.vis, m = S - b;
+    const cx = m / 2, cy = b / 2;
+    sfxPut();
+    if (yi) {
+      yi.style.transform = `translate(${F(S + b / 2 - cx)}px,${F(b + m / 2 - cy)}px) rotate(90deg)`;
+      const label = yi.querySelector('text');
+      if (label) label.style.opacity = '0';
+    }
+    const btn = $('move-yi');
+    if (btn) btn.disabled = true;
+    setTimeout(() => {
+      if (cur !== q || locked) return;
+      q.step = 2;
+      paintPic();
+      finishPhase1();
+    }, 820);
+  }
+
+  // ── 第二階段：選展開式
+  function finishPhase1() {
+    const q = cur;
+    q.phase = 2;
+    sfxDone();
+    const lead = q.mode === 'build' ? '拼好了！' : (q.mode === 'cut' ? '只剩黃色了！' : '拼成長方形了！');
+    const askTxt = q.form ? `${q.title} = ${q.form} = ？` : `${q.title} = ？`;
+    $('ask').innerHTML = `${lead}所以 <em class="nw">${askTxt}</em>`;
+    paintPic();
+    $('side').innerHTML = `
+      <div class="side-title">${q.nums ? '選出算出來的值' : '選出展開式'}</div>
+      <div class="answers">${q.opts.map((o, i) => `<button type="button" class="ans" data-key="${o.key}" aria-label="選項 ${i + 1}"><span class="k">${i + 1}</span>${o.html}</button>`).join('')}</div>`;
+    ansBtns = Array.from($('side').querySelectorAll('.ans'));
+    ansBtns.forEach(b => b.addEventListener('click', () => judge(b.dataset.key)));
+  }
+
+  $('pic').addEventListener('click', e => {
+    if (!cur || locked || cur.phase !== 1) return;
+    const cell = e.target.closest('[data-cell]');
+    if (cell && cur.mode === 'build') { pickCell(Number(cell.dataset.cell)); return; }
+    const piece = e.target.closest('[data-piece]');
+    if (piece && cur.mode === 'move' && cur.step === 1) doMove();
+  });
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      const ratio = left / (curLimit * 1000);
+      $('bar').style.transform = `scaleX(${ratio})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 5 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { judge(null); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 判定 ───────────────────────────── */
+  function whyOf(q) {
+    const { A, B, C, D, nums } = q;
+    const AA = mul(A.p, A.p), AB = mul(A.p, B.p), BB = mul(B.p, B.p);
+    const right = q.opts.find(o => o.right).html;
+    if (nums) {
+      const { a, b, c, d } = nums;
+      if (q.type === 'sum') return `${q.title} = (${a} + ${b})² <span class="nw">= ${a}² + 2 × ${a} × ${b} + ${b}²</span> <span class="nw">= ${a * a} + ${2 * a * b} + ${b * b}</span> <span class="nw">= <em>${right}</em></span>`;
+      if (q.type === 'diff') return `${q.title} = (${a} − ${b})² <span class="nw">= ${a}² − 2 × ${a} × ${b} + ${b}²</span> <span class="nw">= ${a * a} − ${2 * a * b} + ${b * b}</span> <span class="nw">= <em>${right}</em></span><br><span class="soft">剪掉兩條 ${a} × ${b}，角落 ${b}² 剪了兩次，要補回一次。</span>`;
+      if (q.type === 'dsq') return `${q.title} = (${a} + ${b})(${a} − ${b}) <span class="nw">= ${a}² − ${b}²</span> <span class="nw">= ${a * a} − ${b * b}</span> <span class="nw">= <em>${right}</em></span><br><span class="soft">剪掉角落 ${b}²，乙轉過來接上，拼成長 ${a + b}、寬 ${a - b} 的長方形，面積不變。</span>`;
+      return `${q.title} = (${a} + ${b})(${c} + ${d}) <span class="nw">= ${a} × ${c} + ${a} × ${d} + ${b} × ${c} + ${b} × ${d}</span> <span class="nw">= ${a * c} + ${a * d} + ${b * c} + ${b * d}</span> <span class="nw">= <em>${right}</em></span>`;
+    }
+    if (q.type === 'sum') {
+      const raw = `${fmt(AA)} + ${fmt(AB)} + ${fmt(AB)} + ${fmt(BB)}`;
+      return `大正方形 = 1 塊 ${fmt(AA)} + <em>2 塊</em> ${fmt(AB)} + 1 塊 ${fmt(BB)}<br><span class="nw">${q.title} = ${raw}</span> <span class="nw">= <em>${right}</em></span>`;
+    }
+    if (q.type === 'diff') {
+      return `從 ${fmt(AA)} 剪掉兩條 ${fmt(AB)}，左下角的 ${fmt(BB)} 被<em>剪了兩次</em>，要補回一次：<br><span class="nw">${q.title} = ${fmt(AA)} − ${fmt(AB)} − ${fmt(AB)} + ${fmt(BB)}</span> <span class="nw">= <em>${right}</em></span>`;
+    }
+    if (q.type === 'dsq') {
+      return `${fmt(AA)} 剪掉角落的 ${fmt(BB)}，剩下 ${fmt(AA)} − ${fmt(BB)}；把乙轉過來接上，拼成長 <span class="nw">${fmt(add(A.p, B.p))}</span>、寬 <span class="nw">${fmt(sub(A.p, B.p))}</span> 的長方形，<em>面積不變</em>：<br><span class="nw">${q.title} = <em>${right}</em></span>`;
+    }
+    const AC = mul(A.p, C.p), AD = mul(A.p, D.p), BC = mul(B.p, C.p), BD = mul(B.p, D.p);
+    const raw = `${fmt(AC)} + ${fmt(AD)} + ${fmt(BC)} + ${fmt(BD)}`;
+    const comb = pkey(add(AC, AD, BC, BD)) !== `${pkey(AC)} + ${pkey(AD)} + ${pkey(BC)} + ${pkey(BD)}`;
+    return `四塊加起來：甲 + 乙 + 丙 + 丁<br><span class="nw">${q.title} = ${raw}</span>${comb ? ` <span class="nw">= <em>${right}</em></span><br><span class="soft">${fmt(AD)} 和 ${fmt(BC)} 是同類項，可以合併。</span>` : ''}`;
+  }
+
+  function judge(answer) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    ansBtns.forEach(b => { b.disabled = true; });
+    document.body.classList.remove('urgent');
+
+    const q = cur;
+    const timeout = answer === null;
+    const win = !timeout && answer === q.ans;
+
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+    $('sol-pic').innerHTML = drawFig(q, true);
+    const right = q.opts.find(o => o.right);
+    $('sol-ans').innerHTML = `${q.title} = ${right.html}`;
+    let why = whyOf(q);
+    if (!timeout && !win) {
+      const picked = q.opts.find(o => o.key === answer);
+      if (picked) why += `<br><span class="warn">你選的 ${picked.html}：</span>${picked.trap}`;
+    }
+    if (q.mistakes) why += `<br><span class="soft">這題拼／剪錯了 ${q.mistakes} 次。</span>`;
+    $('sol-why').innerHTML = why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limits[level] = clampLimit(limits[level] + Number(b.dataset.step));
+      store.set(`area-limit-${level}`, String(limits[level]));
+      paintLimit();
+    });
+  });
+  document.querySelectorAll('#level button').forEach(b => {
+    b.addEventListener('click', () => {
+      level = b.dataset.level;
+      store.set('area-level', level);
+      paintLevel();
+    });
+  });
+  document.querySelectorAll('#size button').forEach(b => {
+    b.addEventListener('click', () => {
+      size = b.dataset.size;
+      store.set('area-size', size);
+      paintLevel();
+    });
+  });
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    store.set('area-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      const i = ['1', '2', '3', '4'].indexOf(e.key);
+      if (i >= 0 && ansBtns[i] && cur && cur.phase === 2) { e.preventDefault(); judge(ansBtns[i].dataset.key); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (document.activeElement && document.activeElement.closest('button, a') && document.activeElement !== $('start')) return;
+        e.preventDefault(); audio(); startQuestion();
+      }
+    }
+  });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）───────
+     用「直接把邊長代數字相乘」重算面積，和正解、格子面積和、剪補結果比對；
+     並檢查選項四個不重複、正解恰好一個、誤答的值真的和正解不同、色塊庫的干擾塊不會剛好放得進格子。 */
+  window.__areaPuzzle = {
+    makeQ, fmt, pkey,
+    selfTest(n = 500) {
+      const report = {}, errors = [];
+      const saved = size;
+      const subsets = [];
+      for (let mask = 0; mask < 16; mask++) subsets.push(new Set(DIFF_OPS.filter((_, i) => mask & (1 << i)).map(o => o.id)));
+      SIZE_KEYS.forEach(sk => {
+        size = sk;
+        TYPES.forEach(t => {
+          const t0 = performance.now();
+          for (let i = 0; i < n; i++) {
+            let q;
+            try { q = makeQ(t); } catch (e) { errors.push([sk, t, 'throw', e.message]); continue; }
+            const vals = { a: 7.3, b: 2.1, c: 5.9, d: 3.7, x: 9.4 };
+            const A = evalP(q.A.p, vals), B = evalP(q.B.p, vals), C = evalP(q.C.p, vals), D = evalP(q.D.p, vals);
+            const truth = { sum: (A + B) ** 2, diff: (A - B) ** 2, dsq: (A + B) * (A - B), dist: (A + B) * (C + D) }[t];
+            const right = q.opts.filter(o => o.right);
+            if (q.opts.length !== 4) errors.push([sk, t, `選項 ${q.opts.length} 個`]);
+            if (new Set(q.opts.map(o => o.key)).size !== q.opts.length) errors.push([sk, t, '選項重複', q.opts.map(o => o.key)]);
+            if (right.length !== 1 || right[0].key !== q.ans) errors.push([sk, t, '正解不是恰好一個']);
+            if (Math.abs(evalP(right[0].p, vals) - truth) > 1e-6) errors.push([sk, t, '正解和直接相乘不同', q.title, right[0].key]);
+            q.opts.filter(o => !o.right).forEach(o => { if (Math.abs(evalP(o.p, vals) - truth) < 1e-6) errors.push([sk, t, '誤答的值和正解一樣', o.key]); });
+            if (q.nums) {
+              const { a, b, c, d } = q.nums;
+              const v = { sum: (a + b) ** 2, diff: (a - b) ** 2, dsq: (a + b) * (a - b), dist: (a + b) * (c + d) }[t];
+              if (right[0].key !== String(v)) errors.push([sk, t, '數字題答案錯', q.title, right[0].key]);
+              if (q.B.vis < 1.39 || q.A.vis - q.B.vis < 3) errors.push([sk, t, '圖太窄']);
+            }
+            if (sk === 'normal' && t !== 'dist' && q.A.vis <= numOf(q.B) + 2) errors.push([sk, t, 'x 畫得比數字短']);
+            if (q.mode === 'build') {
+              const s = add(...q.cells.map(c => c.p));
+              if (Math.abs(evalP(s, vals) - truth) > 1e-6) errors.push([sk, t, '格子面積和不等於大圖']);
+              q.cells.forEach(c => {
+                if (!q.palette.some(p => p.key === c.key)) errors.push([sk, t, '色塊庫缺正解', c.key]);
+                if (Math.abs(evalP(c.p, vals) - evalP(c.col.p, vals) * evalP(c.row.p, vals)) > 1e-6) errors.push([sk, t, '格子面積≠長×寬']);
+              });
+              const extra = q.palette.filter(p => !q.cells.some(c => c.key === p.key));
+              if (extra.length < 1) errors.push([sk, t, '沒有干擾色塊']);
+              if (new Set(q.palette.map(p => p.key)).size !== q.palette.length) errors.push([sk, t, '色塊重複']);
+            } else if (q.mode === 'cut') {
+              const sols = subsets.filter(diffSolved);
+              if (sols.length !== 1 || [...sols[0]].sort().join() !== 'addC,cutH,cutV') errors.push([sk, t, '剪補的解不唯一']);
+              const amb = evalP(q.AmB.p, vals);
+              if (Math.abs(amb * amb - truth) > 1e-6) errors.push([sk, t, '黃色正方形面積不對']);
+            } else {
+              const amb = evalP(q.AmB.p, vals);
+              if (Math.abs(A * A - B * B - (A + B) * amb) > 1e-6) errors.push([sk, t, '重組後長方形面積不對']);
+            }
+            const txt = q.title + q.opts.map(o => o.html + o.trap).join('|') + whyOf(q) + drawFig(q) + drawFig(q, true);
+            if (/undefined|NaN|Infinity|\[object|null/.test(txt)) errors.push([sk, t, '字串有壞值', txt.slice(0, 160)]);
+          }
+          report[`${sk}-${t}`] = `${n} 題，${(performance.now() - t0).toFixed(0)} ms`;
+        });
+      });
+      size = saved;
+      return { report, errors: errors.slice(0, 20), errorCount: errors.length };
+    }
+  };
+
+  paintLevel();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>
