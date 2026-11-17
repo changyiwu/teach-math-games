@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>根號小抄 - 根號放大鏡</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="根號的意義、完全平方數表、十分逼近法三步驟、四捨五入求近似值與常見迷思對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --violet: #c4b5fd;
+      --blue: #7dd3fc;
+      --pink: #f9a8d4;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    i { font-family: "Times New Roman", "Noto Serif", serif; font-style: italic; }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 8px 0 16px;
+    }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+
+    .btn {
+      padding: 9px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.98rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn-play {
+      border: 0;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-weight: 800;
+    }
+    .btn-play:hover { filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+    .lead strong { color: var(--text); }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 1.3rem;
+      color: var(--accent-2);
+      border-left: 4px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      padding: 18px;
+    }
+    .card { border-top: 4px solid var(--cyan); }
+    .card .name { color: var(--muted); font-size: 0.95rem; }
+    .card .law { font-size: clamp(1.2rem, 3.2vw, 1.45rem); font-weight: 700; margin: 2px 0 8px; }
+    .card .say { color: var(--muted); font-size: 0.98rem; margin: 0 0 10px; }
+    .card .say strong { color: var(--text); }
+    .card .fig { width: 100%; max-width: 260px; height: 170px; margin: 8px auto 0; }
+    .card .fig svg { width: 100%; height: 100%; display: block; }
+    .hl { color: var(--accent-2); font-weight: 700; }
+
+    .note {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 14px 18px;
+      margin: 14px 0;
+    }
+    .note b { color: var(--accent-2); }
+
+    .calc {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .calc div {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 12px 16px;
+      font-size: 1.05rem;
+      line-height: 1.9;
+    }
+    .calc b { color: var(--accent-2); }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+    }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+
+    .rad { display: inline-flex; align-items: flex-start; white-space: nowrap; }
+    .rad .sym { display: inline-block; transform: scale(1, 1.12); transform-origin: bottom; margin-right: -0.04em; }
+    .rad .in { border-top: 0.08em solid currentColor; padding: 0.06em 0.1em 0 0.06em; margin-top: 0.1em; line-height: 1.1; }
+    .sqtab { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+    .sqtab div { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 6px 4px; text-align: center; font-size: 1.05rem; }
+    .sqtab small { display: block; color: var(--muted); font-size: 0.85rem; }
+    .steps { margin: 0; padding-left: 1.4em; line-height: 2; }
+    .steps b { color: var(--accent-2); }
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions"><a class="btn btn-play" href="./">🎮 開始挑戰</a></div>
+    </header>
+
+    <h1>根號小抄</h1>
+    <p class="lead">康軒 2 上 2-1 平方根與近似值。面積是 <i>a</i> 的正方形，邊長就是 <span class="rad"><span class="sym">√</span><span class="in"><i>a</i></span></span>，所以 (<span class="rad"><span class="sym">√</span><span class="in"><i>a</i></span></span>)² = <i>a</i>。<strong>比根號的大小，就是比平方的大小。</strong></p>
+
+    <h2>三個重點</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">若 <i>a</i> &gt; <i>b</i> &gt; 0，則 <span class="rad"><span class="sym">√</span><span class="in"><i>a</i></span></span> &gt; <span class="rad"><span class="sym">√</span><span class="in"><i>b</i></span></span></div>
+        <p class="say">面積大的正方形，邊長也比較大。例如 <span class="rad"><span class="sym">√</span><span class="in">46</span></span> &lt; <span class="rad"><span class="sym">√</span><span class="in">49</span></span> &lt; <span class="rad"><span class="sym">√</span><span class="in">50</span></span>，而 <span class="rad"><span class="sym">√</span><span class="in">49</span></span> = 7。</p>
+      </div>
+      <div class="card">
+        <div class="law">完全平方數：<span class="rad"><span class="sym">√</span><span class="in"><i>a</i>²</span></span> = <i>a</i>（<i>a</i> &gt; 0）</div>
+        <p class="say"><span class="rad"><span class="sym">√</span><span class="in">169</span></span> = <span class="rad"><span class="sym">√</span><span class="in">13²</span></span> = 13；數字大就先質因數分解：<span class="rad"><span class="sym">√</span><span class="in">784</span></span> = <span class="rad"><span class="sym">√</span><span class="in">2⁴ × 7²</span></span> = 2² × 7 = 28。</p>
+        <p class="say">小數、分數也一樣：<span class="rad"><span class="sym">√</span><span class="in">1.69</span></span> = 1.3，<span class="rad"><span class="sym">√</span><span class="in">9/25</span></span> = 3/5 = 0.6。</p>
+      </div>
+      <div class="card">
+        <div class="law">開不盡的：用平方「夾住」它</div>
+        <p class="say">6² = 36 &lt; 40 &lt; 49 = 7²，所以 <span class="hl">6 &lt; <span class="rad"><span class="sym">√</span><span class="in">40</span></span> &lt; 7</span>。夾住之後，再把 6～7 分成 10 等分繼續夾，這就是<strong>十分逼近法</strong>。</p>
+      </div>
+    </div>
+
+    <h2>完全平方數表（1²～25²）</h2>
+    <div class="sqtab"><div>1<small>1²</small></div><div>4<small>2²</small></div><div>9<small>3²</small></div><div>16<small>4²</small></div><div>25<small>5²</small></div><div>36<small>6²</small></div><div>49<small>7²</small></div><div>64<small>8²</small></div><div>81<small>9²</small></div><div>100<small>10²</small></div><div>121<small>11²</small></div><div>144<small>12²</small></div><div>169<small>13²</small></div><div>196<small>14²</small></div><div>225<small>15²</small></div><div>256<small>16²</small></div><div>289<small>17²</small></div><div>324<small>18²</small></div><div>361<small>19²</small></div><div>400<small>20²</small></div><div>441<small>21²</small></div><div>484<small>22²</small></div><div>529<small>23²</small></div><div>576<small>24²</small></div><div>625<small>25²</small></div></div>
+
+    <h2>十分逼近法：放大鏡三步</h2>
+    <div class="note">
+      <ol class="steps">
+        <li>找整數：5² = 25 &lt; 34 &lt; 36 = 6²，所以 <b>5 &lt; <span class="rad"><span class="sym">√</span><span class="in">34</span></span> &lt; 6</b>。</li>
+        <li>5～6 分成 10 等分：5.8² = 33.64 &lt; 34 &lt; 34.81 = 5.9²，所以 <b>5.8 &lt; <span class="rad"><span class="sym">√</span><span class="in">34</span></span> &lt; 5.9</b>。</li>
+        <li>5.8～5.9 再分 10 等分：5.83² = 33.9889 &lt; 34 &lt; 34.1056 = 5.84²，所以 <b>5.83 &lt; <span class="rad"><span class="sym">√</span><span class="in">34</span></span> &lt; 5.84</b>。</li>
+      </ol>
+    </div>
+
+    <h2>四捨五入：看中點</h2>
+    <div class="note">
+      已知 5.83 &lt; <span class="rad"><span class="sym">√</span><span class="in">34</span></span> &lt; 5.84，要四捨五入到小數點後第 2 位，只要看第 3 位是不是 ≥ 5，也就是和中點 <b>5.835</b> 比：<br>
+      5.835² = 34.047225 &gt; 34，所以 <span class="rad"><span class="sym">√</span><span class="in">34</span></span> &lt; 5.835，第 3 位小於 5 → <b><span class="rad"><span class="sym">√</span><span class="in">34</span></span> ≒ 5.83</b>。
+    </div>
+
+    <h2>數線找點</h2>
+    <div class="note">
+      哪一點最接近 <span class="rad"><span class="sym">√</span><span class="in">19</span></span>？先夾整數：4² = 16 &lt; 19 &lt; 25 = 5²；再夾一位小數：4.3² = 18.49 &lt; 19 &lt; 19.36 = 4.4²。<br>
+      所以 <span class="rad"><span class="sym">√</span><span class="in">19</span></span> 在 <b>4.3 和 4.4 之間</b>，落在這一格的點就是答案。
+    </div>
+
+    <h2>常見迷思對照表</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>遊戲的錯誤大多是左邊這幾種。</caption>
+        <thead><tr><th style="width:46%">常見的想法</th><th>正確</th></tr></thead>
+        <tbody>
+          <tr><td class="bad"><span class="rad"><span class="sym">√</span><span class="in">40</span></span> 大約是 20（40 的一半）</td><td class="good">看平方：6² = 36、7² = 49，所以 <span class="rad"><span class="sym">√</span><span class="in">40</span></span> 在 6 和 7 之間</td></tr>
+          <tr><td class="bad">開根號以後一定變小</td><td class="good">比 1 小的數開根號反而變大：<span class="rad"><span class="sym">√</span><span class="in">0.25</span></span> = 0.5 &gt; 0.25</td></tr>
+          <tr><td class="bad"><span class="rad"><span class="sym">√</span><span class="in">1.6</span></span> = 0.4</td><td class="good">0.4² = 0.16，不是 1.6；<span class="rad"><span class="sym">√</span><span class="in">0.16</span></span> 才是 0.4</td></tr>
+          <tr><td class="bad"><span class="rad"><span class="sym">√</span><span class="in">49</span></span> 在 6 和 7 之間</td><td class="good">49 = 7²，<span class="rad"><span class="sym">√</span><span class="in">49</span></span> <b>剛好等於 7</b>，在刻度上</td></tr>
+          <tr><td class="bad">5.83 &lt; <span class="rad"><span class="sym">√</span><span class="in">34</span></span> &lt; 5.84，所以 ≒ 5.84（比較靠近大的）</td><td class="good">要算中點 5.835²，比原數大就捨去、小就進位</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer><a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a></footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>根號放大鏡 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="用十分逼近法在數線上找出根號的位置：先點落在哪兩個整數之間，放大後再點小數第一位、第二位；也有剛好開得盡的根號與數線找點題。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* 根號：√ 後面接一條上橫線 */
+    .rad { display: inline-flex; align-items: flex-start; white-space: nowrap; }
+    .rad .sym { display: inline-block; transform: scale(1, 1.12); transform-origin: bottom; margin-right: -0.04em; }
+    .rad .in { border-top: 0.08em solid currentColor; padding: 0.06em 0.1em 0 0.06em; margin-top: 0.1em; line-height: 1.1; }
+    .fr { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; font-size: 0.78em; line-height: 1.1; }
+    .fr > span:first-child { border-bottom: 0.08em solid currentColor; padding: 0 0.12em; }
+
+    .screen { position: fixed; inset: 0; display: none; flex-direction: column; }
+    body[data-view="menu"] #menu, body[data-view="play"] #play, body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 10px 18px;
+      border-bottom: 1px solid var(--line); background: rgba(11, 16, 32, 0.55); backdrop-filter: blur(6px);
+    }
+    .home { color: var(--muted); text-decoration: none; font-size: 0.95rem; white-space: nowrap; }
+    .home:hover, .home:focus-visible { color: var(--text); }
+    .spacer { flex: 1 1 auto; }
+    .stat { font-size: 0.95rem; color: var(--muted); white-space: nowrap; }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+    .icon-btn {
+      border: 1px solid var(--line); background: rgba(15, 23, 42, 0.6); color: var(--text);
+      border-radius: 10px; width: 40px; height: 36px; font-size: 1.1rem; cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機 ── */
+    .menu-body {
+      flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 18px; padding: 20px 16px 32px; text-align: center; overflow-y: auto;
+    }
+    .menu-body > :first-child { margin-top: auto; }
+    .menu-body > :last-child { margin-bottom: auto; }
+    h1.title {
+      margin: 0; font-size: clamp(2rem, 7vw, 4.2rem); letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .unit { margin: 0 0 8px; opacity: 0.75; font-size: 0.95rem; }
+    .hint { margin: 0; color: var(--muted); font-size: clamp(0.95rem, 2.2vw, 1.25rem); max-width: 40ch; line-height: 1.7; }
+    .ctl-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+    .ctl {
+      display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line);
+      border-radius: 999px; background: var(--panel); font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6); color: var(--text); font-size: 1.1rem; cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+    .seg { display: flex; flex-wrap: wrap; justify-content: center; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--panel); }
+    .seg button { border: 0; background: transparent; color: var(--muted); padding: 9px 16px; font-size: 1rem; cursor: pointer; font-family: inherit; }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+    .level-note { margin: -6px 0 0; color: var(--muted); font-size: 0.9rem; max-width: 46ch; line-height: 1.6; }
+    .big-btn {
+      margin-top: 4px; padding: 18px 44px; border: 0; border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem); font-weight: 800; font-family: inherit; cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+    .learn-link { color: var(--cyan); text-decoration: none; font-size: 1rem; border-bottom: 1px dashed rgba(34, 211, 238, 0.5); padding-bottom: 2px; }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+    .keys { color: var(--muted); font-size: 0.85rem; opacity: 0.8; }
+    .keys kbd {
+      display: inline-block; padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
+      border-radius: 6px; background: rgba(15, 23, 42, 0.6); font-family: inherit; font-size: 0.85em;
+    }
+
+    /* ── 作答 ── */
+    .timer { flex: 0 0 auto; height: 10px; background: rgba(15, 23, 42, 0.8); }
+    .timer > i { display: block; height: 100%; width: 100%; transform-origin: left center; background: linear-gradient(90deg, var(--cyan), var(--accent-2)); }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto; display: flex; flex-direction: column; align-items: center;
+      gap: clamp(6px, 1.4vh, 14px); padding: 12px 16px 16px; min-height: 0;
+    }
+    .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; max-width: 1100px; }
+    .rule-tag {
+      padding: 4px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem); background: var(--panel); white-space: nowrap;
+    }
+    .ask { font-size: clamp(1.15rem, 3.2vw, 2rem); font-weight: 700; text-align: center; line-height: 1.5; }
+    .ask em { font-style: normal; color: var(--accent-2); }
+    .ask .big { font-size: 1.3em; color: var(--accent-2); }
+    .sub { color: var(--muted); font-size: clamp(0.9rem, 2vw, 1.1rem); text-align: center; }
+    .sub em { font-style: normal; color: var(--text); font-weight: 700; }
+
+    .count {
+      position: absolute; top: 54px; right: 18px; font-size: clamp(2.4rem, 7vw, 4.4rem); font-weight: 800;
+      color: var(--accent-2); opacity: 0.85; pointer-events: none; font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    .stage { flex: 1 1 auto; min-height: 0; width: 100%; max-width: 1400px; display: flex; flex-direction: column; align-items: center; gap: clamp(6px, 1.4vh, 14px); }
+    .line-box { width: 100%; flex: 0 1 auto; min-height: 0; display: flex; justify-content: center; }
+    .line-box svg { width: 100%; max-height: 56vh; display: block; }
+    .line-box .iv { cursor: pointer; }
+    .line-box .iv:hover rect.hit { fill: rgba(34, 211, 238, 0.14); }
+    .line-box .tk { cursor: pointer; }
+    .line-box .tk:hover rect { stroke: #22d3ee; }
+    .zoomer { transition: transform 0.6s cubic-bezier(0.45, 0, 0.25, 1), opacity 0.6s; transform-origin: 0 0; }
+    .lens { animation: lens 0.6s ease-out forwards; }
+    @keyframes lens { from { opacity: 0; transform: scale(0.6); } 40% { opacity: 1; } to { opacity: 0; transform: scale(1.4); } }
+
+    .log { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: clamp(1rem, 2.6vw, 1.45rem); }
+    .log div { padding: 2px 14px; border-radius: 10px; background: rgba(34, 197, 94, 0.1); color: #bbf7d0; }
+    .log b { color: var(--accent-2); }
+    .msg { min-height: 1.5em; font-size: clamp(0.95rem, 2.2vw, 1.15rem); text-align: center; line-height: 1.6; color: var(--muted); }
+    .msg em { font-style: normal; color: var(--accent-2); }
+
+    .choices { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(8px, 1.4vw, 14px); }
+    .choice {
+      position: relative; min-width: clamp(90px, 16vw, 170px); padding: clamp(10px, 2vh, 18px) 18px clamp(10px, 2vh, 18px) 34px;
+      border: 2px solid var(--line); border-radius: 16px; background: var(--card); color: var(--text);
+      font-family: inherit; font-size: clamp(1.3rem, 3.4vw, 2.1rem); font-weight: 800; cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s;
+    }
+    .choice .k { position: absolute; top: 50%; left: 12px; transform: translateY(-50%); font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+    .choice:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--cyan); }
+    .choice:disabled { opacity: 0.45; cursor: default; }
+
+    /* ── 結果 ── */
+    .verdict {
+      position: fixed; inset: 0; z-index: 20; display: none; flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 14px; padding: 24px 16px; background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95));
+      backdrop-filter: blur(3px); overflow-y: auto;
+    }
+    .verdict > * { flex-shrink: 0; }
+    .verdict > :first-child { margin-top: auto; }
+    .verdict > :last-child { margin-bottom: auto; }
+    body[data-view="result"] .verdict { display: flex; }
+    .verdict h2 { margin: 0; font-size: clamp(2rem, 7vw, 4rem); letter-spacing: 0.06em; animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1); }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+    @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .solution { width: min(1000px, 100%); border: 1px solid var(--line); border-radius: 18px; background: var(--panel); padding: clamp(12px, 2.6vw, 22px); text-align: center; }
+    .sol-pic { width: 100%; max-width: 600px; margin: 0 auto 8px; }
+    .sol-pic svg { width: 100%; display: block; }
+    .answer-chip {
+      display: inline-block; margin-bottom: 10px; padding: 4px 18px; border-radius: 999px;
+      font-size: clamp(1.1rem, 3vw, 1.7rem); font-weight: 800; color: var(--win); border: 2px solid currentColor;
+    }
+    .why { font-size: clamp(1rem, 2.4vw, 1.25rem); line-height: 1.9; }
+    .why b { color: var(--accent-2); }
+    .why .warn { color: #fca5a5; }
+    .why .soft { color: var(--muted); font-size: 0.92em; }
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .ghost-btn { padding: 12px 24px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--text); font-family: inherit; font-size: 1.05rem; cursor: pointer; }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .nw { white-space: nowrap; }
+
+    @media (min-aspect-ratio: 5/4) and (min-width: 720px) { .head { padding: 0 110px; } }
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; font-size: 2.2rem; }
+      .head { padding-right: 52px; }
+      .seg button { padding: 8px 12px; }
+    }
+    @media (max-height: 640px) {
+      .verdict { gap: 8px; padding-top: 12px; }
+      .verdict h2 { font-size: 2.2rem; }
+      .sol-pic { max-width: 440px; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+    <div class="menu-body">
+      <h1 class="title">根號放大鏡</h1>
+      <p class="unit">📘 第3冊・第2章 平方根與畢氏定理・第1節 平方根與近似值</p>
+      <p class="hint">用<strong>十分逼近法</strong>找根號：先點它落在哪兩個整數之間，放大鏡拉近，再點小數第一位、第二位，<span class="limit-val">40</span> 秒內一路點對就過關。</p>
+      <div class="ctl-row">
+        <div class="seg" id="level" role="group" aria-label="題型">
+          <button type="button" data-level="approx" aria-pressed="false">逼近</button>
+          <button type="button" data-level="exact" aria-pressed="false">剛好</button>
+          <button type="button" data-level="pick" aria-pressed="false">數線找點</button>
+          <button type="button" data-level="all" aria-pressed="true">混合</button>
+        </div>
+      </div>
+      <div class="ctl-row">
+        <div class="seg" id="size" role="group" aria-label="難度">
+          <button type="button" data-size="easy" aria-pressed="true">基礎</button>
+          <button type="button" data-size="normal" aria-pressed="false">標準</button>
+          <button type="button" data-size="hard" aria-pressed="false">挑戰</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-5" aria-label="減少 5 秒">−</button>
+          <b class="limit-val">40</b>秒
+          <button type="button" data-step="5" aria-label="增加 5 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+      <button type="button" class="big-btn" id="start">🔍 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看根號小抄</a>
+      <p class="keys">鍵盤：選項題按 <kbd>1</kbd>～<kbd>4</kbd>　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+    <div class="count" id="count">40</div>
+    <div class="play-body">
+      <div class="head">
+        <div class="rule-tag" id="rule">逼近</div>
+        <div class="ask" id="ask"></div>
+      </div>
+      <div class="sub" id="sub"></div>
+      <div class="stage">
+        <div class="line-box" id="pic"></div>
+        <div class="log" id="log"></div>
+        <div class="choices" id="choices"></div>
+        <div class="msg" id="msg"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="sol-pic" id="sol-pic"></div>
+      <div class="answer-chip" id="sol-ans"></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器，限時依題型各自記）── */
+  const LEVELS = ['approx', 'exact', 'pick', 'all'];
+  const SIZE_KEYS = ['easy', 'normal', 'hard'];
+  const LIMIT_DEFAULT = { approx: 40, exact: 25, pick: 25, all: 40 };
+  const LIMIT_MIN = 10, LIMIT_MAX = 120;
+  const RULE = { approx: '逼近', exact: '剛好', pick: '數線找點' };
+  const LEVEL_NOTE = {
+    approx: '√40 這類開不盡的根號：一層一層點出它在哪兩個刻度之間。',
+    exact: '√144、√1.69 這類剛好開得盡的根號：最後要點在刻度上。',
+    pick: '數線上有 A、B、C、D 四點，選出最接近根號的那一點。',
+    all: '三種題型混在一起出；逼近題偶爾會混進剛好開得盡的。'
+  };
+  const SIZE_NOTE = {
+    easy: '基礎：100 以內，刻度下面直接標出平方值，逼近到小數第 1 位。',
+    normal: '標準：400 以內，也有小數；整數那一層不給平方值，要自己想。',
+    hard: '挑戰：逼近到小數第 2 位，再用四捨五入求近似值。'
+  };
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 私密視窗等情況：不記也能玩 */ } }
+  };
+  const clampLimit = v => Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v));
+  let level = LEVELS.includes(store.get('sz-level')) ? store.get('sz-level') : 'all';
+  let size = SIZE_KEYS.includes(store.get('sz-size')) ? store.get('sz-size') : 'easy';
+  const limits = {};
+  LEVELS.forEach(l => {
+    const v = parseInt(store.get(`sz-limit-${l}`), 10);
+    limits[l] = clampLimit(Number.isFinite(v) ? v : LIMIT_DEFAULT[l]);
+  });
+  let muted = store.get('sz-muted') === '1';
+  const limit = () => limits[level];
+
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  const coin = (p = 0.5) => Math.random() < p;
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  const F = n => (Math.round(n * 1000) / 1000).toString();
+
+  /* ══ 精確比大小 ══════════════════════════════════════
+     被開方數 N = num / den（den 為 1、10、100、4、25、10000），
+     第 L 層的刻度是整數 t，代表 t / 10^L。全部用整數比，避免小數誤差。 */
+  const P10 = [1, 10, 100, 1000, 10000, 100000, 1000000];
+  // t / 10^L 的平方和 N 比：負＝比 N 小、0＝剛好、正＝比 N 大
+  const cmpSq = (q, t, L) => Math.sign(t * t * q.den - q.num * P10[2 * L]);
+  // 第 L 層：√N 落在哪個刻度（向下取整），以及是不是剛好
+  function locate(q, L) {
+    let t = Math.floor(Math.sqrt(q.num / q.den) * P10[L]);
+    while (cmpSq(q, t + 1, L) <= 0) t++;
+    while (t > 0 && cmpSq(q, t, L) > 0) t--;
+    return { t, exact: cmpSq(q, t, L) === 0 };
+  }
+  // 整數 v 代表 v / 10^d，轉成去掉尾巴 0 的小數字串
+  function dec(v, d) {
+    if (!d) return String(v);
+    const s = String(Math.abs(v)).padStart(d + 1, '0');
+    let out = `${s.slice(0, s.length - d)}.${s.slice(s.length - d)}`.replace(/0+$/, '').replace(/\.$/, '');
+    return (v < 0 ? '−' : '') + out;
+  }
+  const sqStr = (t, L) => dec(t * t, 2 * L);           // (t/10^L)² 的值
+  const tickStr = (t, L) => dec(t, L);
+
+  // 被開方數的寫法
+  function nHtml(q) {
+    if (q.frac) return `<span class="fr"><span>${q.frac[0]}</span><span>${q.frac[1]}</span></span>`;
+    return q.nStr;
+  }
+  const rootHtml = q => `<span class="rad"><span class="sym">√</span><span class="in">${nHtml(q)}</span></span>`;
+  // 比大小時用的數值：分數改寫成小數
+  const nVal = q => q.nStr;
+
+  /* ══ 出題 ══════════════════════════════════════════ */
+  const isSquareInt = n => Number.isInteger(Math.sqrt(n));
+
+  function mkN(num, den, extra = {}) {
+    const d = { 1: 0, 10: 1, 100: 2, 10000: 4 }[den];
+    let nStr;
+    if (d !== undefined) nStr = dec(num, d);
+    else nStr = String(num / den);                      // 分母 4、25：一定是有限小數
+    return { num, den, nStr, ...extra };
+  }
+
+  // 逼近：開不盡（偶爾混一題剛好開得盡的整數，看學生會不會發現）
+  function approxN() {
+    if (coin(0.15)) {
+      const k = size === 'easy' ? R(2, 9) : R(4, 19);
+      return mkN(k * k, 1);
+    }
+    for (;;) {
+      let q;
+      if (size === 'easy') q = mkN(R(2, 99), 1);
+      else if (size === 'normal') q = coin(0.3) ? mkN(R(21, 999), 10) : mkN(R(2, 399), 1);
+      else q = coin(0.25) ? mkN(R(21, 999), 10) : mkN(R(2, 199), 1);
+      if (q.den === 10 && q.num % 10 === 0) continue;
+      const deep = size === 'hard' ? 3 : 2;
+      let ok = true;
+      for (let L = 0; L <= deep; L++) if (locate(q, L).exact) ok = false;
+      if (ok) return q;
+    }
+  }
+
+  // 剛好：整數、小數、分數都有
+  function exactN() {
+    if (size === 'easy') {
+      if (coin(0.7)) { const k = R(2, 10); return mkN(k * k, 1); }
+      const a = R(11, 29); if (a % 10 === 0) return exactN();
+      return mkN(a * a, 100);                            // 1.21～8.41
+    }
+    if (size === 'normal') {
+      const r = Math.random();
+      if (r < 0.45) { const k = R(11, 25); return mkN(k * k, 1); }
+      if (r < 0.75) { const a = R(11, 49); if (a % 10 === 0) return exactN(); return mkN(a * a, 100); }
+      const a = R(1, 14); if (a % 5 === 0) return exactN();
+      return mkN(a * a, 25, { frac: [a * a, 25] });       // √(a²/25) = a/5
+    }
+    const r = Math.random();
+    if (r < 0.4) { const k = R(26, 39); return mkN(k * k, 1); }   // 676～1521，用質因數分解
+    if (r < 0.65) { const a = R(11, 39); if (a % 10 === 0) return exactN(); return mkN(a * a, 10000); }  // 0.0121～0.1521
+    if (r < 0.85) { const a = R(3, 19); if (a % 2 === 0) return exactN(); return mkN(a * a, 4, { frac: [a * a, 4] }); }
+    const a = R(11, 39); if (a % 5 === 0) return exactN();
+    return mkN(a * a, 25, { frac: [a * a, 25] });
+  }
+
+  function pickN() {
+    for (;;) {
+      let q;
+      if (size === 'easy') q = mkN(R(2, 99), 1);
+      else q = coin(0.3) ? mkN(R(21, 999), 10) : mkN(R(5, 399), 1);
+      if (q.den === 10 && q.num % 10 === 0) continue;
+      if (locate(q, 0).exact || locate(q, 1).exact) continue;
+      return q;
+    }
+  }
+
+  // 第 0 層的視窗：10 格整數，從 10 的倍數開始
+  const win0 = q => 10 * Math.floor(locate(q, 0).t / 10);
+
+  function makeQ(type) {
+    let q;
+    if (type === 'pick') q = pickN();
+    else q = type === 'exact' ? exactN() : approxN();
+    q.type = type;
+    q.rule = RULE[type];
+    q.maxL = size === 'hard' ? 2 : 1;
+    q.L = 0;
+    q.lo = win0(q);                                      // 目前這一層視窗的左端（整數，單位 10^-L）
+    q.log = [];
+    q.done = false;
+    if (type === 'pick') {
+      const c = locate(q, 1).t;                          // √N 在 c/10 ～ (c+1)/10 之間
+      const start = c - R(2, 7);
+      const ci = c - start;                              // 正解在第 ci 格
+      const others = shuffle([...Array(10).keys()].filter(i => Math.abs(i - ci) >= 2)).slice(0, 3);
+      const idx = shuffle([ci, ...others]).sort((a, b) => a - b);
+      const names = ['A', 'B', 'C', 'D'];
+      q.pick = { start, pts: idx.map((i, j) => ({ name: names[j], at: start + i, right: i === ci })) };
+      q.pick.ans = q.pick.pts.find(p => p.right).name;
+    }
+    return q;
+  }
+
+  // 這一層正確的動作：點格子 t～t+1，或點刻度 t
+  function expected(q) {
+    const { t, exact } = locate(q, q.L);
+    return exact ? { kind: 'tick', t } : { kind: 'iv', t };
+  }
+
+  /* ══ 數線 ══════════════════════════════════════════ */
+  const X0 = 6, X1 = 94, STEP = (X1 - X0) / 10, LY = 15;
+  const xOf = i => X0 + i * STEP;
+  let uid = 0;
+
+  // showSq：刻度下面要不要寫平方值
+  function showSq(q, L) { return size === 'easy' || L > 0; }
+
+  function lineSvg(q, L, lo, opts = {}) {
+    const { interactive = false, marker = false, pick = null, mark = null } = opts;
+    const sq = pick ? size === 'easy' : showSq(q, L);
+    const H = sq ? 47 : 36;
+    let g = '';
+    // 格子（點擊區）
+    for (let i = 0; i < 10; i++) {
+      const x = xOf(i);
+      const hl = mark && mark.kind === 'iv' && mark.t === lo + i;
+      g += `<g class="${interactive ? 'iv' : ''}" ${interactive ? `data-iv="${lo + i}"` : ''}>`;
+      g += `<rect class="hit" x="${F(x)}" y="${F(LY - 11)}" width="${F(STEP)}" height="17" fill="${hl ? mark.color : 'rgba(148,163,184,0.04)'}" rx="1"/>`;
+      g += '</g>';
+    }
+    g += `<line x1="${X0 - 3}" y1="${LY}" x2="${X1 + 3}" y2="${LY}" stroke="#cbd5e1" stroke-width="0.5"/>`;
+    g += `<path d="M${X1 + 4.5},${LY} l-2.2,-1.3 v2.6 z" fill="#cbd5e1"/>`;
+    for (let i = 0; i <= 10; i++) {
+      const x = xOf(i), t = lo + i;
+      g += `<line x1="${F(x)}" y1="${LY - 2.2}" x2="${F(x)}" y2="${LY + 2.2}" stroke="#cbd5e1" stroke-width="0.4"/>`;
+      // 小刻度（每格再分 10 份，只是示意放大鏡下面還有更細的刻度）
+      if (i < 10) for (let k = 1; k < 10; k++) g += `<line x1="${F(x + k * STEP / 10)}" y1="${LY - 0.8}" x2="${F(x + k * STEP / 10)}" y2="${LY + 0.8}" stroke="rgba(203,213,225,0.35)" stroke-width="0.18"/>`;
+      const lab = tickStr(t, L);
+      const lfs = lab.length >= 5 ? 2.7 : (lab.length === 4 ? 3.1 : 3.6);
+      const w = Math.max(6, lab.length * lfs * 0.5 + 1.6);
+      const hl = mark && mark.kind === 'tick' && mark.t === t;
+      g += `<g class="${interactive ? 'tk' : ''}" ${interactive ? `data-tk="${t}"` : ''}>`;
+      g += `<rect x="${F(x - w / 2)}" y="${LY + 4}" width="${F(w)}" height="7.4" rx="1.6" fill="${hl ? mark.color : 'rgba(30,41,72,0.95)'}" stroke="${interactive ? 'rgba(148,163,184,0.55)' : 'rgba(148,163,184,0.25)'}" stroke-width="0.3"/>`;
+      g += `<text x="${F(x)}" y="${LY + 7.9}" font-size="${lfs}" fill="#f1f5f9" text-anchor="middle" dominant-baseline="central" font-weight="700">${lab}</text>`;
+      g += '</g>';
+      if (sq) {
+        const y = L > 0 && i % 2 ? LY + 23.5 : LY + 17.5;
+        const s = sqStr(t, L);
+        g += `<text x="${F(x)}" y="${F(y)}" font-size="${s.length > 6 ? 2.3 : 2.7}" fill="#94a3b8" text-anchor="middle" dominant-baseline="central">${s}</text>`;
+      }
+    }
+    if (sq) g += `<text x="${X0 - 4.5}" y="${LY + 17.5}" font-size="2.4" fill="#64748b" text-anchor="end" dominant-baseline="central">平方</text>`;
+    // 數線找點：A、B、C、D
+    if (pick) {
+      pick.pts.forEach(p => {
+        const x = xOf(p.at - lo + 0.5);
+        g += `<circle cx="${F(x)}" cy="${LY}" r="1.2" fill="#f87171"/>`;
+        g += `<text x="${F(x)}" y="${LY - 4.5}" font-size="4" fill="#fca5a5" text-anchor="middle" dominant-baseline="central" font-weight="800" font-style="italic" font-family="Times New Roman, serif">${p.name}</text>`;
+      });
+    }
+    // 結果畫面：√N 真正的位置
+    if (marker) {
+      const v = Math.sqrt(q.num / q.den) * P10[L];
+      const x = X0 + (v - lo) * STEP;
+      g += `<path d="M${F(x)},${LY - 1} l-1.6,-3.2 h3.2 z" fill="#fbbf24"/>`;
+      g += `<text x="${F(x)}" y="${LY - 7.2}" font-size="3.4" fill="#fbbf24" text-anchor="middle" dominant-baseline="central" font-weight="800">√${q.frac ? `(${q.frac[0]}/${q.frac[1]})` : q.nStr}</text>`;
+    }
+    return `<svg viewBox="-6 -1 106 ${H}" role="img" aria-label="數線">${`<g class="zoomer" id="z${++uid}">${g}</g>`}</svg>`;
+  }
+
+  /* ── 音效 ── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio(); if (!c) return;
+    const t0 = c.currentTime + when, osc = c.createOscillator(), g = c.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination); osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+  const sfxZoom = () => { tone(520, 0.1, 0, 'triangle', 0.1); tone(780, 0.16, 0.08, 'triangle', 0.1); };
+
+  /* ── 狀態 ── */
+  const TYPES = ['approx', 'exact', 'pick'];
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, curLimit = 40, busy = false;
+  let choiceBtns = [];
+  let lastType = '';
+
+  const setView = v => { document.body.dataset.view = v; };
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      b.disabled = Number(b.dataset.step) < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.level === level)));
+    document.querySelectorAll('#size button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.size === size)));
+    $('level-note').textContent = `${LEVEL_NOTE[level]}${SIZE_NOTE[size]}`;
+    paintLimit();
+  }
+  function paintMute() { $('mute').textContent = $('mute2').textContent = muted ? '🔇' : '🔊'; }
+  function nextType() {
+    if (level !== 'all') return level;
+    let t;
+    do { t = pickOf(TYPES); } while (t === lastType && Math.random() < 0.7);
+    lastType = t;
+    return t;
+  }
+
+  /* ── 推理的每一行（課本寫法：平方夾住，再開根號）── */
+  function stepLine(q, L) {
+    const { t, exact } = locate(q, L);
+    const r = rootHtml(q);
+    if (exact) return `<span class="nw">${tickStr(t, L)}² = ${sqStr(t, L)}</span>，所以 <b class="nw">${r} = ${tickStr(t, L)}</b>`;
+    return `<span class="nw">${tickStr(t, L)}² = ${sqStr(t, L)} &lt; ${nVal(q)} &lt; ${sqStr(t + 1, L)} = ${tickStr(t + 1, L)}²</span>，所以 <b class="nw">${tickStr(t, L)} &lt; ${r} &lt; ${tickStr(t + 1, L)}</b>`;
+  }
+  // 四捨五入：比中點的平方
+  function roundInfo(q) {
+    const { t } = locate(q, 2);
+    const m = t * 10 + 5;                                // 第 3 位是 5 的中點
+    const up = cmpSq(q, m, 3) <= 0;                      // 中點² ≤ N → √N ≥ 中點 → 進位
+    return { lo: tickStr(t, 2), hi: tickStr(t + 1, 2), mid: dec(m, 3), midSq: dec(m * m, 6), ans: up ? tickStr(t + 1, 2) : tickStr(t, 2), up };
+  }
+
+  /* ── 出題 ── */
+  function startQuestion() {
+    cur = makeQ(nextType());
+    curLimit = limit();
+    busy = false;
+    $('rule').textContent = cur.rule;
+    $('log').innerHTML = '';
+    $('msg').innerHTML = '';
+    $('choices').innerHTML = '';
+    choiceBtns = [];
+    if (cur.type === 'pick') renderPick(); else renderLevel();
+    locked = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + curLimit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function renderLevel() {
+    const q = cur;
+    $('ask').innerHTML = `<span class="big">${rootHtml(q)}</span> 在哪裡？`;
+    const unit = q.L === 0 ? '整數' : (q.L === 1 ? '小數第 1 位' : '小數第 2 位');
+    $('sub').innerHTML = `點它落在哪一<em>格</em>（${unit}）；剛好在刻度上，就點下面的<em>刻度數字</em>。`;
+    $('pic').innerHTML = lineSvg(q, q.L, q.lo, { interactive: true });
+  }
+
+  function renderPick() {
+    const q = cur;
+    $('ask').innerHTML = `哪一點最接近 <span class="big">${rootHtml(q)}</span>？`;
+    $('sub').innerHTML = '先想它在哪兩個整數之間，再看在哪兩個一位小數之間。';
+    $('pic').innerHTML = lineSvg(q, 1, q.pick.start, { pick: q.pick });
+    showChoices(q.pick.pts.map(p => ({ key: p.name, html: `<i style="font-family:Times New Roman,serif">${p.name}</i>` })));
+  }
+
+  function showChoices(list) {
+    $('choices').innerHTML = list.map((c, i) => `<button type="button" class="choice" data-key="${c.key}"><span class="k">${i + 1}</span>${c.html}</button>`).join('');
+    choiceBtns = Array.from($('choices').querySelectorAll('.choice'));
+    choiceBtns.forEach(b => b.addEventListener('click', () => choose(b.dataset.key)));
+  }
+
+  $('pic').addEventListener('click', e => {
+    if (!cur || locked || busy || cur.type === 'pick' || cur.done) return;
+    const tk = e.target.closest('[data-tk]');
+    const iv = e.target.closest('[data-iv]');
+    if (tk) tap({ kind: 'tick', t: Number(tk.dataset.tk) });
+    else if (iv) tap({ kind: 'iv', t: Number(iv.dataset.iv) });
+  });
+
+  function tap(act) {
+    const q = cur;
+    const want = expected(q);
+    if (act.kind !== want.kind || act.t !== want.t) {
+      q.wrong = { ...act, L: q.L };
+      judge(false);
+      return;
+    }
+    q.log.push(stepLine(q, q.L));
+    $('log').innerHTML = q.log.map(s => `<div>${s}</div>`).join('');
+    if (want.kind === 'tick') { q.done = true; judge(true); return; }
+    if (q.L >= q.maxL) {
+      q.done = true;
+      if (size === 'hard') { askRound(); return; }
+      judge(true);
+      return;
+    }
+    // 放大鏡：把這一格拉滿整條數線，再換下一層
+    busy = true;
+    sfxZoom();
+    const svg = $('pic').querySelector('svg');
+    const z = svg.querySelector('.zoomer');
+    const xi = xOf(act.t - q.lo);
+    svg.insertAdjacentHTML('beforeend', `<circle class="lens" cx="${F(xi + STEP / 2)}" cy="${LY}" r="${F(STEP * 0.9)}" fill="none" stroke="#22d3ee" stroke-width="0.8" style="transform-origin:${F(xi + STEP / 2)}px ${LY}px"/>`);
+    z.querySelectorAll(`[data-iv="${act.t}"] rect`).forEach(r => r.setAttribute('fill', 'rgba(34,197,94,0.35)'));
+    requestAnimationFrame(() => {
+      z.style.transform = `translate(${F(X0 - 10 * xi)}px,0) scale(10,1)`;
+      z.style.opacity = '0.15';
+    });
+    setTimeout(() => {
+      if (cur !== q || locked) return;
+      q.L += 1;
+      q.lo = act.t * 10;
+      busy = false;
+      renderLevel();
+    }, 650);
+  }
+
+  function askRound() {
+    const q = cur;
+    const r = roundInfo(q);
+    q.round = r;
+    $('ask').innerHTML = `以四捨五入法求到小數點後第 2 位，<span class="big">${rootHtml(q)}</span> ≒ ？`;
+    $('sub').innerHTML = `看中點：<em class="nw">${r.mid}² = ${r.midSq}</em>，比 ${nVal(q)} 大還是小？`;
+    showChoices([{ key: r.lo, html: r.lo }, { key: r.hi, html: r.hi }]);
+  }
+
+  function choose(key) {
+    if (locked || !cur) return;
+    const q = cur;
+    q.picked = key;
+    if (q.type === 'pick') judge(key === q.pick.ans);
+    else judge(key === q.round.ans);
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      $('bar').style.transform = `scaleX(${left / (curLimit * 1000)})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 5 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { cur.timeout = true; judge(false); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 判定 ── */
+  // 點錯的原因
+  function wrongWhy(q) {
+    const w = q.wrong;
+    if (!w) return '';
+    const L = w.L;
+    const want = locate(q, L);
+    const r = rootHtml(q);
+    if (w.kind === 'tick') {
+      const c = cmpSq(q, w.t, L);
+      return `你點的刻度 <b>${tickStr(w.t, L)}</b>：${tickStr(w.t, L)}² = ${sqStr(w.t, L)} ${c < 0 ? '&lt;' : '&gt;'} ${nVal(q)}，${r} <b>不是剛好</b> ${tickStr(w.t, L)}${want.exact ? '' : '，它在兩個刻度<b>中間</b>，要點格子'}。`;
+    }
+    const a = w.t, b = w.t + 1;
+    if (want.exact && (want.t === a || want.t === b)) {
+      return `${tickStr(want.t, L)}² = ${nVal(q)}，${r} <b>剛好等於 ${tickStr(want.t, L)}</b>，在刻度上，要點刻度數字，不是格子。`;
+    }
+    if (cmpSq(q, b, L) <= 0) return `你點的是 ${tickStr(a, L)}～${tickStr(b, L)}：可是 ${tickStr(b, L)}² = ${sqStr(b, L)} ${cmpSq(q, b, L) < 0 ? '&lt;' : '='} ${nVal(q)}，${r} 比 ${tickStr(b, L)} 還大，<b>太左了</b>。`;
+    return `你點的是 ${tickStr(a, L)}～${tickStr(b, L)}：可是 ${tickStr(a, L)}² = ${sqStr(a, L)} &gt; ${nVal(q)}，${r} 比 ${tickStr(a, L)} 還小，<b>太右了</b>。`;
+  }
+
+  // 完整解法（不管做到第幾層）
+  function fullLadder(q) {
+    const lines = [];
+    const maxL = q.type === 'pick' ? 1 : q.maxL;
+    for (let L = 0; L <= maxL; L++) {
+      lines.push(stepLine(q, L));
+      if (locate(q, L).exact) break;
+    }
+    return lines;
+  }
+  function answerOf(q) {
+    const r = `√${q.frac ? `(${q.frac[0]}/${q.frac[1]})` : q.nStr}`;
+    if (q.type === 'pick') return `答案：${q.pick.ans} 點`;
+    for (let L = 0; L <= q.maxL; L++) { const x = locate(q, L); if (x.exact) return `${r} = ${tickStr(x.t, L)}`; }
+    if (size === 'hard') return `${r} ≒ ${roundInfo(q).ans}`;
+    const x = locate(q, q.maxL);
+    return `${tickStr(x.t, q.maxL)} < ${r} < ${tickStr(x.t + 1, q.maxL)}`;
+  }
+
+  function judge(win) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    choiceBtns.forEach(b => { b.disabled = true; });
+    document.body.classList.remove('urgent');
+    const q = cur;
+    const timeout = !!q.timeout;
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+
+    // 結果圖：畫在最後確定的那一層，標出 √N 真正的位置
+    const ladder = fullLadder(q);
+    const lastL = ladder.length - 1;
+    const lo = q.type === 'pick' ? q.pick.start : (lastL === 0 ? win0(q) : locate(q, lastL - 1).t * 10);
+    const ans = locate(q, lastL);
+    const mark = ans.exact ? { kind: 'tick', t: ans.t, color: 'rgba(34,197,94,0.55)' } : { kind: 'iv', t: ans.t, color: 'rgba(34,197,94,0.3)' };
+    $('sol-pic').innerHTML = lineSvg(q, lastL, lo, { marker: true, pick: q.type === 'pick' ? q.pick : null, mark: q.type === 'pick' ? null : mark });
+    $('sol-ans').textContent = answerOf(q);
+
+    let why = ladder.map(s => `<div>${s}</div>`).join('');
+    if (q.type === 'pick') {
+      const p = q.pick.pts.find(x => x.right);
+      why += `<div><b>${p.name}</b> 點在 ${tickStr(p.at, 1)} 和 ${tickStr(p.at + 1, 1)} 之間，最接近 ${rootHtml(q)}。</div>`;
+      if (!timeout && !win && q.picked) {
+        const w = q.pick.pts.find(x => x.name === q.picked);
+        why += `<div class="warn">你選的 ${w.name} 點在 ${tickStr(w.at, 1)} 和 ${tickStr(w.at + 1, 1)} 之間：${tickStr(w.at, 1)}² = ${sqStr(w.at, 1)}、${tickStr(w.at + 1, 1)}² = ${sqStr(w.at + 1, 1)}，沒有夾住 ${nVal(q)}。</div>`;
+      }
+    } else if (size === 'hard' && !ladder.some((_, L) => locate(q, L).exact)) {
+      const r = roundInfo(q);
+      why += `<div>四捨五入看第 3 位：<span class="nw">${r.mid}² = ${r.midSq}</span> ${r.up ? '&lt;' : '&gt;'} ${nVal(q)}，所以 ${rootHtml(q)} ${r.up ? '&gt;' : '&lt;'} ${r.mid}，<b>≒ ${r.ans}</b></div>`;
+      if (!timeout && !win && q.picked) why += `<div class="warn">你選了 ${q.picked}。中點的平方${r.up ? '比較小，√ 在中點右邊，要進位' : '比較大，√ 在中點左邊，要捨去'}。</div>`;
+    }
+    if (!timeout && !win && q.wrong) why += `<div class="warn">${wrongWhy(q)}</div>`;
+    if (q.frac) why += `<div class="soft">${q.frac[0]}/${q.frac[1]} = ${q.nStr}，比大小時先化成小數。</div>`;
+    $('sol-why').innerHTML = why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => { cancelAnimationFrame(raf); locked = true; setView('menu'); });
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => b.addEventListener('click', () => {
+    limits[level] = clampLimit(limits[level] + Number(b.dataset.step));
+    store.set(`sz-limit-${level}`, String(limits[level]));
+    paintLimit();
+  }));
+  document.querySelectorAll('#level button').forEach(b => b.addEventListener('click', () => {
+    level = b.dataset.level; store.set('sz-level', level); paintLevel();
+  }));
+  document.querySelectorAll('#size button').forEach(b => b.addEventListener('click', () => {
+    size = b.dataset.size; store.set('sz-size', size); paintLevel();
+  }));
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted; store.set('sz-muted', muted ? '1' : '0'); paintMute();
+  }));
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      const i = ['1', '2', '3', '4'].indexOf(e.key);
+      if (i >= 0 && choiceBtns[i] && !choiceBtns[i].disabled) { e.preventDefault(); choose(choiceBtns[i].dataset.key); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu' && (e.key === ' ' || e.key === 'Enter')) {
+      if (document.activeElement && document.activeElement.closest('button, a') && document.activeElement !== $('start')) return;
+      e.preventDefault(); audio(); startQuestion();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）───────
+     用浮點數 Math.sqrt 另外算一次，核對每一層該點的格子／刻度、四捨五入、找點的正解；
+     並檢查視窗一定包住答案、找點的四個點各在不同格且正解最近。 */
+  window.__sqrtZoom = {
+    makeQ, locate,
+    selfTest(n = 1000) {
+      const report = {}, errors = [];
+      const saved = size;
+      SIZE_KEYS.forEach(sk => {
+        size = sk;
+        TYPES.forEach(t => {
+          const t0 = performance.now();
+          for (let i = 0; i < n; i++) {
+            let q;
+            try { q = makeQ(t); } catch (e) { errors.push([sk, t, 'throw', e.message]); continue; }
+            const v = Math.sqrt(q.num / q.den);
+            if (Math.abs(Number(q.nStr) - q.num / q.den) > 1e-9) errors.push([sk, t, '被開方數字串不對', q.nStr]);
+            let lo = win0(q);
+            for (let L = 0; L <= (t === 'pick' ? 1 : q.maxL); L++) {
+              const x = locate(q, L), s = v * P10[L];
+              if (x.exact ? Math.abs(s - x.t) > 1e-6 : !(x.t < s && s < x.t + 1)) errors.push([sk, t, `第 ${L} 層位置錯`, q.nStr, x.t]);
+              if (t !== 'pick' && (x.t < lo || x.t > lo + 10 || (!x.exact && x.t > lo + 9))) errors.push([sk, t, `第 ${L} 層視窗沒包住`, q.nStr, lo, x.t]);
+              if (x.exact) break;
+              lo = x.t * 10;
+            }
+            if (t === 'approx' && sk !== 'easy' && !isSquareInt(q.num) && locate(q, 0).exact) errors.push([sk, t, '不該剛好']);
+            if (t === 'exact' && ![0, 1, 2].some(L => locate(q, L).exact)) errors.push([sk, t, '剛好題卻開不盡', q.nStr]);
+            if (t === 'approx' && sk === 'hard' && ![0, 1, 2].some(L => locate(q, L).exact)) {
+              const r = roundInfo(q);
+              if (Number(r.ans) !== Math.round(v * 100) / 100) errors.push([sk, t, '四捨五入錯', q.nStr, r.ans, v]);
+            }
+            if (t === 'pick') {
+              const pts = q.pick.pts;
+              if (pts.length !== 4 || new Set(pts.map(p => p.at)).size !== 4) errors.push([sk, t, '點數或位置重複']);
+              const dist = pts.map(p => Math.abs((p.at + 0.5) / 10 - v));
+              const best = pts[dist.indexOf(Math.min(...dist))];
+              if (best.name !== q.pick.ans) errors.push([sk, t, '正解不是最近的點', q.nStr]);
+              if (pts.some(p => p.at < q.pick.start || p.at > q.pick.start + 9)) errors.push([sk, t, '點超出數線']);
+            }
+            const txt = fullLadder(q).join('') + answerOf(q) + lineSvg(q, 0, win0(q), { marker: true });
+            if (/undefined|NaN|Infinity|\[object|null/.test(txt)) errors.push([sk, t, '字串有壞值', txt.slice(0, 160)]);
+          }
+          report[`${sk}-${t}`] = `${n} 題，${(performance.now() - t0).toFixed(0)} ms`;
+        });
+      });
+      size = saved;
+      return { report, errors: errors.slice(0, 20), errorCount: errors.length };
+    }
+  };
+
+  paintLevel();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>
