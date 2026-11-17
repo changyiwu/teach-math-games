@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>十字交乘小抄 - 十字交乘填格</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="十字交乘法：看兩端、湊中間；常數項正負號的判斷、x² 係數不為 1、先提出 −1 或公因數、不能分解的判斷與常見錯誤對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --green: #bbf7d0;
+      --pink: #f9a8d4;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    i { font-family: "Times New Roman", "Noto Serif", serif; font-style: italic; }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+    .topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 16px; }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+    .btn {
+      padding: 9px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel);
+      color: var(--text); font-family: inherit; font-size: 0.98rem; text-decoration: none; cursor: pointer;
+    }
+    .btn-play { border: 0; background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05; font-weight: 800; }
+    .btn-play:hover { filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px; font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+    .lead strong { color: var(--text); }
+    h2 { margin: 36px 0 14px; font-size: 1.3rem; color: var(--accent-2); border-left: 4px solid var(--accent); padding-left: 12px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+    .card { border: 1px solid var(--line); border-top: 4px solid var(--cyan); border-radius: 16px; background: var(--card); padding: 18px; }
+    .card .law { font-size: clamp(1.1rem, 3vw, 1.3rem); font-weight: 700; margin: 2px 0 8px; }
+    .card .say { color: var(--muted); font-size: 0.98rem; margin: 0 0 10px; }
+    .card .say strong { color: var(--text); }
+    .hl { color: var(--accent-2); font-weight: 700; }
+
+    .note { border: 1px solid var(--line); border-left: 4px solid var(--cyan); border-radius: 12px; background: var(--panel); padding: 14px 18px; margin: 14px 0; }
+    .note b { color: var(--accent-2); }
+    .steps { margin: 0; padding-left: 1.4em; line-height: 2; }
+    .steps b { color: var(--accent-2); }
+
+    /* 十字 */
+    .xs { display: inline-grid; grid-template-columns: auto 44px auto; grid-template-rows: auto auto auto; align-items: center; column-gap: 4px; row-gap: 2px; font-size: 1.25rem; font-weight: 700; margin: 6px 0; }
+    .xs .l { text-align: right; color: var(--green); }
+    .xs .r { color: var(--pink); }
+    .xs svg { grid-column: 2; grid-row: 1 / span 2; width: 44px; height: 52px; }
+    .xs .sum { grid-column: 1 / span 3; border-top: 1px solid var(--muted); padding-top: 2px; text-align: center; font-size: 1.05rem; color: var(--accent-2); }
+    .fig { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: clamp(0.95rem, 2.4vw, 1.1rem); }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td { border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: middle; }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+    .nw { white-space: nowrap; }
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions"><a class="btn btn-play" href="./">🎮 開始挑戰</a></div>
+    </header>
+
+    <h1>十字交乘小抄</h1>
+    <p class="lead">康軒 2 上 3-2 利用十字交乘法做因式分解。(<i>x</i> + <i>a</i>)(<i>x</i> + <i>b</i>) = <i>x</i>² + (<i>a</i> + <i>b</i>)<i>x</i> + <i>ab</i>，把等號兩邊對調就是因式分解。口訣：<strong>看兩端、湊中間</strong>。</p>
+
+    <h2>十字怎麼看</h2>
+    <div class="note">
+      <div class="fig">
+        <div class="xs">
+          <span class="l"><i>x</i></span><svg viewBox="0 0 44 52" aria-hidden="true"><line x1="4" y1="8" x2="40" y2="44" stroke="#22d3ee" stroke-width="2.5"/><line x1="4" y1="44" x2="40" y2="8" stroke="#22d3ee" stroke-width="2.5"/></svg><span class="r">+2</span>
+          <span class="l"><i>x</i></span><span class="r">−7</span>
+          <span class="sum">2<i>x</i> − 7<i>x</i> = −5<i>x</i></span>
+        </div>
+        <ol class="steps">
+          <li><b>左欄</b>相乘 = <i>x</i>² 項：<i>x</i> · <i>x</i> = <i>x</i>²</li>
+          <li><b>右欄</b>相乘 = 常數項：2 × (−7) = −14</li>
+          <li><b>交叉</b>相乘再相加 = <i>x</i> 項：2<i>x</i> + (−7<i>x</i>) = −5<i>x</i></li>
+          <li>橫著讀：<span class="hl nw"><i>x</i>² − 5<i>x</i> − 14 = (<i>x</i> + 2)(<i>x</i> − 7)</span></li>
+        </ol>
+      </div>
+    </div>
+
+    <h2>右欄兩數的正負號</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">常數項是正的 → 兩數<span class="hl">同號</span></div>
+        <p class="say">跟著 <i>x</i> 項係數的號走：<i>x</i>² + 7<i>x</i> + 10 = (<i>x</i> + 2)(<i>x</i> + 5)；<i>x</i>² − 7<i>x</i> + 10 = (<i>x</i> − 2)(<i>x</i> − 5)。</p>
+      </div>
+      <div class="card">
+        <div class="law">常數項是負的 → 兩數<span class="hl">一正一負</span></div>
+        <p class="say"><strong>絕對值大的</strong>跟著 <i>x</i> 項係數的號：<i>x</i>² + 4<i>x</i> − 21 = (<i>x</i> − 3)(<i>x</i> + 7)；<i>x</i>² − 4<i>x</i> − 21 = (<i>x</i> + 3)(<i>x</i> − 7)。</p>
+      </div>
+      <div class="card">
+        <div class="law">中間只差一個負號 → 兩數<span class="hl">正負對調</span></div>
+        <p class="say">湊出 +5<i>x</i>，題目卻是 −5<i>x</i>：兩端都對了，只要把右欄兩數的正負號都換過來。</p>
+      </div>
+    </div>
+
+    <h2><i>x</i>² 係數不為 1</h2>
+    <div class="note">
+      <div class="fig">
+        <div class="xs">
+          <span class="l">2<i>x</i></span><svg viewBox="0 0 44 52" aria-hidden="true"><line x1="4" y1="8" x2="40" y2="44" stroke="#22d3ee" stroke-width="2.5"/><line x1="4" y1="44" x2="40" y2="8" stroke="#22d3ee" stroke-width="2.5"/></svg><span class="r">−3</span>
+          <span class="l">3<i>x</i></span><span class="r">−7</span>
+          <span class="sum">−9<i>x</i> − 14<i>x</i> = −23<i>x</i></span>
+        </div>
+        <ol class="steps">
+          <li>左欄也要拆：6 = 1 × 6 = 2 × 3。<i>x</i>² 係數是正的，<b>只要考慮正因數</b>。</li>
+          <li>右欄上下<b>對調</b>，交叉的和就不一樣：右欄換成 −7、−3，交叉變成 −21<i>x</i> − 6<i>x</i> = −27<i>x</i>，就不合了，要分開試。</li>
+          <li>找到一組湊得出來就停：<span class="hl nw">6<i>x</i>² − 23<i>x</i> + 21 = (2<i>x</i> − 3)(3<i>x</i> − 7)</span></li>
+        </ol>
+      </div>
+    </div>
+
+    <h2>先提，再十字交乘</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law"><i>x</i>² 係數是負的 → 先提出 −1</div>
+        <p class="say">括號裡<strong>每一項都變號</strong>：−<i>x</i>² + 2<i>x</i> + 63 = −(<i>x</i>² − 2<i>x</i> − 63) = <span class="hl">−(<i>x</i> + 7)(<i>x</i> − 9)</span>。</p>
+      </div>
+      <div class="card">
+        <div class="law">三項有公因數 → 先提出來</div>
+        <p class="say">每一項都要除：2<i>x</i>² − 10<i>x</i> − 12 = 2(<i>x</i>² − 5<i>x</i> − 6) = <span class="hl">2(<i>x</i> − 6)(<i>x</i> + 1)</span>。提出的 2 不能丟掉。</p>
+      </div>
+      <div class="card">
+        <div class="law">兩個一起：提出 −3</div>
+        <p class="say">−3<i>x</i>² + 6<i>x</i> + 24 = −3(<i>x</i>² − 2<i>x</i> − 8) = <span class="hl">−3(<i>x</i> + 2)(<i>x</i> − 4)</span>。</p>
+      </div>
+    </div>
+
+    <h2>不能分解 &amp; 缺 <i>x</i> 項</h2>
+    <div class="note">
+      <b><i>x</i>² + 4<i>x</i> + 8</b>：8 = 1 × 8 = 2 × 4 = (−1) × (−8) = (−2) × (−4)，兩數的和是 9、6、−9、−6，<b>沒有一組是 4</b>，列完都不合就是不能分解，不要硬湊。<br>
+      <b><i>x</i>² − 9</b>：缺 <i>x</i> 項，當成 <b>0<i>x</i></b>：3 × (−3) = −9、3<i>x</i> − 3<i>x</i> = 0<i>x</i>，所以 <i>x</i>² − 9 = (<i>x</i> + 3)(<i>x</i> − 3)。<br>
+      最後一定要<b>乘回去驗算</b>，乘開來等於原式才算分解成功。
+    </div>
+
+    <h2>常見錯誤對照表</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>遊戲裡判錯的原因大多是左邊這幾種。</caption>
+        <thead><tr><th style="width:46%">常見的錯誤</th><th>正確</th></tr></thead>
+        <tbody>
+          <tr><td class="bad"><i>x</i>² − 5<i>x</i> − 6 的右欄填 −3、−2（交叉和 −5<i>x</i> 對了）</td><td class="good">(−3) × (−2) = 6，不是 −6；右欄要填 −6、1：(<i>x</i> − 6)(<i>x</i> + 1)</td></tr>
+          <tr><td class="bad"><i>x</i>² − 10<i>x</i> − 24 = (<i>x</i> − 6)(<i>x</i> − 4)</td><td class="good">常數項是負的，要一正一負：(<i>x</i> − 12)(<i>x</i> + 2)</td></tr>
+          <tr><td class="bad">湊出 +5<i>x</i> 就送出（題目是 −5<i>x</i>）</td><td class="good">兩數正負號對調，交叉的和才會是 −5<i>x</i></td></tr>
+          <tr><td class="bad">−<i>x</i>² + 2<i>x</i> + 63 = −(<i>x</i>² + 2<i>x</i> + 63)</td><td class="good">提出 −1，括號裡每一項都變號：−(<i>x</i>² − 2<i>x</i> − 63)</td></tr>
+          <tr><td class="bad">2<i>x</i>² − 10<i>x</i> − 12 = (2<i>x</i> + 2)(<i>x</i> − 6)</td><td class="good">2<i>x</i> + 2 還能提出 2：先提公因數，= 2(<i>x</i> + 1)(<i>x</i> − 6)</td></tr>
+          <tr><td class="bad"><i>x</i>² + 4<i>x</i> + 8 一定可以十字交乘</td><td class="good">列完所有因數對都湊不出 4<i>x</i>，就是不能分解</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer><a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a></footer>
+  </div>
+</body>
+</html>

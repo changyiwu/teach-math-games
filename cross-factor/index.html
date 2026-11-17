@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>十字交乘填格 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="把數字磚填進十字的四格，看兩端、湊中間，用十字交乘法把二次多項式因式分解；也有要先提出 −1 或公因數、或是根本不能分解的題目。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --pink: #f9a8d4;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+    i.v { font-family: "Times New Roman", "Noto Serif", serif; font-style: italic; }
+
+    .screen { position: fixed; inset: 0; display: none; flex-direction: column; }
+    body[data-view="menu"] #menu, body[data-view="play"] #play, body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 10px 18px;
+      border-bottom: 1px solid var(--line); background: rgba(11, 16, 32, 0.55); backdrop-filter: blur(6px);
+    }
+    .home { color: var(--muted); text-decoration: none; font-size: 0.95rem; white-space: nowrap; }
+    .home:hover, .home:focus-visible { color: var(--text); }
+    .spacer { flex: 1 1 auto; }
+    .stat { font-size: 0.95rem; color: var(--muted); white-space: nowrap; }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+    .icon-btn {
+      border: 1px solid var(--line); background: rgba(15, 23, 42, 0.6); color: var(--text);
+      border-radius: 10px; width: 40px; height: 36px; font-size: 1.1rem; cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機 ── */
+    .menu-body {
+      flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 18px; padding: 20px 16px 32px; text-align: center; overflow-y: auto;
+    }
+    .menu-body > :first-child { margin-top: auto; }
+    .menu-body > :last-child { margin-bottom: auto; }
+    h1.title {
+      margin: 0; font-size: clamp(2rem, 7vw, 4.2rem); letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .unit { margin: 0 0 8px; opacity: 0.75; font-size: 0.95rem; }
+    .hint { margin: 0; color: var(--muted); font-size: clamp(0.95rem, 2.2vw, 1.25rem); max-width: 40ch; line-height: 1.7; }
+    .ctl-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+    .ctl {
+      display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line);
+      border-radius: 999px; background: var(--panel); font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6); color: var(--text); font-size: 1.1rem; cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+    .seg { display: flex; flex-wrap: wrap; justify-content: center; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--panel); }
+    .seg button { border: 0; background: transparent; color: var(--muted); padding: 9px 16px; font-size: 1rem; cursor: pointer; font-family: inherit; }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+    .level-note { margin: -6px 0 0; color: var(--muted); font-size: 0.9rem; max-width: 46ch; line-height: 1.6; }
+    .big-btn {
+      margin-top: 4px; padding: 18px 44px; border: 0; border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem); font-weight: 800; font-family: inherit; cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+    .learn-link { color: var(--cyan); text-decoration: none; font-size: 1rem; border-bottom: 1px dashed rgba(34, 211, 238, 0.5); padding-bottom: 2px; }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+    .keys { color: var(--muted); font-size: 0.85rem; opacity: 0.8; }
+    .keys kbd {
+      display: inline-block; padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
+      border-radius: 6px; background: rgba(15, 23, 42, 0.6); font-family: inherit; font-size: 0.85em;
+    }
+
+    /* ── 作答 ── */
+    .timer { flex: 0 0 auto; height: 10px; background: rgba(15, 23, 42, 0.8); }
+    .timer > i { display: block; height: 100%; width: 100%; transform-origin: left center; background: linear-gradient(90deg, var(--cyan), var(--accent-2)); }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center;
+      gap: clamp(6px, 1.4vh, 12px); padding: 10px 16px 14px; min-height: 0; overflow-y: auto;
+    }
+    .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 14px; max-width: 1100px; }
+    .rule-tag {
+      padding: 4px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem); background: var(--panel); white-space: nowrap;
+    }
+    .ask { font-size: clamp(1.25rem, 3.6vw, 2.2rem); font-weight: 700; text-align: center; line-height: 1.4; }
+    .ask .poly { color: var(--accent-2); white-space: nowrap; }
+    .ask .eq { color: var(--text); white-space: nowrap; }
+    .sub { color: var(--muted); font-size: clamp(0.9rem, 2vw, 1.1rem); text-align: center; }
+    .sub em { font-style: normal; color: var(--text); font-weight: 700; }
+
+    .count {
+      position: absolute; top: 54px; right: 18px; font-size: clamp(2.4rem, 7vw, 4.4rem); font-weight: 800;
+      color: var(--accent-2); opacity: 0.85; pointer-events: none; font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    .stage { width: 100%; max-width: 1200px; display: flex; flex-direction: column; align-items: center; gap: clamp(8px, 1.6vh, 16px); }
+    .stage[hidden] { display: none; }
+    .work { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .pad { display: flex; flex-direction: column; align-items: center; gap: clamp(8px, 1.4vh, 12px); width: 100%; }
+    @media (min-aspect-ratio: 5/4) and (min-width: 720px) {
+      .head { padding: 0 110px; }
+      .stage.split { flex-direction: row; align-items: center; justify-content: center; gap: clamp(20px, 4vw, 56px); }
+      .stage.split .pad { max-width: 560px; }
+    }
+
+    /* 十字 */
+    .cross { display: grid; grid-template-columns: auto clamp(56px, 9vw, 92px) auto; grid-template-rows: auto auto; align-items: center; column-gap: 4px; row-gap: clamp(8px, 1.6vh, 16px); }
+    .cross .xsvg { grid-column: 2; grid-row: 1 / span 2; width: 100%; height: 100%; }
+    .slot {
+      min-width: clamp(88px, 14vw, 140px); height: clamp(54px, 10vh, 84px); padding: 0 12px;
+      border: 2px dashed rgba(148, 163, 184, 0.55); border-radius: 14px; background: rgba(15, 23, 42, 0.55);
+      color: var(--text); font-family: inherit; font-size: clamp(1.5rem, 4.4vw, 2.5rem); font-weight: 800; cursor: pointer;
+      font-variant-numeric: tabular-nums; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .slot.filled { border-style: solid; border-color: rgba(148, 163, 184, 0.6); background: var(--card); }
+    .slot.sel { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.25); }
+    .slot.fixed { cursor: default; border-style: solid; opacity: 0.85; }
+    .slot .ph { color: var(--muted); font-weight: 600; font-size: 0.7em; }
+    .slot.L1, .slot.L2 { color: #bbf7d0; }
+    .slot.R1, .slot.R2 { color: var(--pink); }
+    .slot:disabled { cursor: default; }
+
+    .readout { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: clamp(1rem, 2.6vw, 1.4rem); font-variant-numeric: tabular-nums; }
+    .readout div { padding: 2px 12px; border-radius: 10px; white-space: nowrap; }
+    .readout .lab { color: var(--muted); font-size: 0.8em; margin-right: 6px; }
+    .readout .ok { background: rgba(34, 197, 94, 0.14); color: #bbf7d0; }
+    .readout .ng { background: rgba(239, 68, 68, 0.14); color: #fecaca; }
+    .readout .wait { color: var(--muted); }
+    .readout .need { color: var(--muted); font-size: 0.8em; margin-left: 6px; }
+
+    .tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(6px, 1vw, 10px); max-width: 640px; }
+    .tiles-lab { color: var(--muted); font-size: 0.9rem; }
+    .tile {
+      min-width: clamp(50px, 8vw, 68px); height: clamp(42px, 7.4vh, 58px); padding: 0 10px; border: 2px solid var(--line); border-radius: 12px;
+      background: var(--card); color: var(--text); font-family: inherit; font-size: clamp(1.15rem, 3vw, 1.6rem); font-weight: 800; cursor: pointer;
+      font-variant-numeric: tabular-nums; transition: transform 0.1s, border-color 0.15s;
+    }
+    .tile.l { color: #bbf7d0; }
+    .tile.r { color: var(--pink); }
+    .tile:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--cyan); }
+    .tile:disabled { opacity: 0.3; cursor: default; }
+    .acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .act {
+      padding: 12px 22px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+      font-family: inherit; font-size: clamp(1rem, 2.6vw, 1.25rem); cursor: pointer;
+    }
+    .act:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .act.go { border: 0; background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05; font-weight: 800; padding: 12px 30px; }
+    .act.go:hover:not(:disabled) { color: #231a05; filter: brightness(1.06); }
+    .act.no { color: #fca5a5; border-color: rgba(239, 68, 68, 0.45); }
+    .act:disabled { opacity: 0.4; cursor: default; }
+    .msg { min-height: 1.4em; font-size: clamp(0.95rem, 2.2vw, 1.1rem); text-align: center; color: var(--accent-2); }
+
+    /* 第一步：先提什麼 */
+    .choices { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(8px, 1.4vw, 14px); max-width: 1000px; }
+    .choice {
+      position: relative; min-width: clamp(150px, 26vw, 300px); padding: clamp(10px, 2vh, 16px) 18px clamp(10px, 2vh, 16px) 36px;
+      border: 2px solid var(--line); border-radius: 16px; background: var(--card); color: var(--text);
+      font-family: inherit; font-size: clamp(1.1rem, 3vw, 1.7rem); font-weight: 700; cursor: pointer; white-space: nowrap;
+      transition: transform 0.1s, border-color 0.15s;
+    }
+    .choice .k { position: absolute; top: 50%; left: 12px; transform: translateY(-50%); font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+    .choice:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--cyan); }
+    .choice:disabled { opacity: 0.45; cursor: default; }
+
+    /* ── 結果 ── */
+    .verdict {
+      position: fixed; inset: 0; z-index: 20; display: none; flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 14px; padding: 24px 16px; background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95));
+      backdrop-filter: blur(3px); overflow-y: auto;
+    }
+    .verdict > * { flex-shrink: 0; }
+    .verdict > :first-child { margin-top: auto; }
+    .verdict > :last-child { margin-bottom: auto; }
+    body[data-view="result"] .verdict { display: flex; }
+    .verdict h2 { margin: 0; font-size: clamp(2rem, 7vw, 4rem); letter-spacing: 0.06em; animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1); }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+    @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .solution { width: min(1000px, 100%); border: 1px solid var(--line); border-radius: 18px; background: var(--panel); padding: clamp(12px, 2.6vw, 22px); text-align: center; }
+    .sol-cross { display: flex; justify-content: center; margin: 0 auto 8px; }
+    .sol-cross .cross { row-gap: 6px; }
+    .sol-cross .slot { height: clamp(42px, 7vh, 60px); min-width: clamp(70px, 11vw, 110px); font-size: clamp(1.2rem, 3.4vw, 1.9rem); cursor: default; }
+    .sol-cross .readout { font-size: clamp(0.95rem, 2.2vw, 1.2rem); }
+    .answer-chip {
+      display: inline-block; margin-bottom: 10px; padding: 4px 18px; border-radius: 999px;
+      font-size: clamp(1.1rem, 3vw, 1.7rem); font-weight: 800; color: var(--win); border: 2px solid currentColor;
+    }
+    .why { font-size: clamp(1rem, 2.4vw, 1.25rem); line-height: 1.9; }
+    .why b { color: var(--accent-2); }
+    .why .warn { color: #fca5a5; }
+    .why .soft { color: var(--muted); font-size: 0.92em; }
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .ghost-btn { padding: 12px 24px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--text); font-family: inherit; font-size: 1.05rem; cursor: pointer; }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .nw { white-space: nowrap; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; font-size: 2.2rem; }
+      .head { padding-right: 52px; }
+      .seg button { padding: 8px 12px; }
+      .choice { min-width: 0; width: 100%; }
+    }
+    @media (max-height: 640px) {
+      .verdict { gap: 8px; padding-top: 12px; }
+      .verdict h2 { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+    <div class="menu-body">
+      <h1 class="title">十字交乘填格</h1>
+      <p class="unit">📘 第3冊・第3章 因式分解・第2節 利用十字交乘法做因式分解</p>
+      <p class="hint">點數字磚，把十字的格子填好：<strong>看兩端、湊中間</strong>。兩端相乘對了、交叉相乘的和也湊對，<span class="limit-val">30</span> 秒內按「送出」就過關；怎麼拆都湊不出來，就按「不能分解」。</p>
+      <div class="ctl-row">
+        <div class="seg" id="level" role="group" aria-label="難度">
+          <button type="button" data-level="basic" aria-pressed="true">x² 係數為 1</button>
+          <button type="button" data-level="adv" aria-pressed="false">x² 係數不為 1</button>
+          <button type="button" data-level="mix" aria-pressed="false">綜合</button>
+        </div>
+      </div>
+      <div class="ctl-row">
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-5" aria-label="減少 5 秒">−</button>
+          <b class="limit-val">30</b>秒
+          <button type="button" data-step="5" aria-label="增加 5 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+      <button type="button" class="big-btn" id="start">✖️ 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看十字交乘小抄</a>
+      <p class="keys">鍵盤：<kbd>Enter</kbd> 送出　<kbd>Backspace</kbd> 清掉選中的格子　第一步按 <kbd>1</kbd>～<kbd>4</kbd>　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+    <div class="count" id="count">30</div>
+    <div class="play-body">
+      <div class="head">
+        <div class="rule-tag" id="rule">十字交乘</div>
+        <div class="ask" id="ask"></div>
+      </div>
+      <div class="sub" id="sub"></div>
+      <div class="stage" id="pre-stage" hidden>
+        <div class="choices" id="choices"></div>
+      </div>
+      <div class="stage split" id="cross-stage">
+        <div class="work">
+          <div id="cross"></div>
+          <div class="readout" id="readout"></div>
+        </div>
+        <div class="pad">
+          <div class="tiles-lab" id="tiles-lab"></div>
+          <div class="tiles" id="tiles"></div>
+          <div class="acts">
+            <button type="button" class="act" id="clear">清空</button>
+            <button type="button" class="act no" id="nope">🚫 不能分解</button>
+            <button type="button" class="act go" id="submit">送出 ▸</button>
+          </div>
+          <div class="msg" id="msg"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="answer-chip" id="sol-ans"></div>
+      <div class="sol-cross" id="sol-cross"></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器，限時依難度各自記）── */
+  const LEVELS = ['basic', 'adv', 'mix'];
+  const LIMIT_DEFAULT = { basic: 30, adv: 45, mix: 60 };
+  const LIMIT_MIN = 10, LIMIT_MAX = 180;
+  const RULE = { basic: 'x² 係數為 1', adv: 'x² 係數不為 1', mix: '綜合' };
+  const LEVEL_NOTE = {
+    basic: '形如 x² + px + q：左欄固定是 x、x，只要找右欄兩數，相乘等於 q、相加等於 p。偶爾會出缺 x 項的題目（當成 0x）。',
+    adv: '形如 6x² − 23x + 21：左欄、右欄都要拆。x² 係數是正的，左欄只要考慮正因數；右欄上下對調，交叉的和就不一樣，要分開試。',
+    mix: '先看要不要提：x² 係數是負的先提出 −1，三項有公因數先提出公因數，再把括號裡的式子十字交乘。'
+  };
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 私密視窗等情況：不記也能玩 */ } }
+  };
+  const clampLimit = v => Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v));
+  let level = LEVELS.includes(store.get('cf-level')) ? store.get('cf-level') : 'basic';
+  const limits = {};
+  LEVELS.forEach(l => {
+    const v = parseInt(store.get(`cf-limit-${l}`), 10);
+    limits[l] = clampLimit(Number.isFinite(v) ? v : LIMIT_DEFAULT[l]);
+  });
+  let muted = store.get('cf-muted') === '1';
+  const limit = () => limits[level];
+
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  const coin = (p = 0.5) => Math.random() < p;
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; };
+  const isSq = n => n >= 0 && Number.isInteger(Math.sqrt(n));
+
+  /* ══ 式子的寫法 ══════════════════════════════════ */
+  const MINUS = '−';
+  const num = n => (n < 0 ? MINUS : '') + Math.abs(n);
+  const V = v => `<i class="v">${v}</i>`;
+  // 單項式 n·v（係數 1 省略）
+  function mono(n, v, deg = 1) {
+    const s = n < 0 ? MINUS : '';
+    const m = Math.abs(n);
+    const pw = deg === 2 ? '²' : '';
+    return `${s}${m === 1 ? '' : m}${V(v)}${pw}`;
+  }
+  // 依序把各項接起來：[[係數, 次數], …]，係數 0 的項不寫
+  function poly(terms, v) {
+    let out = '';
+    terms.forEach(([c, d]) => {
+      if (c === 0) return;
+      const abs = Math.abs(c);
+      const body = d === 0 ? String(abs) : `${abs === 1 ? '' : abs}${V(v)}${d === 2 ? '²' : ''}`;
+      if (!out) out = (c < 0 ? MINUS : '') + body;
+      else out += ` ${c < 0 ? MINUS : '+'} ${body}`;
+    });
+    return out || '0';
+  }
+  const quad = (a, b, c, v) => poly([[a, 2], [b, 1], [c, 0]], v);
+  const lin = (p, q, v) => poly([[p, 1], [q, 0]], v);
+  // k 乘上括號：k = 1 不寫、k = −1 只寫負號
+  const kPre = k => (k === 1 ? '' : k === -1 ? MINUS : num(k));
+  function factored(k, f, v) {
+    const [p, q, r, s] = f;
+    const A = `(${lin(p, q, v)})`, B = `(${lin(r, s, v)})`;
+    return kPre(k) + (p === r && q === s ? `${A}²` : A + B);
+  }
+
+  /* ══ 出題 ══════════════════════════════════════════
+     內層（要十字交乘的）：a x² + b x + c，a > 0。
+     能分解：(p x + q)(r x + s)，p、r > 0，各自係數互質 → 內層三項沒有公因數。
+     綜合題：原式 = k × 內層，k 是 −1 或公因數（含負號）。 */
+  const divisors = n => { const m = Math.abs(n), out = []; for (let d = 1; d <= m; d++) if (m % d === 0) out.push(d); return out; };
+  const expand = ([p, q, r, s]) => [p * r, p * s + q * r, q * s];
+
+  // 把所有整數拆法列出來（左欄只用正因數），回傳能湊出的那一組
+  function findFactor(a, b, c) {
+    for (const p of divisors(a)) {
+      const r = a / p;
+      for (const d of divisors(c)) {
+        for (const q of [d, -d]) {
+          const s = c / q;
+          if (p * s + q * r === b) return [p, q, r, s];
+        }
+      }
+    }
+    return null;
+  }
+
+  function basicFactorable() {
+    for (;;) {
+      let m, n;
+      if (coin(0.1)) { m = R(2, 9); n = -m; }                 // 缺 x 項：x² − 9
+      else if (coin(0.12)) { m = R(1, 9) * (coin() ? 1 : -1); n = m; }   // 完全平方
+      else { m = R(1, 12) * (coin() ? 1 : -1); n = R(1, 12) * (coin() ? 1 : -1); }
+      if (Math.abs(m * n) > 48 || Math.abs(m * n) < 2) continue;
+      return { a: 1, f: [1, m, 1, n] };
+    }
+  }
+  function advFactorable() {
+    for (;;) {
+      const p = R(1, 6), r = R(1, 6);
+      const a = p * r;
+      if (a < 2 || a > 12) continue;
+      const q = R(1, 9) * (coin() ? 1 : -1), s = R(1, 9) * (coin() ? 1 : -1);
+      if (gcd(p, q) !== 1 || gcd(r, s) !== 1) continue;
+      if (Math.abs(q * s) > 36) continue;
+      const [, b] = expand([p, q, r, s]);
+      if (Math.abs(b) > 40) continue;
+      return { a, f: [p, q, r, s] };
+    }
+  }
+  // 不能分解：從能分解的題目把中間項或常數項推一點點，或是 x² + 9 這類
+  function unfactorable(adv) {
+    for (;;) {
+      let a, b, c;
+      if (!adv && coin(0.2)) { a = 1; b = 0; c = R(2, 30) * (coin(0.6) ? 1 : -1); }
+      else {
+        const base = adv ? advFactorable() : basicFactorable();
+        [a, b, c] = expand(base.f);
+        if (coin(0.7)) b += pickOf([-2, -1, 1, 2]); else c += pickOf([-2, -1, 1, 2]);
+      }
+      if (c === 0 || gcd(gcd(a, b), c) !== 1) continue;
+      if (Math.abs(c) > 48 || Math.abs(b) > 40) continue;
+      if (findFactor(a, b, c)) continue;
+      return { a, b, c, f: null };
+    }
+  }
+  function innerQ(adv) {
+    if (coin(0.15)) return unfactorable(adv);
+    const g = adv ? advFactorable() : basicFactorable();
+    const [a, b, c] = expand(g.f);
+    return { a, b, c, f: g.f };
+  }
+
+  function makeQ(lv = level) {
+    let q;
+    if (lv === 'mix') {
+      for (;;) {
+        q = innerQ(coin(0.4));
+        const k = pickOf([-1, -1, -1, 2, 2, 3, -2, -3, 4, 5, -4, 6]);
+        if (Math.max(Math.abs(q.a), Math.abs(q.b), Math.abs(q.c)) * Math.abs(k) > 150) continue;
+        q.k = k;
+        q.v = coin(0.25) ? 'y' : 'x';
+        break;
+      }
+    } else {
+      q = innerQ(lv === 'adv');
+      q.k = 1;
+      q.v = 'x';
+    }
+    q.lv = lv;
+    q.A = q.k * q.a; q.B = q.k * q.b; q.C = q.k * q.c;
+    q.fixedLeft = q.a === 1;
+    q.stage = lv === 'mix' ? 'pre' : 'cross';
+    if (lv === 'mix') q.opts = preOptions(q);
+    q.lTiles = divisors(q.a);
+    const dc = divisors(q.c);
+    q.rTiles = [...dc, ...dc.map(d => -d)];
+    return q;
+  }
+
+  /* ══ 綜合題第一步：先提什麼（四選一）══════════════
+     每個選項是 kk × (a′x² + b′x + c′)；只有完整提乾淨、乘回去等於原式的那一個是對的。 */
+  function preOptions(q) {
+    const { k, a, b, c, A, B, C } = q;
+    const mk = (kk, aa, bb, cc, code) => ({ kk, t: [aa, bb, cc], code });
+    const right = mk(k, a, b, c, 'ok');
+    const cand = [];
+    cand.push(mk(1, A, B, C, 'none'));                                  // 不用提
+    if (k < 0) {
+      cand.push(mk(k, a, -b, -c, 'flip'));                             // 括號裡只有 x² 變號
+      if (b !== 0) cand.push(mk(k, a, -b, c, 'flip'));
+      cand.push(mk(k, a, b, -c, 'flip'));
+      cand.push(mk(k, -a, b, c, 'flip'));                              // 提了 −1，x² 項卻沒變號
+      if (k !== -1) cand.push(mk(-1, -A, -B, -C, 'partial'));          // 只提 −1
+    }
+    if (Math.abs(k) > 1) {
+      cand.push(mk(k, a, b, C, 'divide'));                             // 常數項忘了除
+      if (B !== b) cand.push(mk(k, a, B, c, 'divide'));
+      cand.push(mk(-k, a, b, c, 'ksign'));                             // 提出的數正負號錯
+    }
+    const key = o => `${o.kk}|${o.t.join(',')}`;
+    const seen = new Set([key(right), key(cand[0])]);
+    const pool = [];
+    shuffle(cand.slice(1)).forEach(o => { if (!seen.has(key(o))) { seen.add(key(o)); pool.push(o); } });
+    const picked = [cand[0], ...pool].slice(0, 3);
+    return shuffle([right, ...picked]);
+  }
+  function optHtml(o, v) {
+    if (o.code === 'none' || (o.kk === 1)) return '不用提，直接十字交乘';
+    return `${kPre(o.kk)}(${quad(o.t[0], o.t[1], o.t[2], v)})`;
+  }
+
+  /* ══ 診斷：學生填的十字錯在哪 ══════════════════════
+     fill = { L1, R1, L2, R2 }（L 是 x 的係數）；回傳代碼。 */
+  function diagnose(q, fill) {
+    if (fill === 'none') return q.f ? 'none-but-can' : 'ok';
+    const { L1, R1, L2, R2 } = fill;
+    if (L1 * L2 !== q.a) return 'left';
+    const pr = R1 * R2;
+    if (pr !== q.c) return Math.abs(pr) === Math.abs(q.c) ? 'prod-sign' : 'prod';
+    const sum = R1 * L2 + R2 * L1;
+    if (sum === q.b) return 'ok';
+    if (sum === -q.b) return 'sum-sign';
+    if (L1 !== L2 && R2 * L2 + R1 * L1 === q.b) return 'swap';
+    return 'sum';
+  }
+
+  /* ── 音效 ── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) { const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return null; ac = new Ctx(); }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio(); if (!c) return;
+    const t0 = c.currentTime + when, osc = c.createOscillator(), g = c.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination); osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+  const sfxTap = () => tone(740, 0.05, 0, 'triangle', 0.06);
+  const sfxStep = () => { tone(520, 0.1, 0, 'triangle', 0.1); tone(780, 0.16, 0.08, 'triangle', 0.1); };
+
+  /* ── 狀態 ── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, curLimit = 30;
+  let fill = {}, sel = 'R1', choiceBtns = [];
+  const SLOTS = ['L1', 'R1', 'L2', 'R2'];
+
+  const setView = v => { document.body.dataset.view = v; };
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      b.disabled = Number(b.dataset.step) < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+  function paintLevel() {
+    document.querySelectorAll('#level button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.level === level)));
+    $('level-note').textContent = LEVEL_NOTE[level];
+    paintLimit();
+  }
+  function paintMute() { $('mute').textContent = $('mute2').textContent = muted ? '🔇' : '🔊'; }
+
+  /* ── 十字 ── */
+  const slotText = (s, n, v) => (n === undefined ? '<span class="ph">?</span>' : s[0] === 'L' ? mono(n, v) : (n > 0 ? '+' : MINUS) + Math.abs(n));
+  const X_SVG = '<svg class="xsvg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><line x1="6" y1="18" x2="94" y2="82" stroke="#22d3ee" stroke-width="4" vector-effect="non-scaling-stroke"/><line x1="6" y1="82" x2="94" y2="18" stroke="#22d3ee" stroke-width="4" vector-effect="non-scaling-stroke"/></svg>';
+  function crossHtml(q, f, opts = {}) {
+    const { interactive = false, selSlot = null } = opts;
+    const cell = s => {
+      const fixed = s[0] === 'L' && q.fixedLeft;
+      const n = f[s];
+      const cls = ['slot', s, n !== undefined ? 'filled' : '', fixed ? 'fixed' : '', interactive && selSlot === s && !fixed ? 'sel' : ''].join(' ');
+      return `<button type="button" class="${cls}" data-slot="${s}" ${interactive && !fixed ? '' : 'disabled'}>${slotText(s, n, q.v)}</button>`;
+    };
+    return `<div class="cross">${cell('L1')}${X_SVG}${cell('R1')}${cell('L2')}${cell('R2')}</div>`;
+  }
+  // 即時檢查：左欄乘積、右欄乘積、交叉相乘的和
+  function readoutHtml(q, f) {
+    const v = q.v;
+    const rows = [];
+    const st = (ok) => (ok ? 'ok' : 'ng');
+    if (!q.fixedLeft) {
+      if (f.L1 !== undefined && f.L2 !== undefined) {
+        const p = f.L1 * f.L2;
+        rows.push(`<div class="${st(p === q.a)}"><span class="lab">左欄相乘</span>${mono(f.L1, v)} × ${mono(f.L2, v)} = ${mono(p, v, 2)} ${p === q.a ? '✔' : `✘<span class="need">要 ${mono(q.a, v, 2)}</span>`}</div>`);
+      } else rows.push(`<div class="wait"><span class="lab">左欄相乘</span>要等於 ${mono(q.a, v, 2)}</div>`);
+    }
+    if (f.R1 !== undefined && f.R2 !== undefined) {
+      const p = f.R1 * f.R2;
+      const show = n => (n < 0 ? `(${num(n)})` : String(n));
+      rows.push(`<div class="${st(p === q.c)}"><span class="lab">右欄相乘</span>${show(f.R1)} × ${show(f.R2)} = ${num(p)} ${p === q.c ? '✔' : `✘<span class="need">要 ${num(q.c)}</span>`}</div>`);
+    } else rows.push(`<div class="wait"><span class="lab">右欄相乘</span>要等於 ${num(q.c)}</div>`);
+    if (SLOTS.every(s => f[s] !== undefined)) {
+      const t1 = f.R1 * f.L2, t2 = f.R2 * f.L1, sum = t1 + t2;
+      rows.push(`<div class="${st(sum === q.b)}"><span class="lab">交叉相乘</span>${crossSum(t1, t2, v)} ${sum === q.b ? '✔' : `✘<span class="need">要 ${mono0(q.b, v)}</span>`}</div>`);
+    } else rows.push(`<div class="wait"><span class="lab">交叉相乘的和</span>要等於 ${mono0(q.b, v)}</div>`);
+    return rows.join('');
+  }
+  const mono0 = (n, v) => (n === 0 ? `0${V(v)}` : mono(n, v));
+  // 課本寫法：−3x + 7x = 4x
+  const crossSum = (t1, t2, v) => `${mono(t1, v)} ${t2 < 0 ? MINUS : '+'} ${mono(Math.abs(t2), v)} = ${mono0(t1 + t2, v)}`;
+
+  function paintCross() {
+    $('cross').innerHTML = crossHtml(cur, fill, { interactive: !locked, selSlot: sel });
+    $('readout').innerHTML = readoutHtml(cur, fill);
+    const left = sel[0] === 'L';
+    $('tiles-lab').textContent = left ? `左欄：${cur.v}² 項係數 ${cur.a} 的正因數` : `右欄：常數項 ${num(cur.c)} 的因數`;
+    const list = left ? cur.lTiles : cur.rTiles;
+    $('tiles').innerHTML = list.map(n => `<button type="button" class="tile ${left ? 'l' : 'r'}" data-n="${n}">${left ? mono(n, cur.v) : num(n)}</button>`).join('');
+  }
+
+  function fixedFill(q) { return q.fixedLeft ? { L1: 1, L2: 1 } : {}; }
+  const editable = () => SLOTS.filter(s => !(s[0] === 'L' && cur.fixedLeft));
+
+  /* ── 出題 ── */
+  function startQuestion() {
+    cur = makeQ(level);
+    curLimit = limit();
+    locked = false;
+    fill = fixedFill(cur);
+    sel = editable()[0];
+    $('rule').textContent = RULE[cur.lv];
+    $('msg').textContent = '';
+    if (cur.stage === 'pre') showPre(); else showCross();
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + curLimit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  function showPre() {
+    const q = cur;
+    $('ask').innerHTML = `因式分解 <span class="poly">${quad(q.A, q.B, q.C, q.v)}</span>`;
+    $('sub').innerHTML = '第一步：先看要不要<em>提出 −1</em> 或<em>公因數</em>，選出正確的改寫。';
+    $('pre-stage').hidden = false;
+    $('cross-stage').hidden = true;
+    $('choices').innerHTML = q.opts.map((o, i) => `<button type="button" class="choice" data-i="${i}"><span class="k">${i + 1}</span>${optHtml(o, q.v)}</button>`).join('');
+    choiceBtns = Array.from($('choices').querySelectorAll('.choice'));
+  }
+
+  function showCross() {
+    const q = cur;
+    const orig = quad(q.A, q.B, q.C, q.v);
+    if (q.lv === 'mix') {
+      $('ask').innerHTML = `<span class="poly">${orig}</span> <span class="eq">= ${kPre(q.k)}(${quad(q.a, q.b, q.c, q.v)})</span>`;
+      $('sub').innerHTML = '第二步：把<em>括號裡</em>的式子用十字交乘分解。';
+    } else {
+      $('ask').innerHTML = `因式分解 <span class="poly">${orig}</span>`;
+      $('sub').innerHTML = q.fixedLeft
+        ? `右欄兩數：<em>相乘</em>等於 ${num(q.c)}、<em>交叉相乘的和</em>等於 ${mono0(q.b, q.v)}。`
+        : '先點格子，再點下面的數字磚：左欄乘出 ' + mono(q.a, q.v, 2) + '、右欄乘出 ' + num(q.c) + '，交叉相乘湊出中間項。';
+    }
+    $('pre-stage').hidden = true;
+    $('cross-stage').hidden = false;
+    choiceBtns = [];
+    paintCross();
+  }
+
+  $('choices').addEventListener('click', e => {
+    const b = e.target.closest('.choice');
+    if (b) choosePre(Number(b.dataset.i));
+  });
+  function choosePre(i) {
+    if (locked || !cur || cur.stage !== 'pre') return;
+    const o = cur.opts[i];
+    if (!o) return;
+    if (o.code !== 'ok') { cur.preWrong = o; judge(false); return; }
+    sfxStep();
+    cur.stage = 'cross';
+    showCross();
+  }
+
+  $('cross').addEventListener('click', e => {
+    const b = e.target.closest('[data-slot]');
+    if (!b || locked || b.disabled) return;
+    sel = b.dataset.slot;
+    paintCross();
+  });
+  $('tiles').addEventListener('click', e => {
+    const b = e.target.closest('[data-n]');
+    if (!b || locked) return;
+    fill[sel] = Number(b.dataset.n);
+    sfxTap();
+    $('msg').textContent = '';
+    // 自動跳到下一個空格
+    const ed = editable();
+    const nextEmpty = ed.slice(ed.indexOf(sel) + 1).concat(ed).find(s => fill[s] === undefined);
+    if (nextEmpty) sel = nextEmpty;
+    paintCross();
+  });
+  $('clear').addEventListener('click', () => {
+    if (locked) return;
+    fill = fixedFill(cur);
+    sel = editable()[0];
+    $('msg').textContent = '';
+    paintCross();
+  });
+  $('nope').addEventListener('click', () => { if (!locked && cur.stage === 'cross') submit('none'); });
+  $('submit').addEventListener('click', () => { if (!locked && cur.stage === 'cross') submit(); });
+
+  function submit(mode) {
+    if (mode === 'none') { cur.fill = 'none'; judge(diagnose(cur, 'none') === 'ok'); return; }
+    if (!SLOTS.every(s => fill[s] !== undefined)) { $('msg').textContent = '四格都填好才能送出喔！'; return; }
+    cur.fill = { ...fill };
+    judge(diagnose(cur, cur.fill) === 'ok');
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      $('bar').style.transform = `scaleX(${left / (curLimit * 1000)})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 5 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { cur.timeout = true; judge(false); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 結果的說明 ── */
+  // 乘回去驗算：(px + q)(rx + s) = prx² + psx + qrx + qs = …
+  function checkBack(q) {
+    const [p, qq, r, s] = q.f, v = q.v;
+    const terms = `${mono(p * r, v, 2)} ${p * s < 0 ? MINUS : '+'} ${mono(Math.abs(p * s), v)} ${qq * r < 0 ? MINUS : '+'} ${mono(Math.abs(qq * r), v)} ${qq * s < 0 ? MINUS : '+'} ${Math.abs(qq * s)}`;
+    let line = `<span class="nw">${factored(1, q.f, v)}</span> = <span class="nw">${terms}</span> = <span class="nw">${quad(q.a, q.b, q.c, v)}</span>`;
+    if (q.k !== 1) line += `，乘上 ${num(q.k)} 就是 <span class="nw">${quad(q.A, q.B, q.C, v)}</span>`;
+    return `<div>乘回去驗算：${line} ✔</div>`;
+  }
+  // 不能分解：列出拆法
+  function cantWhy(q) {
+    const v = q.v;
+    let s = '';
+    if (q.b === 0) s += `<div>缺 ${V(v)} 項，當成 <b>0${V(v)}</b>：要找兩數相乘 ${num(q.c)}、交叉相乘的和是 0。</div>`;
+    if (q.a === 1) {
+      const pairs = [];
+      divisors(q.c).forEach(d => {
+        [d, -d].forEach(m => { const n = q.c / m; if (m <= n) pairs.push([m, n]); });
+      });
+      const show = n => (n < 0 ? `(${num(n)})` : String(n));
+      s += `<div>${num(q.c)} 的拆法：${pairs.map(([m, n]) => `<span class="nw">${show(m)} × ${show(n)}</span>`).join('、')}</div>`;
+      s += `<div>兩數的和分別是 ${pairs.map(([m, n]) => num(m + n)).join('、')}，<b>沒有一組是 ${num(q.b)}</b>，所以不能分解。</div>`;
+    } else {
+      const combos = divisors(q.a).length * divisors(q.c).length * 2;
+      s += `<div>左欄 ${mono(q.a, v, 2)} 拆成正因數、右欄 ${num(q.c)} 拆成因數，上下對調也算，一共 ${combos} 種排法，交叉相乘的和<b>都湊不出 ${mono0(q.b, v)}</b>，所以不能分解。</div>`;
+    }
+    return s;
+  }
+  function wrongWhy(q) {
+    const v = q.v;
+    if (q.preWrong) {
+      const o = q.preWrong;
+      const orig = quad(q.A, q.B, q.C, v);
+      const good = `${kPre(q.k)}(${quad(q.a, q.b, q.c, v)})`;
+      const base = `你選了「${optHtml(o, v)}」。`;
+      if (o.code === 'none') {
+        if (q.k === -1) return base + `${v}² 項係數是負的，要先<b>提出 −1</b>，讓括號裡的 ${v}² 項係數變成正的：<span class="nw">${orig} = ${good}</span>。`;
+        if (q.k < 0) return base + `${v}² 項係數是負的，三項又有公因數 ${Math.abs(q.k)}，要一起<b>提出 ${num(q.k)}</b>：<span class="nw">${orig} = ${good}</span>。`;
+        const eg = q.f ? `像 <span class="nw">${factored(1, [q.k * q.f[0], q.k * q.f[1], q.f[2], q.f[3]], v)}</span> 這種` : '';
+        return base + `三項都有公因數 <b>${q.k}</b>，要先提出來：<span class="nw">${orig} = ${good}</span>。不提的話，十字交乘會得到${eg}括號裡還能再提出 ${q.k} 的結果，分解不完整。`;
+      }
+      if (o.code === 'partial') return base + `−1 提出了，但括號裡三項還有公因數 ${Math.abs(q.k)}，也要一起提出：<span class="nw">${orig} = ${good}</span>。`;
+      if (o.code === 'flip') return base + `提出 −1 之後，括號裡<b>每一項都要變號</b>：<span class="nw">${orig} = ${good}</span>。把你選的乘開來，會變成 <span class="nw">${quad(o.kk * o.t[0], o.kk * o.t[1], o.kk * o.t[2], v)}</span>，和原式不一樣。`;
+      if (o.code === 'divide') return base + `提出 ${num(q.k)} 之後，<b>每一項都要除以 ${num(q.k)}</b>，一項都不能漏：<span class="nw">${orig} = ${good}</span>。`;
+      if (o.code === 'ksign') return base + `把它乘開來是 <span class="nw">${quad(o.kk * o.t[0], o.kk * o.t[1], o.kk * o.t[2], v)}</span>，正負號全反了；要提出的是 <b>${num(q.k)}</b>：<span class="nw">${orig} = ${good}</span>。`;
+      return base;
+    }
+    const f = q.fill;
+    if (!f) return '';
+    const code = diagnose(q, f);
+    if (code === 'none-but-can') return `這題<b>可以分解</b>：照上面的十字，交叉相乘的和剛好是 ${mono0(q.b, v)}。只要有一組湊得出來，就不能說「不能分解」。`;
+    const show = n => (n < 0 ? `(${num(n)})` : String(n));
+    const yours = `你填的是 <span class="nw">${factored(1, [f.L1, f.R1, f.L2, f.R2], v)}</span>。`;
+    let s;
+    if (code === 'left') s = `左欄 ${mono(f.L1, v)} × ${mono(f.L2, v)} = ${mono(f.L1 * f.L2, v, 2)}，<b>不是 ${mono(q.a, v, 2)}</b>。左欄兩個相乘要等於 ${v}² 項。`;
+    else if (code === 'prod-sign') s = `右欄 ${show(f.R1)} × ${show(f.R2)} = ${num(f.R1 * f.R2)}，<b>正負號不對</b>，常數項是 ${num(q.c)}。${q.c < 0 ? '常數項是負的，兩數要<b>一正一負</b>。' : '常數項是正的，兩數要<b>同號</b>。'}`;
+    else if (code === 'prod') s = `右欄 ${show(f.R1)} × ${show(f.R2)} = ${num(f.R1 * f.R2)}，<b>不是常數項 ${num(q.c)}</b>。`;
+    else if (code === 'sum-sign') s = `兩端都對了，可是交叉相乘 ${crossSum(f.R1 * f.L2, f.R2 * f.L1, v)}，和題目的 ${mono0(q.b, v)} <b>差一個負號</b>：把右欄兩數的<b>正負號對調</b>就對了。`;
+    else if (code === 'swap') s = `兩端都對了，可是交叉相乘 ${crossSum(f.R1 * f.L2, f.R2 * f.L1, v)}，不是 ${mono0(q.b, v)}。左欄不一樣時，右欄<b>上下對調</b>結果就不同，換個位置試試。`;
+    else s = `兩端都對了，可是交叉相乘 ${crossSum(f.R1 * f.L2, f.R2 * f.L1, v)}，<b>湊不出 ${mono0(q.b, v)}</b>，要換一組拆法。`;
+    if (!q.f) s += ' 而且這題怎麼拆都湊不出來，要按「不能分解」。';
+    return yours + s;
+  }
+
+  function judge(win) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    choiceBtns.forEach(b => { b.disabled = true; });
+    document.body.classList.remove('urgent');
+    const q = cur;
+    const timeout = !!q.timeout;
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+    if (q.stage === 'cross') paintCross();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+
+    const orig = quad(q.A, q.B, q.C, q.v);
+    let why = '';
+    if (q.k !== 1) why += `<div>先提出 <b>${num(q.k)}</b>：<span class="nw">${orig} = ${kPre(q.k)}(${quad(q.a, q.b, q.c, q.v)})</span></div>`;
+    if (q.f) {
+      $('sol-ans').innerHTML = `${orig} = ${factored(q.k, q.f, q.v)}`;
+      const [p, qq, r, s] = q.f;
+      const ff = { L1: p, R1: qq, L2: r, R2: s };
+      $('sol-cross').innerHTML = `<div class="work">${crossHtml({ ...q, fixedLeft: false }, ff)}<div class="readout"><div class="ok">${crossSum(qq * r, s * p, q.v)}</div></div></div>`;
+      why += checkBack(q);
+    } else {
+      $('sol-ans').innerHTML = q.k === 1 ? `${orig} 不能分解` : `${orig} = ${kPre(q.k)}(${quad(q.a, q.b, q.c, q.v)})，括號裡不能再分解`;
+      $('sol-cross').innerHTML = '';
+      why += cantWhy(q);
+    }
+    if (!timeout && !win) why += `<div class="warn">${wrongWhy(q)}</div>`;
+    if (timeout && q.stage === 'cross' && q.f) why += '<div class="soft">口訣：看兩端（x² 項、常數項怎麼拆），湊中間（交叉相乘的和）。</div>';
+    $('sol-why').innerHTML = why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => { cancelAnimationFrame(raf); locked = true; setView('menu'); });
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => b.addEventListener('click', () => {
+    limits[level] = clampLimit(limits[level] + Number(b.dataset.step));
+    store.set(`cf-limit-${level}`, String(limits[level]));
+    paintLimit();
+  }));
+  document.querySelectorAll('#level button').forEach(b => b.addEventListener('click', () => {
+    level = b.dataset.level; store.set('cf-level', level); paintLevel();
+  }));
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted; store.set('cf-muted', muted ? '1' : '0'); paintMute();
+  }));
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      if (cur && cur.stage === 'pre') {
+        const i = ['1', '2', '3', '4'].indexOf(e.key);
+        if (i >= 0) { e.preventDefault(); choosePre(i); }
+      } else if (e.key === 'Enter') { e.preventDefault(); if (!locked) submit(); }
+      else if (e.key === 'Backspace' && !locked) { e.preventDefault(); if (!(sel[0] === 'L' && cur.fixedLeft)) { delete fill[sel]; paintCross(); } }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu' && (e.key === ' ' || e.key === 'Enter')) {
+      if (document.activeElement && document.activeElement.closest('button, a') && document.activeElement !== $('start')) return;
+      e.preventDefault(); audio(); startQuestion();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）───────
+     每題檢查：正解乘回去等於內層、k × 內層等於原式、數字磚包含正解；
+     「不能分解」另用判別式（b² − 4ac 不是完全平方數）獨立確認；
+     綜合題第一步恰好一個選項乘回去等於原式且提乾淨；
+     並用各種故意填錯的十字確認判錯的代碼。 */
+  window.__crossFactor = {
+    makeQ, diagnose, findFactor,
+    selfTest(n = 1000) {
+      const report = {}, errors = [];
+      const err = (...a) => { errors.push(a); };
+      LEVELS.forEach(lv => {
+        const t0 = performance.now();
+        let cant = 0;
+        for (let i = 0; i < n; i++) {
+          let q;
+          try { q = makeQ(lv); } catch (e) { err(lv, 'throw', e.message); continue; }
+          const { a, b, c, k } = q;
+          if (!(a > 0)) err(lv, 'x² 係數不是正的', a);
+          if (gcd(gcd(a, b), c) !== 1) err(lv, '內層三項還有公因數', a, b, c);
+          if (q.A !== k * a || q.B !== k * b || q.C !== k * c) err(lv, '原式和 k × 內層不符');
+          if (lv !== 'mix' && k !== 1) err(lv, '非綜合題卻有 k');
+          if (lv === 'basic' && a !== 1) err(lv, '基礎題 x² 係數不是 1');
+          if (lv === 'adv' && a === 1) err(lv, '進階題 x² 係數是 1');
+          const disc = b * b - 4 * a * c;
+          if (q.f) {
+            const [p, qq, r, s] = q.f;
+            const e = expand(q.f);
+            if (e[0] !== a || e[1] !== b || e[2] !== c) err(lv, '正解乘回去不等於原式', q.f, a, b, c);
+            if (!isSq(disc)) err(lv, '能分解但判別式不是平方數', a, b, c);
+            if (!q.lTiles.includes(p) || !q.lTiles.includes(r)) err(lv, '左欄數字磚少了正解');
+            if (!q.rTiles.includes(qq) || !q.rTiles.includes(s)) err(lv, '右欄數字磚少了正解');
+            // 判錯代碼
+            const F = { L1: p, R1: qq, L2: r, R2: s };
+            if (diagnose(q, F) !== 'ok') err(lv, '正解判成錯');
+            if (diagnose(q, { L1: r, R1: s, L2: p, R2: qq }) !== 'ok') err(lv, '上下對調判成錯');
+            if (diagnose(q, 'none') !== 'none-but-can') err(lv, '能分解按不能分解沒抓到');
+            if (b !== 0 && diagnose(q, { ...F, R1: -qq, R2: -s }) !== 'sum-sign') err(lv, '正負號對調沒抓到', q.f);
+            if (diagnose(q, { ...F, R2: -s }) !== 'prod-sign') err(lv, '乘積正負號沒抓到', q.f);
+            if (p !== r && qq !== s) {
+              const d = diagnose(q, { ...F, R1: s, R2: qq });
+              const sw = qq * p + s * r;
+              if (sw === b ? d !== 'ok' : (sw === -b ? d !== 'sum-sign' : d !== 'swap')) err(lv, '右欄上下對調判錯', q.f, d);
+            }
+            if (!q.fixedLeft && a > 1) { if (diagnose(q, { ...F, L1: p + 1 }) !== 'left') err(lv, '左欄乘積錯沒抓到'); }
+          } else {
+            cant++;
+            if (isSq(disc)) err(lv, '不能分解但判別式是平方數', a, b, c);
+            if (findFactor(a, b, c)) err(lv, '不能分解卻找得到拆法');
+            if (diagnose(q, 'none') !== 'ok') err(lv, '不能分解按了卻判錯');
+            // 任何填法都不該判對
+            for (const L1 of q.lTiles) for (const R1 of q.rTiles) {
+              const L2 = a / L1, R2 = c / R1;
+              if (diagnose(q, { L1, R1, L2, R2 }) === 'ok') err(lv, '不能分解卻有填法判對');
+            }
+          }
+          if (lv === 'mix') {
+            const oks = q.opts.filter(o => o.code === 'ok');
+            if (q.opts.length !== 4) err(lv, '第一步選項不是 4 個', q.opts.length);
+            if (oks.length !== 1) err(lv, '第一步正解不是恰好一個');
+            const htmls = q.opts.map(o => optHtml(o, q.v));
+            if (new Set(htmls).size !== htmls.length) err(lv, '第一步選項重複', htmls);
+            q.opts.forEach(o => {
+              const same = o.kk * o.t[0] === q.A && o.kk * o.t[1] === q.B && o.kk * o.t[2] === q.C;
+              const clean = o.t[0] > 0 && gcd(gcd(o.t[0], o.t[1]), o.t[2]) === 1;
+              if ((o.code === 'ok') !== (same && clean)) err(lv, '第一步選項對錯標錯', o, q.A, q.B, q.C);
+            });
+            q.opts.filter(o => o.code !== 'ok').forEach(o => {
+              const w = wrongWhy({ ...q, preWrong: o });
+              if (!w || /undefined|NaN/.test(w)) err(lv, '第一步錯誤說明壞掉', o.code);
+            });
+          }
+          // 字串檢查
+          const txt = quad(q.A, q.B, q.C, q.v) + (q.f ? factored(q.k, q.f, q.v) + checkBack(q) : cantWhy(q)) + readoutHtml(q, fixedFill(q));
+          if (/undefined|NaN|Infinity|\[object|null/.test(txt)) err(lv, '字串有壞值', txt.slice(0, 160));
+        }
+        report[lv] = `${n} 題（不能分解 ${cant} 題），${(performance.now() - t0).toFixed(0)} ms`;
+      });
+      return { report, errors: errors.slice(0, 20), errorCount: errors.length };
+    }
+  };
+
+  paintLevel();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>
