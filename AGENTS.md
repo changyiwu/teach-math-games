@@ -36,6 +36,7 @@
 | `sqrt-zoom/` | 根號放大鏡（2 上 2-1）：`index.html` 遊戲本體、`learn.html` 根號小抄 |
 | `cross-factor/` | 十字交乘填格（2 上 3-2）：`index.html` 遊戲本體、`learn.html` 十字交乘小抄 |
 | `error-hunt/` | 解法抓錯行（2 上第 4 章 4-1～4-3）：`index.html` 遊戲本體、`learn.html` 解一元二次方程式小抄 |
+| `cumulative-read/` | 讀圖贏過幾人（2 上 5-1）：`index.html` 遊戲本體、`learn.html` 讀圖小抄 |
 | `output/` | 產出物（不進 git） |
 
 ## 專案專屬規則
@@ -46,7 +47,7 @@
 - 數學內容（題目、記號、用語）遵循 teach-math-web 的共用正本 `docs/reference/shared-math/math-rules.md` 與 `chapter-notes.md`，不在本 repo 另存副本。
 - 畫面需同時適用智慧白板（大字、觸控）與手機寬度。
 - **遊戲一律設計成「一台裝置、一個人操作、全班觀戰」**：課堂情境是投在大螢幕叫學生上台挑戰，不可假設每個學生都有手機或平板，也不要做需要全班同時連線、掃 QR、分組帳號的玩法（那類互動交給 `audience-poll`／`audience-wordcloud` 之類的獨立工具）。學生回家用手機自己玩是第二順位情境，版面要撐得住。
-- 遊戲不記成績、不需登入；設定（限時、難度、音效）用 `localStorage` 記在該台瀏覽器即可；每款遊戲的 key 用自己的前綴，不可和既有的撞名（`power-` 次方大挑戰、`exp-` 指數律、`es-` 移項闖關、`simp-` 化簡對錯快判、`elim-` 消去闖關、`coord-` 坐標點點打擊、`prop-` 正比反比快分類、`iline-` 數線畫解、`dc-` 代表值快判、`tv-` 三視圖積木、`area-` 面積拼圖、`sz-` 根號放大鏡、`cf-` 十字交乘填格、`eh-` 解法抓錯行）。
+- 遊戲不記成績、不需登入；設定（限時、難度、音效）用 `localStorage` 記在該台瀏覽器即可；每款遊戲的 key 用自己的前綴，不可和既有的撞名（`power-` 次方大挑戰、`exp-` 指數律、`es-` 移項闖關、`simp-` 化簡對錯快判、`elim-` 消去闖關、`coord-` 坐標點點打擊、`prop-` 正比反比快分類、`iline-` 數線畫解、`dc-` 代表值快判、`tv-` 三視圖積木、`area-` 面積拼圖、`sz-` 根號放大鏡、`cf-` 十字交乘填格、`eh-` 解法抓錯行、`cr-` 讀圖贏過幾人）。
 - 新增遊戲時同步更新 `README.md` 的〈遊戲清單〉。
 - 每款遊戲都要標「課本範圍」，格式統一為「第N冊・第N章 章名・第N節 節名」（章節名以 teach-math-web 的 `docs/reference/book-N.md` 為準），寫在三處：大廳卡片的 `.unit` 區塊、遊戲開始畫面標題下一行、README〈遊戲清單〉的「課本範圍」欄。
 

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>讀圖小抄 - 讀圖贏過幾人</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="累積次數、累積相對次數分配折線圖怎麼讀：點在組上限、從 0 開始；未滿、以上（含）、某一段、贏過幾人的算法，兩班比較與常見錯誤對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --pink: #f9a8d4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6; -webkit-tap-highlight-color: transparent;
+    }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+    .topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 16px; }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+    .btn { padding: 9px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--text); font-family: inherit; font-size: 0.98rem; text-decoration: none; cursor: pointer; }
+    .btn-play { border: 0; background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05; font-weight: 800; }
+    .btn-play:hover { filter: brightness(1.06); }
+    h1 { margin: 0 0 6px; font-size: clamp(1.8rem, 5vw, 2.8rem); background: linear-gradient(90deg, var(--accent-2), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+    .lead strong { color: var(--text); }
+    h2 { margin: 36px 0 14px; font-size: 1.3rem; color: var(--accent-2); border-left: 4px solid var(--accent); padding-left: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+    .card { border: 1px solid var(--line); border-top: 4px solid var(--cyan); border-radius: 16px; background: var(--card); padding: 18px; }
+    .card .law { font-size: clamp(1.1rem, 3vw, 1.3rem); font-weight: 700; margin: 2px 0 8px; }
+    .card .say { color: var(--muted); font-size: 0.98rem; margin: 0; }
+    .card .say strong { color: var(--text); }
+    .hl { color: var(--accent-2); font-weight: 700; }
+    .note { border: 1px solid var(--line); border-left: 4px solid var(--cyan); border-radius: 12px; background: var(--panel); padding: 14px 18px; margin: 14px 0; }
+    .note b { color: var(--accent-2); }
+    .fig { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: center; }
+    @media (max-width: 720px) { .fig { grid-template-columns: minmax(0, 1fr); } }
+    .fig svg { width: 100%; height: auto; display: block; }
+    .fig svg text { font-family: inherit; }
+    .steps { margin: 0; padding-left: 1.4em; line-height: 2; }
+    .steps b { color: var(--accent-2); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: clamp(0.95rem, 2.4vw, 1.1rem); }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td { border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: middle; }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+    .nw { white-space: nowrap; }
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions"><a class="btn btn-play" href="./">🎮 開始挑戰</a></div>
+    </header>
+
+    <h1>讀圖小抄</h1>
+    <p class="lead">康軒 2 上 5-1 資料整理與統計圖表。累積次數（累積相對次數）分配折線圖的每一個點，都在回答同一句話：<strong>「未滿這個數的，有多少？」</strong></p>
+
+    <h2>累積圖的點在哪裡</h2>
+    <div class="note">
+      <div class="fig">
+        <svg id="demo" viewBox="0 0 640 400" role="img" aria-label="八年甲班數學測驗分數累積次數分配折線圖"></svg>
+        <ol class="steps">
+          <li>點畫在各組的<b>組上限</b>：橫軸 60 的點是「<b>未滿 60 分</b>」，有 5 人。</li>
+          <li>第一個點<b>從 0 開始</b>：未滿 40 分沒有人。</li>
+          <li>最後一個點是<b>總數</b>（25 人），累積相對次數圖則是 100%。</li>
+          <li>對照：<b>次數</b>分配折線圖的點才畫在<b>組中點</b>（45、55、…）。</li>
+        </ol>
+      </div>
+    </div>
+
+    <h2>四種問法</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">未滿 <i>a</i> → 直接讀 <i>a</i> 的點</div>
+        <p class="say">未滿 80 分：讀橫軸 80 的點，<span class="hl">12 人</span>。</p>
+      </div>
+      <div class="card">
+        <div class="law"><i>a</i> 以上（含）→ 全部去減</div>
+        <p class="say">80 分以上（含）＝ 全部 − 未滿 80 ＝ <span class="hl nw">25 − 12 ＝ 13 人</span>；百分比就用 <strong>100%</strong> 去減。</p>
+      </div>
+      <div class="card">
+        <div class="law"><i>a</i>～<i>b</i> → 兩點相減</div>
+        <p class="say">60～80 分 ＝ 未滿 80 − 未滿 60 ＝ <span class="hl nw">12 − 5 ＝ 7 人</span>。只有一組時，就是那一組的次數（相對次數）。</p>
+      </div>
+      <div class="card">
+        <div class="law">贏過幾人 → 未滿 <i>a</i> 的人數</div>
+        <p class="say">考 70 分，贏過的是「未滿 70 分」的人。累積相對次數圖讀到 80%、共 200 人，就是 <span class="hl nw">200 × 80% ＝ 160 人</span>。</p>
+      </div>
+    </div>
+    <div class="note">折線有一段是<b>水平</b>的，代表那一組<b>沒有人</b>（次數是 0）：兩點相減 ＝ 0。</div>
+
+    <h2>兩班比較</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">未滿 <i>a</i> 的比例</div>
+        <p class="say">直接比 <i>a</i> 的點：<strong>點越高</strong>，未滿 <i>a</i> 的比例越高。</p>
+      </div>
+      <div class="card">
+        <div class="law"><i>a</i> 以上（含）的比例</div>
+        <p class="say">先用 100% 去減再比：<strong>點越高，以上（含）反而越少</strong>。甲讀到 50%、乙讀到 30%，以上（含）是甲 50%、乙 70%，乙比較高。</p>
+      </div>
+      <div class="card">
+        <div class="law">某一組的相對次數</div>
+        <p class="say">各自兩點相減再比：看的是那一段折線<strong>往上爬了多少</strong>，不是誰的點比較高。</p>
+      </div>
+    </div>
+
+    <h2>常見錯誤對照表</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>遊戲裡的錯誤選項大多是左邊這幾種。</caption>
+        <thead><tr><th style="width:46%">常見的錯誤</th><th>正確</th></tr></thead>
+        <tbody>
+          <tr><td class="bad">未滿 60 分讀橫軸 50 的點</td><td class="good">點在組上限，未滿 60 讀橫軸 60 的點</td></tr>
+          <tr><td class="bad">80 分以上（含）直接寫讀到的 12 人</td><td class="good">12 人是未滿 80；以上（含）要 25 − 12 ＝ 13 人</td></tr>
+          <tr><td class="bad">60～80 分只讀 80 的點，答 12 人</td><td class="good">還要減掉未滿 60 的 5 人：12 − 5 ＝ 7 人</td></tr>
+          <tr><td class="bad">共 200 人，贏過幾人答「80」</td><td class="good">80 是百分比，200 × 80% ＝ 160 人</td></tr>
+          <tr><td class="bad">兩班比以上（含），選累積值比較大的那班</td><td class="good">累積值越大，以上（含）越少，要先用 100% 去減</td></tr>
+          <tr><td class="bad">折線水平的那一段也有人</td><td class="good">水平代表那一組 0 人（0%）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer><a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a></footer>
+  </div>
+<script>
+(() => {
+  // 課本表 3：八年甲班數學測驗分數（40～100 分，各組 3、2、3、4、7、6 人）
+  const bounds = [40, 50, 60, 70, 80, 90, 100], cum = [0, 3, 5, 8, 12, 19, 25];
+  const W = 640, H = 400, ML = 56, MR = 22, MT = 44, MB = 54, gap = 26, yMax = 25;
+  const pw = W - ML - MR, ph = H - MT - MB;
+  const X = j => ML + gap + (pw - gap) * j / 6, Y = v => MT + ph * (1 - v / yMax);
+  let s = '';
+  for (let v = 0; v <= yMax; v += 5) {
+    s += `<line x1="${ML}" x2="${W - MR}" y1="${Y(v)}" y2="${Y(v)}" stroke="#94a3b8" stroke-opacity="0.3"/>`;
+    s += `<text x="${ML - 8}" y="${Y(v) + 6}" text-anchor="end" fill="#94a3b8" font-size="17">${v}</text>`;
+  }
+  bounds.forEach((b, j) => { s += `<text x="${X(j)}" y="${Y(0) + 24}" text-anchor="middle" fill="#94a3b8" font-size="17">${b}</text>`; });
+  s += `<line x1="${ML}" x2="${ML}" y1="${MT - 8}" y2="${Y(0)}" stroke="#cbd5e1" stroke-width="2"/><line x1="${ML}" x2="${W - MR}" y1="${Y(0)}" y2="${Y(0)}" stroke="#cbd5e1" stroke-width="2"/>`;
+  s += `<rect x="${ML + 6}" y="${Y(0) - 8}" width="14" height="16" fill="#141b34"/><path d="M${ML + 8} ${Y(0) + 7} l4 -14 M${ML + 15} ${Y(0) + 7} l4 -14" stroke="#cbd5e1" stroke-width="2"/>`;
+  s += `<text x="6" y="${MT - 22}" fill="#cbd5e1" font-size="17">累積次數（人）</text><text x="${W - MR}" y="${H - 6}" text-anchor="end" fill="#cbd5e1" font-size="17">分數（分）</text>`;
+  s += `<line x1="${ML}" x2="${X(2)}" y1="${Y(5)}" y2="${Y(5)}" stroke="#22c55e" stroke-width="2.4" stroke-dasharray="7 5"/><line x1="${X(2)}" x2="${X(2)}" y1="${Y(5)}" y2="${Y(0)}" stroke="#22c55e" stroke-width="2" stroke-dasharray="4 5"/>`;
+  s += `<polyline points="${cum.map((v, j) => `${X(j)},${Y(v)}`).join(' ')}" fill="none" stroke="#22d3ee" stroke-width="3"/>`;
+  cum.forEach((v, j) => {
+    s += `<circle cx="${X(j)}" cy="${Y(v)}" r="6.5" fill="#22d3ee" stroke="#0b1020" stroke-width="1.5"/>`;
+    s += `<text x="${j === 0 ? X(j) + 10 : X(j) - 6}" y="${Y(v) - 12}" text-anchor="${j === 0 ? 'start' : 'end'}" fill="#fde68a" font-size="17" font-weight="700">${v}</text>`;
+  });
+  s += `<circle cx="${X(2)}" cy="${Y(5)}" r="12" fill="none" stroke="#22c55e" stroke-width="3.5"/>`;
+  s += `<text x="${X(0) + 8}" y="${Y(0) - 30}" fill="#f9a8d4" font-size="16">從 0 開始</text>`;
+  document.getElementById('demo').innerHTML = s;
+})();
+</script>
+</body>
+</html>

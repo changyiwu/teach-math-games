@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>讀圖贏過幾人 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="看累積次數、累積相對次數分配折線圖：先點出要讀的點，再選出未滿、以上（含）、某一組的人數或百分比，以及贏過幾人；也有兩班兩條線的比較。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --pink: #f9a8d4;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    .screen { position: fixed; inset: 0; display: none; flex-direction: column; }
+    body[data-view="menu"] #menu, body[data-view="play"] #play, body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 10px 18px;
+      border-bottom: 1px solid var(--line); background: rgba(11, 16, 32, 0.55); backdrop-filter: blur(6px);
+    }
+    .home { color: var(--muted); text-decoration: none; font-size: 0.95rem; white-space: nowrap; }
+    .home:hover, .home:focus-visible { color: var(--text); }
+    .spacer { flex: 1 1 auto; }
+    .stat { font-size: 0.95rem; color: var(--muted); white-space: nowrap; }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+    .icon-btn {
+      border: 1px solid var(--line); background: rgba(15, 23, 42, 0.6); color: var(--text);
+      border-radius: 10px; width: 40px; height: 36px; font-size: 1.1rem; cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機 ── */
+    .menu-body {
+      flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 18px; padding: 20px 16px 32px; text-align: center; overflow-y: auto;
+    }
+    .menu-body > :first-child { margin-top: auto; }
+    .menu-body > :last-child { margin-bottom: auto; }
+    h1.title {
+      margin: 0; font-size: clamp(2rem, 7vw, 4.2rem); letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .unit { margin: 0 0 8px; opacity: 0.75; font-size: 0.95rem; }
+    .hint { margin: 0; color: var(--muted); font-size: clamp(0.95rem, 2.2vw, 1.25rem); max-width: 42ch; line-height: 1.7; }
+    .ctl-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+    .ctl {
+      display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line);
+      border-radius: 999px; background: var(--panel); font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6); color: var(--text); font-size: 1.1rem; cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+    .seg { display: flex; flex-wrap: wrap; justify-content: center; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--panel); }
+    .seg button { border: 0; background: transparent; color: var(--muted); padding: 9px 16px; font-size: 1rem; cursor: pointer; font-family: inherit; }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+    .level-note { margin: -6px 0 0; color: var(--muted); font-size: 0.9rem; max-width: 48ch; line-height: 1.6; }
+    .big-btn {
+      margin-top: 4px; padding: 18px 44px; border: 0; border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem); font-weight: 800; font-family: inherit; cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+    .learn-link { color: var(--cyan); text-decoration: none; font-size: 1rem; border-bottom: 1px dashed rgba(34, 211, 238, 0.5); padding-bottom: 2px; }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+    .keys { color: var(--muted); font-size: 0.85rem; opacity: 0.8; }
+    .keys kbd {
+      display: inline-block; padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
+      border-radius: 6px; background: rgba(15, 23, 42, 0.6); font-family: inherit; font-size: 0.85em;
+    }
+
+    /* ── 作答 ── */
+    .timer { flex: 0 0 auto; height: 10px; background: rgba(15, 23, 42, 0.8); }
+    .timer > i { display: block; height: 100%; width: 100%; transform-origin: left center; background: linear-gradient(90deg, var(--cyan), var(--accent-2)); }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .count {
+      position: absolute; top: 54px; right: 18px; font-size: clamp(2.4rem, 7vw, 4.4rem); font-weight: 800;
+      color: var(--accent-2); opacity: 0.85; pointer-events: none; font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    .play-body {
+      flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 16px 14px;
+      display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "q" "chart" "ans";
+      gap: clamp(6px, 1.4vh, 12px); align-content: safe center; justify-items: center;
+    }
+    .q { grid-area: q; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding-right: 56px; max-width: 760px; }
+    .chart-box { grid-area: chart; width: 100%; max-width: 760px; }
+    .ans { grid-area: ans; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; max-width: 560px; }
+    @media (min-aspect-ratio: 5/4) and (min-width: 720px) {
+      .play-body {
+        grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
+        grid-template-areas: "chart q" "chart ans"; grid-template-rows: auto 1fr;
+        column-gap: clamp(16px, 2.6vw, 36px); align-content: center; justify-items: stretch; max-width: 1280px; margin: 0 auto; width: 100%;
+      }
+      .q { align-items: flex-start; text-align: left; padding-right: 90px; align-self: end; }
+      .ans { align-items: flex-start; align-self: start; }
+      .chart-box { align-self: center; }
+    }
+    .rule-tag {
+      padding: 4px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1rem); background: var(--panel); white-space: nowrap;
+    }
+    .setup { color: var(--muted); font-size: clamp(0.9rem, 2vw, 1.05rem); line-height: 1.5; }
+    .setup em { font-style: normal; color: var(--text); font-weight: 700; }
+    .ask { font-size: clamp(1.2rem, 3vw, 1.9rem); font-weight: 700; line-height: 1.45; }
+    .ask b { color: var(--accent-2); }
+    .step { font-size: clamp(0.95rem, 2.2vw, 1.15rem); color: var(--cyan); }
+    .step .prog { color: var(--accent-2); font-weight: 700; margin-left: 6px; }
+
+    .chart { display: block; width: 100%; height: auto; max-height: calc(100vh - 96px); max-height: calc(100dvh - 96px); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+    .chart.live { cursor: pointer; }
+    .chart text { font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif; }
+    .chart .tk { fill: #94a3b8; font-size: 17px; }
+    .chart .ttl { fill: #cbd5e1; font-size: 17px; }
+    .chart .vl { font-size: 17px; font-weight: 700; paint-order: stroke; stroke: #0b1020; stroke-width: 4px; }
+    .chart .lg { font-size: 16px; font-weight: 700; }
+
+    .choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(8px, 1.2vw, 12px); width: 100%; }
+    .choices.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .choices[hidden] { display: none; }
+    .choice {
+      position: relative; padding: clamp(10px, 2vh, 16px) 12px clamp(10px, 2vh, 16px) 30px;
+      border: 2px solid var(--line); border-radius: 16px; background: var(--card); color: var(--text);
+      font-family: inherit; font-size: clamp(1.15rem, 3vw, 1.7rem); font-weight: 800; cursor: pointer; white-space: nowrap;
+      font-variant-numeric: tabular-nums; transition: transform 0.1s, border-color 0.15s;
+    }
+    .choices.three .choice { font-size: clamp(1rem, 2.4vw, 1.35rem); padding-left: 26px; }
+    .choice .k { position: absolute; top: 50%; left: 10px; transform: translateY(-50%); font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+    .choice:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--cyan); }
+    .choice:disabled { opacity: 0.45; cursor: default; }
+    .msg { min-height: 1.4em; font-size: clamp(0.9rem, 2vw, 1.05rem); color: var(--muted); }
+
+    /* ── 結果 ── */
+    .verdict {
+      position: fixed; inset: 0; z-index: 20; display: none; flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 12px; padding: 20px 16px; background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95));
+      backdrop-filter: blur(3px); overflow-y: auto;
+    }
+    .verdict > * { flex-shrink: 0; }
+    .verdict > :first-child { margin-top: auto; }
+    .verdict > :last-child { margin-bottom: auto; }
+    body[data-view="result"] .verdict { display: flex; }
+    .verdict h2 { margin: 0; font-size: clamp(2rem, 7vw, 3.6rem); letter-spacing: 0.06em; animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1); }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+    @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .solution {
+      width: min(1100px, 100%); border: 1px solid var(--line); border-radius: 18px; background: var(--panel); padding: clamp(10px, 2.2vw, 20px);
+      display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: center;
+    }
+    @media (min-aspect-ratio: 5/4) and (min-width: 720px) {
+      .solution { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+      .solution .chart { max-height: calc(100vh - 200px); max-height: calc(100dvh - 200px); }
+    }
+    .solution .chart { max-height: 48vh; }
+    .sol-text { text-align: left; }
+    .answer-chip {
+      display: inline-block; margin-bottom: 8px; padding: 4px 18px; border-radius: 999px;
+      font-size: clamp(1.1rem, 3vw, 1.6rem); font-weight: 800; color: var(--win); border: 2px solid currentColor;
+    }
+    .why { font-size: clamp(0.98rem, 2.2vw, 1.2rem); line-height: 1.8; }
+    .why > div + div { margin-top: 4px; }
+    .why b { color: var(--accent-2); }
+    .why .warn { color: #fca5a5; }
+    .why .soft { color: var(--muted); font-size: 0.92em; }
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .verdict .big-btn { padding: 14px 40px; }
+    .ghost-btn { padding: 12px 24px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--text); font-family: inherit; font-size: 1.05rem; cursor: pointer; }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .nw { white-space: nowrap; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; font-size: 2.2rem; }
+      .seg button { padding: 8px 12px; }
+      .choices.three { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-height: 640px) {
+      .verdict { gap: 8px; padding-top: 12px; }
+      .verdict h2 { font-size: 2rem; }
+      .why { font-size: 1rem; line-height: 1.6; }
+      .answer-chip { font-size: 1.15rem; margin-bottom: 4px; }
+      .verdict .big-btn { padding: 10px 34px; font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+    <div class="menu-body">
+      <h1 class="title">讀圖贏過幾人</h1>
+      <p class="unit">📘 第3冊・第5章 統計資料處理・第1節 資料整理與統計圖表</p>
+      <p class="hint">看累積次數（累積相對次數）分配折線圖回答問題：<strong>先在圖上點出要讀的點</strong>，再從選項裡選出答案，<span class="limit-val">30</span> 秒內答對就過關。點錯點或選錯答案都算失敗。</p>
+      <div class="ctl-row">
+        <div class="seg" id="type" role="group" aria-label="題型">
+          <button type="button" data-type="single" aria-pressed="true">單一圖表</button>
+          <button type="button" data-type="compare" aria-pressed="false">兩班比較</button>
+          <button type="button" data-type="mix" aria-pressed="false">混合</button>
+        </div>
+      </div>
+      <div class="ctl-row">
+        <div class="seg" id="diff" role="group" aria-label="難度">
+          <button type="button" data-diff="basic" aria-pressed="true">基礎：點旁標數值</button>
+          <button type="button" data-diff="hard" aria-pressed="false">挑戰：自己讀格線</button>
+        </div>
+      </div>
+      <div class="ctl-row">
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-5" aria-label="減少 5 秒">−</button>
+          <b class="limit-val">30</b>秒
+          <button type="button" data-step="5" aria-label="增加 5 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+      <button type="button" class="big-btn" id="start">📈 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看讀圖小抄</a>
+      <p class="keys">鍵盤：選答案按 <kbd>1</kbd>～<kbd>4</kbd>　<kbd>空白</kbd> 下一題　<kbd>Esc</kbd> 回選單</p>
+    </div>
+  </section>
+
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+    <div class="count" id="count">30</div>
+    <div class="play-body">
+      <div class="q">
+        <div class="rule-tag" id="rule">累積次數折線圖</div>
+        <div class="setup" id="setup"></div>
+        <div class="ask" id="ask"></div>
+      </div>
+      <div class="chart-box" id="chart"></div>
+      <div class="ans">
+        <div class="step" id="step"></div>
+        <div class="choices" id="choices" hidden></div>
+        <div class="msg" id="msg"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div id="sol-chart"></div>
+      <div class="sol-text">
+        <div class="answer-chip" id="sol-ans"></div>
+        <div class="why" id="sol-why"></div>
+      </div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器，限時依題型 × 難度各自記）── */
+  const TYPES = ['single', 'compare', 'mix'];
+  const DIFFS = ['basic', 'hard'];
+  const LIMIT_BASE = { single: 30, compare: 40, mix: 35 };
+  const LIMIT_DEFAULT = (t, d) => LIMIT_BASE[t] + (d === 'hard' ? 10 : 0);
+  const LIMIT_MIN = 10, LIMIT_MAX = 180;
+  const TYPE_NOTE = {
+    single: '一張累積次數或累積相對次數分配折線圖，問「未滿」「以上（含）」「某一段」有幾人、占百分之幾，或「贏過幾人」。',
+    compare: '兩條累積相對次數折線畫在同一張圖，比較哪一班「未滿」「以上（含）」或某一組的比例較高。兩條線都要點。',
+    mix: '單一圖表和兩班比較混著出。'
+  };
+  const DIFF_NOTE = {
+    basic: '每個點旁邊都標了數值。',
+    hard: '點旁邊不標數值，點對之後會拉虛線到縱軸，要自己對格線讀出數值。'
+  };
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 私密視窗等情況：不記也能玩 */ } }
+  };
+  const clampLimit = v => Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v));
+  let qtype = TYPES.includes(store.get('cr-type')) ? store.get('cr-type') : 'single';
+  let diff = DIFFS.includes(store.get('cr-diff')) ? store.get('cr-diff') : 'basic';
+  const limits = {};
+  TYPES.forEach(t => DIFFS.forEach(d => {
+    const v = parseInt(store.get(`cr-limit-${t}-${d}`), 10);
+    limits[`${t}-${d}`] = clampLimit(Number.isFinite(v) ? v : LIMIT_DEFAULT(t, d));
+  }));
+  let muted = store.get('cr-muted') === '1';
+  const limitKey = () => `${qtype}-${diff}`;
+  const limit = () => limits[limitKey()];
+
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  const coin = (p = 0.5) => Math.random() < p;
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  const MINUS = '−';
+  const cumsum = arr => { const out = [0]; arr.forEach(x => out.push(out[out.length - 1] + x)); return out; };
+
+  /* ══ 情境 ══════════════════════════════════════════
+     ranges：[第一個組界, 組距, 組數]
+     cumTitle 用在 50 人以內的累積次數圖（一個班），其他用 bigTitle。 */
+  const CTX = [
+    { attr: '分數', xLab: '分數（分）', unit: '分', ranges: [[40, 10, 6], [30, 10, 7], [20, 10, 8]],
+      cumTitle: '八年甲班數學測驗分數', bigTitle: '某次數學競賽分數', who: '考生', beat: a => `考 ${a} 分，分數贏過幾人？` },
+    { attr: '身高', xLab: '身高（公分）', unit: '公分', ranges: [[145, 5, 7], [150, 5, 7], [140, 10, 5]],
+      cumTitle: '八年乙班身高', bigTitle: '全校八年級身高', who: '學生', beat: a => `身高 ${a} 公分，比幾人高？` },
+    { attr: '體重', xLab: '體重（公斤）', unit: '公斤', ranges: [[35, 5, 6], [40, 5, 6]],
+      cumTitle: '八年丙班體重', bigTitle: '全校八年級體重', who: '學生', beat: a => `體重 ${a} 公斤，比幾人重？` },
+    { attr: '立定跳遠', xLab: '距離（公分）', unit: '公分', ranges: [[80, 20, 6], [100, 20, 5]],
+      cumTitle: '八年甲班立定跳遠', bigTitle: '全校八年級立定跳遠', who: '學生', beat: a => `跳了 ${a} 公分，跳得比幾人遠？` },
+    { attr: '練跑量', xLab: '每週練跑量（公里）', unit: '公里', ranges: [[0, 20, 6], [0, 10, 7]],
+      cumTitle: '跑步社團每週練跑量', bigTitle: '某路跑協會會員每週練跑量', who: '會員', beat: a => `每週跑 ${a} 公里，跑得比幾人多？` },
+    { attr: '讀書時間', xLab: '時間（小時）', unit: '小時', ranges: [[0, 2, 8], [0, 1, 6]],
+      cumTitle: '八年乙班週末讀書時間', bigTitle: '全校學生週末讀書時間', who: '學生', beat: a => `週末讀書 ${a} 小時，讀得比幾人久？` }
+  ];
+  const CMP = [
+    { title: '甲、乙兩班英語聽力分數', names: ['甲班', '乙班'], which: '哪一班', xLab: '分數（分）', unit: '分', ranges: [[30, 10, 7], [40, 10, 6]] },
+    { title: '兩個年齡層每月購書量', names: ['20～29 歲', '30～39 歲'], which: '哪一個年齡層', xLab: '購書量（本）', unit: '本', ranges: [[0, 2, 6]] },
+    { title: '甲、乙兩班週休二日閱讀時數', names: ['甲班', '乙班'], which: '哪一班', xLab: '時數（小時）', unit: '小時', ranges: [[0, 2, 8], [0, 2, 7]] },
+    { title: '甲、乙兩校八年級段考數學分數', names: ['甲校', '乙校'], which: '哪一所學校', xLab: '分數（分）', unit: '分', ranges: [[40, 10, 6], [20, 10, 8]] }
+  ];
+  const NAMES = ['小妍', '婷婷', '小翊', '蕎蕎', '小凱', '阿哲'];
+  const LINE_COLOR = ['#22d3ee', '#f9a8d4'];
+
+  /* 把 units 份分給 k 組（大致成山形，可指定一組為 0）*/
+  function alloc(units, k, zero = false) {
+    const c = 0.15 + Math.random() * 0.7, s = 0.18 + Math.random() * 0.17;
+    const w = [];
+    for (let i = 0; i < k; i++) w.push(Math.exp(-(((i + 0.5) / k - c) ** 2) / (2 * s * s)) + 0.06);
+    const sumW = w.reduce((a, b) => a + b, 0);
+    const out = new Array(k).fill(0);
+    for (let u = 0; u < units; u++) {
+      let r = Math.random() * sumW, i = 0;
+      while (i < k - 1 && r > w[i]) { r -= w[i]; i++; }
+      out[i]++;
+    }
+    if (zero && k >= 4) {
+      const z = R(1, k - 2);
+      const to = coin() ? z - 1 : z + 1;
+      out[to] += out[z]; out[z] = 0;
+    }
+    // 第一組、最後一組至少 1 份（讓圖從 0 往上、最後一段不平）
+    [0, k - 1].forEach(i => {
+      if (out[i] === 0) { const m = out.indexOf(Math.max(...out)); if (out[m] > 1) { out[m]--; out[i]++; } }
+    });
+    return out;
+  }
+
+  const fmt = (q, x) => `${x} ${q.unit}`;
+  const valStr = (q, v) => (q.pct ? `${v}%` : `${v} 人`);
+
+  /* ══ 出題：單一圖表 ══════════════════════════════════ */
+  const FAM = { below: 'below', beat: 'below', belowP: 'below', beatN: 'below', atleast: 'atleast', atleastP: 'atleast', atleastN: 'atleast', range: 'range', rangeP: 'range' };
+
+  function makeSingle(d) {
+    const ctx = pickOf(CTX);
+    const [x0, w, k] = pickOf(ctx.ranges);
+    const q = { kind: 'single', diff: d, ctx, unit: ctx.unit, xLab: ctx.xLab, k, w, lines: 1 };
+    q.bounds = Array.from({ length: k + 1 }, (_, j) => x0 + j * w);
+    q.chart = coin() ? 'cum' : 'rel';
+    const zero = coin(0.3);
+    if (q.chart === 'cum') {
+      let u, units;
+      if (d === 'basic') { u = 1; units = R(20, 45); } else { u = pickOf([2, 5, 10]); units = R(8, 14); }
+      q.counts = alloc(units, k, zero).map(x => x * u);
+      q.N = units * u;
+      q.series = [cumsum(q.counts)];
+      q.T = q.N;
+      q.pct = false;
+      if (d === 'basic') {
+        const step = [1, 2, 5, 10, 20, 50].find(s => q.N / s <= 10);
+        q.gridStep = q.labelStep = step;
+      } else {
+        q.gridStep = u;
+        q.labelStep = units <= 10 ? u : 2 * u;
+      }
+      q.yMax = Math.ceil(q.N / q.labelStep) * q.labelStep;
+      q.yTitle = '累積次數（人）';
+      q.title = q.N <= 50 ? ctx.cumTitle : ctx.bigTitle;
+      q.setup = `${q.title}的<em>累積次數</em>分配折線圖，共 ${q.N} 人。`;
+      q.sub = pickOf(['below', 'atleast', 'range', 'beat']);
+    } else {
+      const p = alloc(20, k, zero).map(x => x * 5);
+      q.N = pickOf([40, 60, 80, 100, 200, 300, 400, 500]);
+      q.counts = p.map(x => q.N * x / 100);
+      q.series = [cumsum(p)];
+      q.T = 100;
+      q.pct = true;
+      q.gridStep = d === 'basic' ? 10 : 5;
+      q.labelStep = 10;
+      q.yMax = 100;
+      q.yTitle = '累積相對次數（%）';
+      q.title = ctx.bigTitle;
+      q.setup = `${q.title}的<em>累積相對次數</em>分配折線圖，共 <em>${q.N}</em> 位${ctx.who}。`;
+      q.sub = pickOf(['belowP', 'atleastP', 'rangeP', 'beatN', 'atleastN']);
+    }
+    const fam = FAM[q.sub];
+    q.fam = fam;
+    if (fam === 'range') {
+      // 有 0 的那一組時，一半機率就問那一組（水平段）
+      const zi = q.counts.findIndex((c, i) => c === 0 && i >= 1);
+      if (zi >= 1 && coin(0.5)) { q.ia = zi; q.ib = zi + 1; }
+      else {
+        q.ia = R(1, k - 1);
+        q.ib = Math.min(k, q.ia + (coin(0.6) ? 1 : 2));
+      }
+      q.need = [{ L: 0, j: q.ia }, { L: 0, j: q.ib }];
+    } else {
+      q.ia = R(1, k - 1);
+      q.need = [{ L: 0, j: q.ia }];
+    }
+    q.name = pickOf(NAMES);
+    singleAnswer(q);
+    q.opts = singleOptions(q);
+    return q;
+  }
+
+  function singleAnswer(q) {
+    const s = q.series[0], v = s[q.ia], N = q.N;
+    switch (q.sub) {
+      case 'below': case 'beat': case 'belowP': q.ans = v; break;
+      case 'beatN': q.ans = N * v / 100; break;
+      case 'atleast': case 'atleastP': q.ans = q.T - v; break;
+      case 'atleastN': q.ans = N * (100 - v) / 100; break;
+      case 'range': case 'rangeP': q.ans = s[q.ib] - v; break;
+    }
+    // 答案的單位：beatN、atleastN 雖然是相對次數圖，答案是人數
+    q.ansPct = q.pct && !['beatN', 'atleastN'].includes(q.sub);
+    const a = q.bounds[q.ia], b = q.bounds[q.ib];
+    const U = q.unit;
+    q.ask = {
+      below: `未滿 ${a} ${U}的有幾人？`,
+      atleast: `<span class="nw">${a} ${U}以上（含）</span>的有幾人？`,
+      range: `<span class="nw">${a}～${b} ${U}</span>的有幾人？`,
+      beat: `${q.name}${q.ctx.beat(a)}`,
+      belowP: `未滿 ${a} ${U}的人數，占全部的百分之幾？`,
+      atleastP: `<span class="nw">${a} ${U}以上（含）</span>的人數，占全部的百分之幾？`,
+      rangeP: q.ib - q.ia === 1 ? `<span class="nw">${a}～${b} ${U}</span>這一組的相對次數是多少？` : `<span class="nw">${a}～${b} ${U}</span>的人數，占全部的百分之幾？`,
+      beatN: `${q.name}${q.ctx.beat(a)}`,
+      atleastN: `<span class="nw">${a} ${U}以上（含）</span>的有幾人？`
+    }[q.sub];
+  }
+
+  const ansStr = (q, v) => (q.ansPct ? `${v}%` : `${v} 人`);
+
+  /* 單一圖表的四個選項：正解 + 三個常見錯誤 */
+  function singleOptions(q) {
+    const s = q.series[0], ia = q.ia, ib = q.ib, k = q.k, N = q.N, T = q.T;
+    const B = j => q.bounds[j], U = q.unit;
+    const lab = j => `「未滿 ${B(j)} ${U}」`;
+    const cand = [];
+    const add = (v, why) => { if (Number.isFinite(v)) cand.push({ v, why }); };
+    const toN = p => N * p / 100;
+    if (q.fam === 'below') {
+      const people = q.sub === 'beatN';
+      const conv = p => (people ? toN(p) : p);
+      add(conv(s[ia - 1]), `這是前一個點 ${lab(ia - 1)} 的值，少算了 ${B(ia - 1)}～${B(ia)} ${U}這一組。`);
+      add(conv(s[ia + 1]), `這是下一個點 ${lab(ia + 1)} 的值，多算了 ${B(ia)}～${B(ia + 1)} ${U}這一組。`);
+      add(conv(s[ia] - s[ia - 1]), `這只是 ${B(ia - 1)}～${B(ia)} ${U}這一組自己的${q.pct ? '相對次數' : '人數'}，沒有往前累積。`);
+      add(conv(T - s[ia]), `這是 ${B(ia)} ${U}以上（含）的${people || !q.pct ? '人數' : '百分比'}，題目要的是${lab(ia)}。`);
+      if (people) add(s[ia], `${s[ia]} 是百分比（${s[ia]}%），還要乘以總人數：${N} × ${s[ia]}% 才是人數。`);
+    } else if (q.fam === 'atleast') {
+      const people = q.sub === 'atleastN';
+      const conv = p => (people ? toN(p) : p);
+      add(conv(s[ia]), `這是${lab(ia)}的值；${B(ia)} ${U}以上（含）要用全部去減：${people ? '100%' : valStr(q, T)} − ${valStr(q, s[ia])}。`);
+      add(conv(T - s[ia + 1]), `你用下一個點 ${lab(ia + 1)} 去減，少算了 ${B(ia)}～${B(ia + 1)} ${U}這一組。`);
+      add(conv(T - s[ia - 1]), `你用前一個點 ${lab(ia - 1)} 去減，多算了 ${B(ia - 1)}～${B(ia)} ${U}這一組。`);
+      add(conv(s[ia + 1] - s[ia]), `這只是 ${B(ia)}～${B(ia + 1)} ${U}這一組，後面的組沒有算進去。`);
+      if (people) add(100 - s[ia], `${100 - s[ia]} 是百分比（${100 - s[ia]}%），還要乘以總人數：${N} × ${100 - s[ia]}% 才是人數。`);
+    } else {
+      const what = q.pct ? '' : ' 人';
+      add(s[ib], `這是${lab(ib)}的值，還要減掉${lab(ia)}的 ${s[ia]}${q.pct ? '%' : what}。`);
+      add(s[ib] + s[ia], `兩個點要<b>相減</b>，不是相加：${s[ib]} − ${s[ia]}。`);
+      if (ia >= 1) add(s[ib] - s[ia - 1], `你減的是${lab(ia - 1)}，多算了 ${B(ia - 1)}～${B(ia)} ${U}這一組。`);
+      if (ib + 1 <= k) add(s[ib + 1] - s[ia], `你讀的是${lab(ib + 1)}，多算了 ${B(ib)}～${B(ib + 1)} ${U}這一組。`);
+      if (ib - ia >= 2) add(s[ib] - s[ia + 1], `你減的是${lab(ia + 1)}，少算了 ${B(ia)}～${B(ia + 1)} ${U}這一組。`);
+      add(T - (s[ib] - s[ia]), `這是 ${B(ia)}～${B(ib)} ${U}<b>以外</b>的部分，題目問的是這一段裡面。`);
+    }
+    const seen = new Set([q.ans]);
+    const pool = [];
+    shuffle(cand).forEach(c => {
+      if (c.v < 0 || !Number.isInteger(c.v) || seen.has(c.v)) return;
+      if (q.ansPct && c.v > 100) return;
+      seen.add(c.v); pool.push(c);
+    });
+    const step = q.ansPct ? 5 : Math.max(1, q.chart === 'cum' ? q.gridStep : N / 20);
+    let t = 1;
+    while (pool.length < 3) {
+      const v = q.ans + (t % 2 ? 1 : -1) * Math.ceil(t / 2) * step;
+      t++;
+      if (v < 0 || seen.has(v) || (q.ansPct && v > 100)) continue;
+      seen.add(v);
+      pool.push({ v, why: '數值讀錯或算錯了，對照右邊的算式再算一次。' });
+    }
+    const opts = [{ v: q.ans, ok: true }, ...pool.slice(0, 3).map(c => ({ ...c, ok: false }))];
+    return shuffle(opts).map(o => ({ ...o, label: ansStr(q, o.v) }));
+  }
+
+  /* ══ 出題：兩班比較 ══════════════════════════════════ */
+  function cmpVals(q, L) {
+    const s = q.series[L];
+    if (q.sub === 'cmpBelow') return { v: s[q.ia], mis: null };
+    if (q.sub === 'cmpAtleast') return { v: 100 - s[q.ia], mis: s[q.ia] };
+    return { v: s[q.ib] - s[q.ia], mis: s[q.ib] };
+  }
+  function decide(v0, v1, dir) {
+    if (v0 === v1) return 2;
+    return (v0 > v1) === (dir === 'high') ? 0 : 1;
+  }
+  function makeCompare(d) {
+    const ctx = pickOf(CMP);
+    const [x0, w, k] = pickOf(ctx.ranges);
+    const wantSame = coin(0.2);
+    const sub = pickOf(['cmpBelow', 'cmpAtleast', 'cmpRange']);
+    let q;
+    for (let tries = 0; tries < 400; tries++) {
+      q = { kind: 'compare', diff: d, ctx, unit: ctx.unit, xLab: ctx.xLab, k, w, lines: 2, pct: true, ansPct: true, sub };
+      q.bounds = Array.from({ length: k + 1 }, (_, j) => x0 + j * w);
+      const p0 = alloc(20, k, coin(0.3)).map(x => x * 5), p1 = alloc(20, k, coin(0.3)).map(x => x * 5);
+      q.counts2 = [p0, p1];
+      q.series = [cumsum(p0), cumsum(p1)];
+      q.T = 100;
+      q.ia = R(1, k - 1);
+      if (sub === 'cmpRange') {
+        q.ib = Math.min(k, q.ia + (coin(0.75) ? 1 : 2));
+        // 水平段：有一條線在這一段是 0 時優先
+        const zi = p0.findIndex((c, i) => i >= 1 && c === 0);
+        if (zi >= 1 && coin(0.5)) { q.ia = zi; q.ib = zi + 1; }
+      }
+      q.dir = coin() ? 'high' : 'low';
+      const a = cmpVals(q, 0), b = cmpVals(q, 1);
+      q.vals = [a.v, b.v];
+      q.ans = decide(a.v, b.v, q.dir);
+      q.misAns = a.mis === null ? null : decide(a.mis, b.mis, q.dir);
+      if (wantSame !== (q.ans === 2)) continue;
+      // 不一樣的題目，「以上（含）」「某一段」盡量出成直接比累積值會答錯的陷阱
+      if (!wantSame && sub !== 'cmpBelow' && tries < 300 && q.misAns === q.ans) continue;
+      break;
+    }
+    const a = q.bounds[q.ia], b = q.bounds[q.ib], U = q.unit;
+    const hi = q.dir === 'high';
+    q.ask = {
+      cmpBelow: `${ctx.which}<span class="nw">未滿 ${a} ${U}</span>的比例較${hi ? '高' : '低'}？`,
+      cmpAtleast: `${ctx.which}<span class="nw">${a} ${U}以上（含）</span>的比例較${hi ? '高' : '低'}？`,
+      cmpRange: `${ctx.which}在 <span class="nw">${a}～${b} ${U}</span>的相對次數較${hi ? '大' : '小'}？`
+    }[sub];
+    q.need = [{ L: 0, j: q.ia }, { L: 1, j: q.ia }];
+    if (sub === 'cmpRange') q.need.push({ L: 0, j: q.ib }, { L: 1, j: q.ib });
+    q.gridStep = d === 'basic' ? 10 : 5;
+    q.labelStep = 10;
+    q.yMax = 100;
+    q.yTitle = '累積相對次數（%）';
+    q.setup = `${ctx.title}的<em>累積相對次數</em>分配折線圖。`;
+    q.fam = sub;
+    q.opts = [0, 1, 2].map(i => ({ i, ok: i === q.ans, label: i === 2 ? '一樣' : ctx.names[i] }));
+    q.opts.forEach(o => { if (!o.ok) o.why = cmpWrongWhy(q, o.i); });
+    return q;
+  }
+  function cmpWrongWhy(q, i) {
+    const a = q.bounds[q.ia], b = q.bounds[q.ib], U = q.unit;
+    if (q.misAns !== null && i === q.misAns && q.misAns !== q.ans) {
+      if (q.sub === 'cmpAtleast') return `你可能直接比了「未滿 ${a} ${U}」的累積相對次數。讀到的值<b>越大</b>，${a} ${U}以上（含）反而<b>越少</b>，要先用 100% 去減再比。`;
+      return `你可能直接比了「未滿 ${b} ${U}」的累積值。${a}～${b} ${U}要用兩點<b>相減</b>，看的是這一段折線往上爬了多少。`;
+    }
+    if (i === 2) return `兩邊算出來不一樣：${q.ctx.names[0]} ${q.vals[0]}%、${q.ctx.names[1]} ${q.vals[1]}%。`;
+    if (q.ans === 2) return `兩邊算出來一樣，都是 ${q.vals[0]}%。`;
+    return `比較的方向弄反了：題目問的是較${q.dir === 'high' ? (q.sub === 'cmpRange' ? '大' : '高') : (q.sub === 'cmpRange' ? '小' : '低')}的那一個。`;
+  }
+
+  function makeQ(t = qtype, d = diff) {
+    const kind = t === 'mix' ? (coin(0.35) ? 'compare' : 'single') : t;
+    const q = kind === 'compare' ? makeCompare(d) : makeSingle(d);
+    q.type = t;
+    return q;
+  }
+
+  /* ══ 點錯點的說明 ══════════════════════════════════ */
+  function pointWhy(q, L, j) {
+    const B = i => q.bounds[i], U = q.unit;
+    const who = q.lines === 2 ? `${q.ctx.names[L]}在` : '';
+    const what = j === 0 ? `你點的是${who}起點（橫軸 ${B(0)}），它代表「未滿 ${B(0)} ${U}」，一定是 0。`
+      : `你點的是${who}橫軸 ${B(j)} 的點，它代表「未滿 ${B(j)} ${U}」`;
+    const tail = s => (j === 0 ? s : `${what}${s}`);
+    const fam = q.kind === 'compare' ? (q.sub === 'cmpRange' ? 'range' : q.sub === 'cmpAtleast' ? 'atleast' : 'below') : q.fam;
+    const a = q.ia;
+    let s;
+    if (fam === 'range') {
+      const b = q.ib;
+      s = (j === 0 ? what : `${what}。`) + `${B(a)}～${B(b)} ${U} ＝「未滿 ${B(b)}」−「未滿 ${B(a)}」，要點橫軸 <b>${B(a)}</b> 和 <b>${B(b)}</b> 這兩個點。`;
+    } else {
+      let diffPart = '。';
+      if (j > 0 && j < a) diffPart = `，比題目少了 ${B(j)}～${B(a)} ${U}。`;
+      else if (j > a) diffPart = `，多算了 ${B(a)}～${B(j)} ${U}。`;
+      s = tail(diffPart);
+      s += fam === 'atleast'
+        ? `「${B(a)} ${U}以上（含）」要先讀「未滿 ${B(a)} ${U}」，也就是橫軸 <b>${B(a)}</b> 的點，再用全部去減。`
+        : `累積圖的點畫在<b>組上限</b>，「未滿 ${B(a)} ${U}」就是橫軸 <b>${B(a)}</b> 的點。`;
+    }
+    if (q.lines === 2) s += '兩條線都要點。';
+    return s;
+  }
+
+  /* ══ 畫圖 ══════════════════════════════════════════ */
+  const GW = 640, GH = 420, ML = 58, MR = 24, MT = 46, MB = 56;
+  function geom(q) {
+    const pw = GW - ML - MR, ph = GH - MT - MB;
+    const gap = q.bounds[0] > 0 ? 26 : 0;
+    return {
+      X: j => ML + gap + (pw - gap) * j / q.k,
+      Y: v => MT + ph * (1 - v / q.yMax),
+      gap, pw, ph
+    };
+  }
+  const r1 = n => Math.round(n * 10) / 10;
+  function chartSVG(q, o = {}) {
+    const { labels = false, sel = [], bad = null, live = false } = o;
+    const { X, Y, gap } = geom(q);
+    const x1 = ML, x2 = GW - MR, y0 = Y(0);
+    let s = `<svg class="chart${live ? ' live' : ''}" viewBox="0 0 ${GW} ${GH}" role="img" aria-label="${q.yTitle}分配折線圖">`;
+    // 水平格線與縱軸刻度
+    for (let v = 0; v <= q.yMax + 1e-9; v += q.gridStep) {
+      const y = r1(Y(v)), major = v % q.labelStep === 0;
+      s += `<line x1="${x1}" x2="${x2}" y1="${y}" y2="${y}" stroke="#94a3b8" stroke-opacity="${major ? 0.32 : 0.14}" stroke-width="1"/>`;
+      if (major) s += `<text class="tk" x="${ML - 8}" y="${y + 6}" text-anchor="end">${v}</text>`;
+    }
+    // 垂直格線與橫軸刻度
+    q.bounds.forEach((b, j) => {
+      const x = r1(X(j));
+      s += `<line x1="${x}" x2="${x}" y1="${MT}" y2="${y0}" stroke="#94a3b8" stroke-opacity="0.12"/>`;
+      s += `<text class="tk" x="${x}" y="${y0 + 24}" text-anchor="middle">${b}</text>`;
+    });
+    // 座標軸
+    s += `<line x1="${x1}" x2="${x1}" y1="${MT - 8}" y2="${y0}" stroke="#cbd5e1" stroke-width="2"/>`;
+    s += `<line x1="${x1}" x2="${x2}" y1="${y0}" y2="${y0}" stroke="#cbd5e1" stroke-width="2"/>`;
+    if (gap) {
+      const bx = x1 + 8;
+      s += `<rect x="${bx - 2}" y="${y0 - 8}" width="14" height="16" fill="#0f172a"/>`;
+      s += `<path d="M${bx} ${y0 + 7} l4 -14 M${bx + 7} ${y0 + 7} l4 -14" stroke="#cbd5e1" stroke-width="2" fill="none"/>`;
+    }
+    s += `<text class="ttl" x="6" y="${MT - 22}" text-anchor="start">${q.yTitle}</text>`;
+    s += `<text class="ttl" x="${x2}" y="${GH - 6}" text-anchor="end">${q.xLab}</text>`;
+    // 讀值的虛線
+    sel.forEach(({ L, j }) => {
+      const x = r1(X(j)), y = r1(Y(q.series[L][j]));
+      s += `<line x1="${x1}" x2="${x}" y1="${y}" y2="${y}" stroke="#22c55e" stroke-width="2.4" stroke-dasharray="7 5"/>`;
+      s += `<line x1="${x}" x2="${x}" y1="${y}" y2="${y0}" stroke="#22c55e" stroke-width="2" stroke-dasharray="4 5" stroke-opacity="0.7"/>`;
+    });
+    // 折線
+    for (let L = 0; L < q.lines; L++) {
+      const pts = q.series[L].map((v, j) => `${r1(X(j))},${r1(Y(v))}`).join(' ');
+      s += `<polyline points="${pts}" fill="none" stroke="${LINE_COLOR[L]}" stroke-width="3" stroke-linejoin="round"/>`;
+    }
+    for (let L = 0; L < q.lines; L++) {
+      q.series[L].forEach((v, j) => {
+        const x = r1(X(j)), y = r1(Y(v));
+        s += L === 1
+          ? `<rect x="${x - 6}" y="${y - 6}" width="12" height="12" fill="${LINE_COLOR[L]}" stroke="#0b1020" stroke-width="1.5"/>`
+          : `<circle cx="${x}" cy="${y}" r="6.5" fill="${LINE_COLOR[L]}" stroke="#0b1020" stroke-width="1.5"/>`;
+      });
+    }
+    // 數值標籤
+    if (labels) {
+      for (let L = 0; L < q.lines; L++) {
+        q.series[L].forEach((v, j) => {
+          const x = r1(X(j)), y = r1(Y(v));
+          if (q.lines === 2) {
+            const other = q.series[1 - L][j];
+            if (L === 1 && other === v) return;
+            const above = other === v || (L === 0 ? v >= other : v > other);
+            const col = other === v ? '#f1f5f9' : LINE_COLOR[L];
+            s += `<text class="vl" x="${j === 0 ? x + 12 : x - 4}" y="${above ? y - 12 : y + 26}" text-anchor="${j === 0 ? 'start' : 'end'}" fill="${col}">${v}</text>`;
+          } else {
+            s += `<text class="vl" x="${j === 0 ? x + 10 : x - 6}" y="${y - 12}" text-anchor="${j === 0 ? 'start' : 'end'}" fill="#fde68a">${v}</text>`;
+          }
+        });
+      }
+    }
+    // 選到的點、點錯的點
+    sel.forEach(({ L, j }) => {
+      s += `<circle cx="${r1(X(j))}" cy="${r1(Y(q.series[L][j]))}" r="12" fill="none" stroke="#22c55e" stroke-width="3.5"/>`;
+    });
+    if (bad) {
+      const x = r1(X(bad.j)), y = r1(Y(q.series[bad.L][bad.j]));
+      s += `<circle cx="${x}" cy="${y}" r="13" fill="rgba(239,68,68,0.18)" stroke="#ef4444" stroke-width="3.5"/>`;
+      s += `<text x="${x + 14}" y="${y + 6}" fill="#ef4444" font-size="22" font-weight="800">✗</text>`;
+    }
+    // 圖例（右下角，累積圖這一區通常是空的）
+    if (q.lines === 2) {
+      q.ctx.names.forEach((nm, L) => {
+        const y = Y(0) - 20 - (1 - L) * 26;
+        s += L === 1
+          ? `<rect x="${x2 - 14}" y="${y - 6}" width="12" height="12" fill="${LINE_COLOR[L]}"/>`
+          : `<circle cx="${x2 - 8}" cy="${y}" r="6.5" fill="${LINE_COLOR[L]}"/>`;
+        s += `<text class="lg" x="${x2 - 22}" y="${y + 6}" text-anchor="end" fill="${LINE_COLOR[L]}">${nm}</text>`;
+      });
+    }
+    return s + '</svg>';
+  }
+
+  /* 點擊 → 最近的點 */
+  function hitPoint(q, svg, clientX, clientY) {
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = clientX; pt.y = clientY;
+    const p = pt.matrixTransform(ctm.inverse());
+    const { X, Y } = geom(q);
+    const hits = [];
+    for (let L = 0; L < q.lines; L++) {
+      q.series[L].forEach((v, j) => {
+        const d = Math.hypot(X(j) - p.x, Y(v) - p.y);
+        if (d <= 34) hits.push({ L, j, d });
+      });
+    }
+    if (!hits.length) return null;
+    hits.sort((a, b) => a.d - b.d);
+    // 兩條線的點重疊時，優先算成還沒點、而且需要的那一個
+    const best = hits.filter(h => Math.abs(h.d - hits[0].d) < 0.5);
+    return best.find(h => isNeeded(q, h) && !isSel(h)) || best.find(h => isNeeded(q, h)) || best[0];
+  }
+  const same = (a, b) => a.L === b.L && a.j === b.j;
+  const isNeeded = (q, h) => q.need.some(n => same(n, h));
+  const isSel = h => picked.some(n => same(n, h));
+
+  /* ══ 解說 ══════════════════════════════════════════ */
+  function solveWhy(q) {
+    const B = i => q.bounds[i], U = q.unit, a = B(q.ia), b = B(q.ib);
+    const lines = [];
+    if (q.kind === 'single') {
+      const s = q.series[0], v = s[q.ia];
+      const rule = `累積圖的點畫在<b>組上限</b>：橫軸 ${a} 的點，讀的是「未滿 ${a} ${U}」。`;
+      switch (q.sub) {
+        case 'below': case 'belowP':
+          lines.push(rule, `讀到 <b>${valStr(q, v)}</b>。`); break;
+        case 'beat':
+          lines.push(`比 ${a} ${U}少的，就是「未滿 ${a} ${U}」的人。`, rule, `讀到 <b>${v} 人</b>。`); break;
+        case 'beatN':
+          lines.push(`比 ${a} ${U}少的，就是「未滿 ${a} ${U}」的人。`, `讀橫軸 ${a} 的點：占 ${v}%。`, `共 ${q.N} 人：<span class="nw">${q.N} × ${v}% ＝ <b>${q.ans} 人</b></span>。`); break;
+        case 'atleast':
+          lines.push(`未滿 ${a} ${U}：讀橫軸 ${a} 的點，有 ${v} 人。`, `${a} ${U}以上（含）＝ 全部 − 未滿 ${a} ＝ <span class="nw">${q.N} − ${v} ＝ <b>${q.ans} 人</b></span>。`); break;
+        case 'atleastP':
+          lines.push(`未滿 ${a} ${U}：讀橫軸 ${a} 的點，占 ${v}%。`, `${a} ${U}以上（含）＝ <span class="nw">100% − ${v}% ＝ <b>${q.ans}%</b></span>。`); break;
+        case 'atleastN':
+          lines.push(`未滿 ${a} ${U}：讀橫軸 ${a} 的點，占 ${v}%。`, `${a} ${U}以上（含）占 <span class="nw">100% − ${v}% ＝ ${100 - v}%</span>，`, `共 ${q.N} 人：<span class="nw">${q.N} × ${100 - v}% ＝ <b>${q.ans} 人</b></span>。`); break;
+        case 'range': case 'rangeP':
+          lines.push(`${a}～${b} ${U} ＝ 未滿 ${b} − 未滿 ${a} ＝ <span class="nw">${q.pct ? `${s[q.ib]}% − ${v}%` : `${s[q.ib]} − ${v}`} ＝ <b>${valStr(q, q.ans)}</b></span>。`);
+          if (q.ans === 0) lines.push(`這一段折線是<b>水平</b>的，代表${q.ib - q.ia > 1 ? '這幾組' : '這一組'}沒有人（0）。`);
+          break;
+      }
+    } else {
+      const nm = q.ctx.names;
+      for (let L = 0; L < 2; L++) {
+        const s = q.series[L];
+        let t;
+        if (q.sub === 'cmpBelow') t = `未滿 ${a} ${U}占 <b>${s[q.ia]}%</b>`;
+        else if (q.sub === 'cmpAtleast') t = `未滿 ${a} ${U}占 ${s[q.ia]}%，${a} ${U}以上（含）占 <span class="nw">100% − ${s[q.ia]}% ＝ <b>${q.vals[L]}%</b></span>`;
+        else t = `<span class="nw">${s[q.ib]}% − ${s[q.ia]}% ＝ <b>${q.vals[L]}%</b></span>${q.vals[L] === 0 ? '（水平段）' : ''}`;
+        lines.push(`<span style="color:${LINE_COLOR[L]}">${nm[L]}</span>：${t}。`);
+      }
+      const adj = q.sub === 'cmpRange' ? (q.dir === 'high' ? '大' : '小') : (q.dir === 'high' ? '高' : '低');
+      lines.push(q.ans === 2 ? `兩邊<b>一樣</b>，都是 ${q.vals[0]}%。` : `所以 <b>${nm[q.ans]}</b>較${adj}。`);
+      if (q.sub === 'cmpAtleast') lines.push('<span class="soft">累積相對次數讀到的值越大，「以上（含）」的比例反而越小。</span>');
+    }
+    return lines.map(t => `<div>${t}</div>`).join('');
+  }
+
+  /* ── 音效 ── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) { const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return null; ac = new Ctx(); }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type = 'sine', vol = 0.16) {
+    const c = audio(); if (!c) return;
+    const t0 = c.currentTime + when, osc = c.createOscillator(), g = c.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination); osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+  const sfxTap = () => tone(740, 0.06, 0, 'triangle', 0.08);
+  const sfxStep = () => { tone(520, 0.1, 0, 'triangle', 0.1); tone(780, 0.16, 0.08, 'triangle', 0.1); };
+
+  /* ── 狀態 ── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, curLimit = 30;
+  let picked = [], stage = 'point', choiceBtns = [];
+
+  const setView = v => { document.body.dataset.view = v; };
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      b.disabled = Number(b.dataset.step) < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+  function paintMenu() {
+    document.querySelectorAll('#type button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.type === qtype)));
+    document.querySelectorAll('#diff button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.diff === diff)));
+    $('level-note').textContent = `${TYPE_NOTE[qtype]}${DIFF_NOTE[diff]}`;
+    paintLimit();
+  }
+  function paintMute() { $('mute').textContent = $('mute2').textContent = muted ? '🔇' : '🔊'; }
+
+  function ruleText(q) {
+    if (q.kind === 'compare') return '兩條累積相對次數折線';
+    return q.chart === 'cum' ? '累積次數分配折線圖' : '累積相對次數分配折線圖';
+  }
+  function paintChart() {
+    $('chart').innerHTML = chartSVG(cur, { labels: cur.diff === 'basic', sel: picked, live: !locked && stage === 'point' });
+  }
+  function paintStep() {
+    if (stage === 'point') {
+      $('step').innerHTML = `第一步：在圖上點出要讀的點<span class="prog">${picked.length} ／ ${cur.need.length}</span>`;
+    } else {
+      $('step').innerHTML = cur.diff === 'hard' ? '第二步：對格線讀出數值，選出答案' : '第二步：選出答案';
+    }
+  }
+
+  function startQuestion() {
+    cur = makeQ(qtype, diff);
+    curLimit = limit();
+    locked = false;
+    picked = [];
+    stage = 'point';
+    $('rule').textContent = ruleText(cur);
+    $('setup').innerHTML = cur.setup;
+    $('ask').innerHTML = cur.ask;
+    $('msg').textContent = '';
+    $('choices').hidden = true;
+    $('choices').classList.toggle('three', cur.kind === 'compare');
+    $('choices').innerHTML = cur.opts.map((o, i) => `<button type="button" class="choice" data-i="${i}"><span class="k">${i + 1}</span>${o.label}</button>`).join('');
+    choiceBtns = Array.from($('choices').querySelectorAll('.choice'));
+    paintChart();
+    paintStep();
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + curLimit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  $('chart').addEventListener('pointerdown', e => {
+    if (locked || stage !== 'point' || !cur) return;
+    const svg = $('chart').querySelector('svg');
+    if (!svg) return;
+    const h = hitPoint(cur, svg, e.clientX, e.clientY);
+    if (!h) { $('msg').textContent = '點在折線的圓點上。'; return; }
+    e.preventDefault();
+    if (isSel(h)) return;
+    if (!isNeeded(cur, h)) { cur.bad = { L: h.L, j: h.j }; judge(false); return; }
+    picked.push({ L: h.L, j: h.j });
+    $('msg').textContent = '';
+    if (picked.length === cur.need.length) {
+      stage = 'choose';
+      sfxStep();
+      $('choices').hidden = false;
+    } else sfxTap();
+    paintChart();
+    paintStep();
+  });
+  $('choices').addEventListener('click', e => {
+    const b = e.target.closest('.choice');
+    if (b) choose(Number(b.dataset.i));
+  });
+  function choose(i) {
+    if (locked || stage !== 'choose') return;
+    const o = cur.opts[i];
+    if (!o) return;
+    cur.chosen = o;
+    judge(o.ok);
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      $('bar').style.transform = `scaleX(${left / (curLimit * 1000)})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 5 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { cur.timeout = true; judge(false); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  function answerText(q) {
+    if (q.kind === 'compare') return q.ans === 2 ? '一樣' : q.ctx.names[q.ans];
+    return ansStr(q, q.ans);
+  }
+
+  function judge(win) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    choiceBtns.forEach(b => { b.disabled = true; });
+    document.body.classList.remove('urgent');
+    const q = cur;
+    const timeout = !!q.timeout;
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+    paintChart();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : (q.bad ? '點錯點了' : '答錯了'));
+    $('sol-ans').textContent = `答案：${answerText(q)}`;
+    $('sol-chart').innerHTML = chartSVG(q, { labels: true, sel: q.need, bad: q.bad || null });
+    let why = solveWhy(q);
+    if (!timeout && !win) {
+      if (q.bad) why += `<div class="warn">${pointWhy(q, q.bad.L, q.bad.j)}</div>`;
+      else if (q.chosen) why += `<div class="warn">你選了「${q.chosen.label}」：${q.chosen.why}</div>`;
+    }
+    $('sol-why').innerHTML = why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => { cancelAnimationFrame(raf); locked = true; setView('menu'); });
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => b.addEventListener('click', () => {
+    const k = limitKey();
+    limits[k] = clampLimit(limits[k] + Number(b.dataset.step));
+    store.set(`cr-limit-${k}`, String(limits[k]));
+    paintLimit();
+  }));
+  document.querySelectorAll('#type button').forEach(b => b.addEventListener('click', () => {
+    qtype = b.dataset.type; store.set('cr-type', qtype); paintMenu();
+  }));
+  document.querySelectorAll('#diff button').forEach(b => b.addEventListener('click', () => {
+    diff = b.dataset.diff; store.set('cr-diff', diff); paintMenu();
+  }));
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted; store.set('cr-muted', muted ? '1' : '0'); paintMute();
+  }));
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      const i = ['1', '2', '3', '4'].indexOf(e.key);
+      if (i >= 0 && stage === 'choose') { e.preventDefault(); choose(i); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancelAnimationFrame(raf); locked = true; setView('menu'); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu' && (e.key === ' ' || e.key === 'Enter')) {
+      if (document.activeElement && document.activeElement.closest('button, a') && document.activeElement !== $('start')) return;
+      e.preventDefault(); audio(); startQuestion();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）───────
+     不用累加出來的折線值，而是由各組次數「造出一筆筆原始資料」，
+     直接數「未滿 a 的有幾筆」「a 以上（含）有幾筆」「a ≦ x < b 有幾筆」來重算答案，
+     再檢查：圖上每個點的值、正解、選項恰一個對且不重複、人數是整數、
+     挑戰難度每個點都落在格線上、要點的點都在圖上、每個錯誤選項與點錯點都有說明。 */
+  function rawData(bounds, counts) {
+    const out = [];
+    counts.forEach((c, i) => {
+      const lo = bounds[i], w = bounds[i + 1] - bounds[i];
+      for (let t = 0; t < c; t++) out.push(lo + Math.random() * w * 0.999);
+    });
+    return out;
+  }
+  const cnt = (raw, f) => raw.reduce((n, x) => n + (f(x) ? 1 : 0), 0);
+  window.__cumulativeRead = {
+    makeQ, chartSVG, pointWhy, solveWhy,
+    current: () => cur,
+    // 實測用：把第 i 個要點的點換成螢幕座標
+    needXY(i) {
+      const svg = $('chart').querySelector('svg'), { X, Y } = geom(cur), p = cur.need[i];
+      const pt = svg.createSVGPoint();
+      pt.x = X(p.j); pt.y = Y(cur.series[p.L][p.j]);
+      const s = pt.matrixTransform(svg.getScreenCTM());
+      return { x: s.x, y: s.y };
+    },
+    selfTest(n = 1000) {
+      const report = {}, errors = [];
+      const err = (...a) => { errors.push(a); };
+      TYPES.forEach(t => DIFFS.forEach(d => {
+        const key = `${t}-${d}`, t0 = performance.now();
+        const tally = {};
+        for (let it = 0; it < n; it++) {
+          let q;
+          try { q = makeQ(t, d); } catch (e) { err(key, 'throw', e.message); continue; }
+          tally[q.sub] = (tally[q.sub] || 0) + 1;
+          const a = q.bounds[q.ia], b = q.bounds[q.ib];
+          if (t === 'single' && q.kind !== 'single') err(key, '單一圖表出了比較題');
+          if (t === 'compare' && q.kind !== 'compare') err(key, '比較題出了單一圖表');
+          // 圖上每個點 vs. 原始資料數出來的值
+          const groups = q.kind === 'single' ? [q.counts] : q.counts2.map(p => p.map(x => x));
+          const totals = groups.map(g => g.reduce((x, y) => x + y, 0));
+          const raws = groups.map(g => rawData(q.bounds, g));
+          const pctOf = (L, c) => (q.pct ? c * 100 / totals[L] : c);
+          for (let L = 0; L < q.lines; L++) {
+            if (q.series[L].length !== q.k + 1) err(key, '點數不對');
+            q.bounds.forEach((bd, j) => {
+              const c = pctOf(L, cnt(raws[L], x => x < bd));
+              if (Math.abs(c - q.series[L][j]) > 1e-9) err(key, '圖上的點和原始資料不符', L, j, c, q.series[L][j]);
+              if (q.series[L][j] % q.gridStep !== 0) { if (d === 'hard') err(key, '挑戰難度的點不在格線上', q.series[L][j]); }
+              if (q.series[L][j] > q.yMax) err(key, '點超出縱軸');
+            });
+            if (q.series[L][0] !== 0) err(key, '起點不是 0');
+            if (q.pct && totals[L] && q.series[L][q.k] !== 100) err(key, '最後一點不是 100%');
+          }
+          q.need.forEach(p => { if (p.j < 0 || p.j > q.k || p.L >= q.lines) err(key, '要點的點不在圖上', p); });
+          if (q.ia < 1) err(key, 'a 是起點');
+          if (q.kind === 'single') {
+            const raw = raws[0], N = q.N;
+            if (totals[0] !== N) err(key, '總數不符');
+            const below = cnt(raw, x => x < a), atl = cnt(raw, x => x >= a), rng = q.ib !== undefined ? cnt(raw, x => x >= a && x < b) : null;
+            const P = c => c * 100 / N;
+            const expect = {
+              below, beat: below, belowP: P(below), beatN: below,
+              atleast: atl, atleastP: P(atl), atleastN: atl, range: rng, rangeP: rng === null ? null : P(rng)
+            }[q.sub];
+            if (expect === null || Math.abs(expect - q.ans) > 1e-9) err(key, '正解和數原始資料不符', q.sub, q.ans, expect);
+            if (!Number.isInteger(q.ans) || q.ans < 0) err(key, '答案不是非負整數', q.ans);
+            if (q.opts.length !== 4) err(key, '選項不是 4 個');
+            const oks = q.opts.filter(o => o.ok);
+            if (oks.length !== 1 || oks[0].v !== q.ans) err(key, '正解選項不是恰好一個');
+            if (q.opts.filter(o => o.v === q.ans).length !== 1) err(key, '有錯誤選項等於正解');
+            const labs = q.opts.map(o => o.label);
+            if (new Set(labs).size !== 4) err(key, '選項重複', labs);
+            q.opts.forEach(o => {
+              if (!Number.isInteger(o.v) || o.v < 0) err(key, '選項不是非負整數', o.v);
+              if (!o.ok && !o.why) err(key, '錯誤選項沒有說明');
+            });
+            if (['range', 'rangeP'].includes(q.sub) && !(q.ib > q.ia && q.ib <= q.k)) err(key, '區間不對');
+            if (q.need.length !== (q.fam === 'range' ? 2 : 1)) err(key, '要點的點數不對');
+          } else {
+            // 各自換成人數再比，避免只靠百分比
+            const vv = [0, 1].map(L => {
+              const raw = raws[L], N = totals[L];
+              const c = q.sub === 'cmpBelow' ? cnt(raw, x => x < a) : q.sub === 'cmpAtleast' ? cnt(raw, x => x >= a) : cnt(raw, x => x >= a && x < b);
+              return c * 100 / N;
+            });
+            vv.forEach((x, L) => { if (Math.abs(x - q.vals[L]) > 1e-9) err(key, '比較值和數原始資料不符', L, x, q.vals[L]); });
+            const exp = vv[0] === vv[1] ? 2 : ((vv[0] > vv[1]) === (q.dir === 'high') ? 0 : 1);
+            if (exp !== q.ans) err(key, '比較題答案錯', exp, q.ans);
+            if (q.opts.filter(o => o.ok).length !== 1) err(key, '比較題正解不是恰好一個');
+            q.opts.forEach(o => { if (!o.ok && !o.why) err(key, '比較題錯誤選項沒有說明'); });
+            if (q.need.length !== (q.sub === 'cmpRange' ? 4 : 2)) err(key, '比較題要點的點數不對');
+          }
+          // 點錯點的說明：每個不需要的點都要有
+          for (let L = 0; L < q.lines; L++) for (let j = 0; j <= q.k; j++) {
+            if (isNeeded(q, { L, j })) continue;
+            const w = pointWhy(q, L, j);
+            if (!w || /undefined|NaN/.test(w)) err(key, '點錯點說明壞掉', L, j);
+          }
+          const txt = q.ask + q.setup + solveWhy(q) + q.opts.map(o => o.label + (o.why || '')).join('') + chartSVG(q, { labels: true, sel: q.need });
+          if (/undefined|NaN|Infinity|\[object|null/.test(txt)) err(key, '字串有壞值', txt.slice(0, 200));
+          if (/-\d/.test(q.ask + solveWhy(q))) err(key, '說明出現半形負號');
+        }
+        report[key] = `${n} 題 ${JSON.stringify(tally)}，${(performance.now() - t0).toFixed(0)} ms`;
+      }));
+      return { report, errors: errors.slice(0, 20), errorCount: errors.length };
+    }
+  };
+
+  paintMenu();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>
