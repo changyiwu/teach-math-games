@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>數列補空格 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="等差數列、等差級數、等比數列挖空格，用數字磚補上：先找公差或公比，往後加、往前減，或用第 n 項公式跳到很遠的項。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --pink: #f9a8d4;
+      --bh: clamp(52px, 9vh, 80px);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+    i.v { font-family: "Times New Roman", "Noto Serif", serif; font-style: italic; }
+    .fr { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; font-size: 0.72em; line-height: 1.05; margin: 0 1px; text-indent: 0; }
+    .fr > span { text-indent: 0; }
+    .fr > span:first-child { border-bottom: 1.5px solid currentColor; padding: 0 2px; }
+
+    .screen { position: fixed; inset: 0; display: none; flex-direction: column; }
+    body[data-view="menu"] #menu, body[data-view="play"] #play, body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 10px 18px;
+      border-bottom: 1px solid var(--line); background: rgba(11, 16, 32, 0.55); backdrop-filter: blur(6px);
+    }
+    .home { color: var(--muted); text-decoration: none; font-size: 0.95rem; white-space: nowrap; }
+    .home:hover, .home:focus-visible { color: var(--text); }
+    .spacer { flex: 1 1 auto; }
+    .stat { font-size: 0.95rem; color: var(--muted); white-space: nowrap; }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+    .icon-btn {
+      border: 1px solid var(--line); background: rgba(15, 23, 42, 0.6); color: var(--text);
+      border-radius: 10px; width: 40px; height: 36px; font-size: 1.1rem; cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機 ── */
+    .menu-body {
+      flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 18px; padding: 20px 16px 32px; text-align: center; overflow-y: auto;
+    }
+    .menu-body > :first-child { margin-top: auto; }
+    .menu-body > :last-child { margin-bottom: auto; }
+    h1.title {
+      margin: 0; font-size: clamp(2rem, 7vw, 4.2rem); letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .unit { margin: 0 0 8px; opacity: 0.75; font-size: 0.95rem; }
+    .hint { margin: 0; color: var(--muted); font-size: clamp(0.95rem, 2.2vw, 1.25rem); max-width: 40ch; line-height: 1.7; }
+    .ctl-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+    .ctl {
+      display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line);
+      border-radius: 999px; background: var(--panel); font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6); color: var(--text); font-size: 1.1rem; cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+    .seg { display: flex; flex-wrap: wrap; justify-content: center; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--panel); }
+    .seg button { border: 0; background: transparent; color: var(--muted); padding: 9px 16px; font-size: 1rem; cursor: pointer; font-family: inherit; }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+    .level-note { margin: -6px 0 0; color: var(--muted); font-size: 0.9rem; max-width: 46ch; line-height: 1.6; }
+    .big-btn {
+      margin-top: 4px; padding: 18px 44px; border: 0; border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem); font-weight: 800; font-family: inherit; cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+    .learn-link { color: var(--cyan); text-decoration: none; font-size: 1rem; border-bottom: 1px dashed rgba(34, 211, 238, 0.5); padding-bottom: 2px; }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+    .keys { color: var(--muted); font-size: 0.85rem; opacity: 0.8; }
+    .keys kbd {
+      display: inline-block; padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px;
+      border-radius: 6px; background: rgba(15, 23, 42, 0.6); font-family: inherit; font-size: 0.85em;
+    }
+
+    /* ── 作答 ── */
+    .timer { flex: 0 0 auto; height: 10px; background: rgba(15, 23, 42, 0.8); }
+    .timer > i { display: block; height: 100%; width: 100%; transform-origin: left center; background: linear-gradient(90deg, var(--cyan), var(--accent-2)); }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: safe center;
+      gap: clamp(8px, 1.8vh, 16px); padding: 10px 16px 14px; min-height: 0; overflow-y: auto;
+    }
+    .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 14px; max-width: 1100px; }
+    .rule-tag {
+      padding: 4px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem); background: var(--panel); white-space: nowrap;
+    }
+    .ask { font-size: clamp(1.2rem, 3.4vw, 2rem); font-weight: 700; text-align: center; line-height: 1.4; }
+    .ask b { color: var(--accent-2); }
+    .sub { color: var(--muted); font-size: clamp(0.9rem, 2vw, 1.1rem); text-align: center; max-width: 60ch; }
+    .sub em { font-style: normal; color: var(--text); font-weight: 700; }
+
+    .count {
+      position: absolute; top: 54px; right: 18px; font-size: clamp(2.4rem, 7vw, 4.4rem); font-weight: 800;
+      color: var(--accent-2); opacity: 0.85; pointer-events: none; font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    /* 數列一排 */
+    .seq { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: center; row-gap: 10px; max-width: 1150px; }
+    .cell { display: flex; flex-direction: column; align-items: center; }
+    .cell .idx { height: 1.6em; font-size: clamp(1rem, 2.4vw, 1.4rem); color: var(--muted); white-space: nowrap; }
+    .cell .box {
+      min-width: clamp(58px, 9vw, 104px); height: var(--bh); padding: 0 10px; display: flex; align-items: center; justify-content: center;
+      border: 2px solid rgba(148, 163, 184, 0.45); border-radius: 14px; background: var(--card);
+      color: var(--text); font-family: inherit; font-size: clamp(1.35rem, 4vw, 2.3rem); font-weight: 800;
+      font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+    .cell .low { height: 1.5em; }
+    button.box { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+    .box.blank { border-style: dashed; border-color: rgba(148, 163, 184, 0.6); background: rgba(15, 23, 42, 0.55); color: var(--accent-2); }
+    .box.blank.filled { border-style: solid; background: rgba(245, 158, 11, 0.1); }
+    .box.sel { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.28); }
+    .box .ph { color: var(--muted); font-weight: 600; font-size: 0.7em; }
+    .box.ok { border-color: var(--win); color: #bbf7d0; background: rgba(34, 197, 94, 0.12); border-style: solid; }
+    .box.ng { border-color: var(--lose); color: #fecaca; background: rgba(239, 68, 68, 0.12); border-style: solid; }
+    .cell .yours { height: 1.5em; font-size: 0.95rem; color: #fca5a5; text-decoration: line-through; white-space: nowrap; }
+    .sep { display: flex; flex-direction: column; align-items: center; min-width: clamp(20px, 3vw, 34px); }
+    .sep .top { height: 1.6em; font-size: clamp(1rem, 2.4vw, 1.4rem); }
+    .sep .s { height: var(--bh); display: flex; align-items: center; justify-content: center; font-size: clamp(1.3rem, 3.6vw, 2rem); font-weight: 700; color: var(--muted); padding: 0 2px; }
+    .sep .gl { height: 1.5em; font-size: clamp(0.8rem, 1.8vw, 1.05rem); color: var(--cyan); white-space: nowrap; font-weight: 700; }
+    .sep .gl.given { color: var(--pink); }
+    .sep.dots .s { letter-spacing: 0.1em; }
+    .txt { display: flex; flex-direction: column; justify-content: flex-start; }
+    .txt .s { height: var(--bh); display: flex; align-items: center; font-size: clamp(1.15rem, 3.2vw, 1.8rem); font-weight: 700; white-space: nowrap; padding: 0 6px; }
+    .txt .top { height: 1.6em; font-size: clamp(1rem, 2.4vw, 1.4rem); }
+    .txt .low { height: 1.5em; }
+    .brk { flex-basis: 100%; height: 0; }
+    @media (min-width: 640px) { .brk.narrow { flex-basis: 0; } }
+
+    .pad { display: flex; flex-direction: column; align-items: center; gap: clamp(8px, 1.4vh, 12px); width: 100%; }
+    .tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(6px, 1vw, 10px); max-width: 720px; }
+    .tile {
+      min-width: clamp(56px, 8.4vw, 80px); height: clamp(44px, 7.4vh, 60px); padding: 0 12px; border: 2px solid var(--line); border-radius: 12px;
+      background: var(--card); color: var(--text); font-family: inherit; font-size: clamp(1.15rem, 3vw, 1.65rem); font-weight: 800; cursor: pointer;
+      font-variant-numeric: tabular-nums; transition: transform 0.1s, border-color 0.15s;
+    }
+    .tile:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--cyan); }
+    .tile.used { opacity: 0.28; }
+    .tile:disabled { cursor: default; }
+    .acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .act {
+      padding: 12px 22px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+      font-family: inherit; font-size: clamp(1rem, 2.6vw, 1.25rem); cursor: pointer;
+    }
+    .act:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .act.go { border: 0; background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05; font-weight: 800; padding: 12px 30px; }
+    .act.go:hover:not(:disabled) { color: #231a05; filter: brightness(1.06); }
+    .act:disabled { opacity: 0.4; cursor: default; }
+    .msg { min-height: 1.4em; font-size: clamp(0.95rem, 2.2vw, 1.1rem); text-align: center; color: var(--accent-2); }
+
+    /* ── 結果 ── */
+    .verdict {
+      position: fixed; inset: 0; z-index: 20; display: none; flex-direction: column; align-items: center; justify-content: flex-start;
+      gap: 14px; padding: 24px 16px; background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95));
+      backdrop-filter: blur(3px); overflow-y: auto;
+    }
+    .verdict > * { flex-shrink: 0; }
+    .verdict > :first-child { margin-top: auto; }
+    .verdict > :last-child { margin-bottom: auto; }
+    body[data-view="result"] .verdict { display: flex; }
+    .verdict h2 { margin: 0; font-size: clamp(2rem, 7vw, 4rem); letter-spacing: 0.06em; animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1); }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+    @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .solution { width: min(1100px, 100%); border: 1px solid var(--line); border-radius: 18px; background: var(--panel); padding: clamp(12px, 2.6vw, 22px); text-align: center; }
+    .solution .seq { --bh: clamp(44px, 7vh, 64px); margin: 0 auto 10px; }
+    .solution .cell .box { font-size: clamp(1.15rem, 3.2vw, 1.9rem); min-width: clamp(50px, 7.6vw, 90px); }
+    .why { font-size: clamp(1rem, 2.4vw, 1.25rem); line-height: 1.9; text-align: left; max-width: 60em; margin: 0 auto; }
+    .why > div { padding-left: 1.4em; text-indent: -1.4em; }
+    .why b { color: var(--accent-2); }
+    .why .ok-line::before { content: "✔ "; color: var(--win); }
+    .why .ng-line::before { content: "✘ "; color: var(--lose); }
+    .why .rule-line::before { content: "📐 "; }
+    .why .warn { color: #fca5a5; }
+    .why .soft { color: var(--muted); font-size: 0.92em; }
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .ghost-btn { padding: 12px 24px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--text); font-family: inherit; font-size: 1.05rem; cursor: pointer; }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .nw { white-space: nowrap; }
+
+    @media (max-width: 480px) {
+      :root { --bh: 50px; }
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; font-size: 2.2rem; }
+      .head { padding-right: 52px; }
+      .seg button { padding: 8px 12px; }
+      .cell .box { min-width: 46px; padding: 0 6px; font-size: 1.3rem; border-radius: 11px; }
+      .sep { min-width: 14px; }
+      .sep .s { font-size: 1.2rem; }
+      .sep .gl { font-size: 0.72rem; }
+      .txt .s { font-size: 1.1rem; padding: 0 3px; }
+      .solution .cell .box { min-width: 40px; font-size: 1.05rem; }
+    }
+    @media (max-height: 640px) {
+      .verdict { gap: 8px; padding-top: 12px; }
+      .verdict h2 { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+    <div class="menu-body">
+      <h1 class="title">數列補空格</h1>
+      <p class="unit">📘 第4冊・第1章 數列與級數・第1節 等差數列、第2節 等差級數、第3節 等比數列</p>
+      <p class="hint">先點空格、再點數字磚，把數列的空格補好：<strong>先找公差或公比</strong>，往後加（乘）、往前減（除）。<span class="limit-val">40</span> 秒內全部補對就過關。</p>
+      <div class="ctl-row">
+        <div class="seg" id="type" role="group" aria-label="題型">
+          <button type="button" data-type="ap" aria-pressed="true">等差數列</button>
+          <button type="button" data-type="sum" aria-pressed="false">等差級數</button>
+          <button type="button" data-type="gp" aria-pressed="false">等比數列</button>
+          <button type="button" data-type="mix" aria-pressed="false">混合</button>
+        </div>
+      </div>
+      <div class="ctl-row">
+        <div class="seg" id="diff" role="group" aria-label="難度">
+          <button type="button" data-diff="basic" aria-pressed="true">基礎</button>
+          <button type="button" data-diff="chal" aria-pressed="false">挑戰</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-5" aria-label="減少 5 秒">−</button>
+          <b class="limit-val">40</b>秒
+          <button type="button" data-step="5" aria-label="增加 5 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+      <button type="button" class="big-btn" id="start">🔢 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看數列小抄</a>
+      <p class="keys">鍵盤：<kbd>Enter</kbd> 送出　<kbd>Backspace</kbd> 清掉選中的空格　<kbd>空白</kbd> 下一題</p>
+    </div>
+  </section>
+
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+    <div class="count" id="count">40</div>
+    <div class="play-body">
+      <div class="head">
+        <div class="rule-tag" id="rule">1-1 等差數列</div>
+        <div class="ask" id="ask"></div>
+      </div>
+      <div class="sub" id="sub"></div>
+      <div class="seq" id="seq"></div>
+      <div class="pad">
+        <div class="tiles" id="tiles"></div>
+        <div class="acts">
+          <button type="button" class="act" id="clear">清空</button>
+          <button type="button" class="act go" id="submit">送出 ▸</button>
+        </div>
+        <div class="msg" id="msg"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="seq" id="sol-seq"></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器，限時依題型 × 難度各自記）── */
+  const TYPES = ['ap', 'sum', 'gp', 'mix'];
+  const DIFFS = ['basic', 'chal'];
+  const LIMIT_DEFAULT = {
+    ap: { basic: 40, chal: 60 }, sum: { basic: 45, chal: 60 },
+    gp: { basic: 40, chal: 60 }, mix: { basic: 45, chal: 60 }
+  };
+  const LIMIT_MIN = 10, LIMIT_MAX = 180;
+  const RULE = { ap: '1-1 等差數列', sum: '1-2 等差級數', gp: '1-3 等比數列' };
+  const NOTE = {
+    ap: {
+      basic: '5～6 項的等差數列挖 2～3 格，或兩數的等差中項。已知的相鄰兩項先算公差 d = 後項 − 前項；已知的兩項不相鄰，就看中間隔了幾個 d。數字下方會即時標出相鄰兩項的差。',
+      chal: '跳到很遠的項：用 aₙ = a₁ + (n − 1)d；只知道 a₄、a₉ 也能倒推 a₁；或已知末項，求它是第幾項。不再標出相鄰兩項的差。'
+    },
+    sum: {
+      basic: '給整條等差級數（首項、末項都看得到），先求「共幾項」，再用 Sₙ = n(a₁ + aₙ) ÷ 2 求和。',
+      chal: '只給前幾項和項數，先求末項再求和；或給和，倒過來求加到第幾項。'
+    },
+    gp: {
+      basic: '5 項的等比數列挖 3 格，公比可能是負數或分數；或兩數的等比中項（記得有正有負）。已知相鄰兩項先算公比 r = 後項 ÷ 前項，往後乘 r、往前除以 r。',
+      chal: '跳到很遠的項：用 aₙ = a₁ × rⁿ⁻¹；或只知道隔三項的兩項，先求 r³ 再開立方。不再標出相鄰兩項的比。'
+    },
+    mix: {
+      basic: '等差數列、等差級數、等比數列三種題型隨機出（基礎難度）。',
+      chal: '等差數列、等差級數、等比數列三種題型隨機出（挑戰難度）。'
+    }
+  };
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 私密視窗等情況：不記也能玩 */ } }
+  };
+  const clampLimit = v => Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v));
+  let type = TYPES.includes(store.get('sf-type')) ? store.get('sf-type') : 'ap';
+  let diff = DIFFS.includes(store.get('sf-diff')) ? store.get('sf-diff') : 'basic';
+  const limits = {};
+  TYPES.forEach(t => DIFFS.forEach(d => {
+    const v = parseInt(store.get(`sf-limit-${t}-${d}`), 10);
+    limits[`${t}-${d}`] = clampLimit(Number.isFinite(v) ? v : LIMIT_DEFAULT[t][d]);
+  }));
+  let muted = store.get('sf-muted') === '1';
+  const limit = () => limits[`${type}-${diff}`];
+
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  const coin = (p = 0.5) => Math.random() < p;
+  function pickW(list) {
+    const tot = list.reduce((s, [, w]) => s + w, 0);
+    let x = Math.random() * tot;
+    for (const [v, w] of list) { x -= w; if (x < 0) return v; }
+    return list[list.length - 1][0];
+  }
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; };
+  // 非 0 整數，正的機率 pPos
+  const nz = (lo, hi, pPos = 0.65) => (coin(pPos) ? 1 : -1) * R(lo, hi);
+  const isInt = v => Number.isInteger(v);
+
+  /* ══ 寫法 ══════════════════════════════════════ */
+  const MINUS = '−';
+  const V = v => `<i class="v">${v}</i>`;
+  const SUB = '₀₁₂₃₄₅₆₇₈₉', SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+  const sub = n => String(n).split('').map(c => SUB[c]).join('');
+  const sup = n => String(n).split('').map(c => SUP[c]).join('');
+  const num = v => (typeof v === 'string' ? v.replace(/-/g, MINUS) : (v < 0 ? MINUS : '') + Math.abs(v));
+  const paren = v => (v < 0 ? `(${num(v)})` : num(v));
+  const aL = k => (k === 'n' ? `${V('a')}<sub>${V('n')}</sub>` : `${V('a')}${sub(k)}`);
+  const sL = k => (k === 'n' ? `${V('S')}<sub>${V('n')}</sub>` : `${V('S')}${sub(k)}`);
+  const frac = (p, q) => `<span class="fr"><span>${p}</span><span>${q}</span></span>`;
+  // 公比 r = p / q（q > 0，已約分）
+  const rTxt = r => (r.q === 1 ? num(r.p) : (r.p < 0 ? MINUS : '') + frac(Math.abs(r.p), r.q));
+  const rPar = r => (r.q === 1 && r.p > 0 ? num(r.p) : `(${rTxt(r)})`);
+  const keyOf = v => (typeof v === 'string' ? v : String(v));
+  const keyNum = k => (/^-?\d+(\.\d+)?$/.test(k) ? Number(k) : null);
+  const nw = s => `<span class="nw">${s}</span>`;
+
+  /* ══ 數列本身 ══════════════════════════════════
+     等差：aₖ = a₁ + (k − 1)d；等比：aₖ = a₁ × rᵏ⁻¹，r = p/q。 */
+  const apTerm = (a1, d, k) => a1 + (k - 1) * d;
+  function powR(r, e) { // r^e，e 可為負：回傳 [分子, 分母]
+    return e >= 0 ? [r.p ** e, r.q ** e] : [r.q ** -e, r.p ** -e];
+  }
+  // 從 aₘ = am 推到 aₖ（可能不是整數）
+  const apFrom = (m, am, d, k) => am + (k - m) * d;
+  function gpFrom(m, am, r, k) {
+    const [n, dd] = powR(r, k - m);
+    return am * n / dd;
+  }
+  const gpTerm = (a1, r, k) => gpFrom(1, a1, r, k);
+
+  /* 空格：key、答案、名稱、算式；wrongs 是「這個錯的數字 → 錯在哪」 */
+  function mkBlank(key, ans, label, extra = {}) {
+    return { key, ans: keyOf(ans), val: ans, label, wrongs: new Map(), ...extra };
+  }
+  const CAP = 99999;
+  function addW(b, v, reason, half = false) {
+    if (v === null || v === undefined || typeof v !== 'number' || !Number.isFinite(v)) return;
+    if (!isInt(v) && !(half && isInt(v * 2))) return;
+    if (Math.abs(v) > CAP) return;
+    const k = keyOf(v === 0 ? 0 : v);
+    if (k === b.ans || b.wrongs.has(k)) return;
+    b.wrongs.set(k, reason);
+  }
+  // 一排的格子：已知 v，或空格 blank（key）
+  const cellK = (k, v) => ({ t: 'cell', k, v });
+  const cellB = (k, key) => ({ t: 'cell', k, blank: key });
+  // 依項次排好，不相鄰的地方插入「…」
+  function rowOf(items) {
+    const out = [];
+    items.forEach((c, i) => {
+      if (i > 0) {
+        const p = items[i - 1];
+        if (!(typeof p.k === 'number' && typeof c.k === 'number' && c.k === p.k + 1)) out.push({ t: 'dots' });
+      }
+      out.push(c);
+    });
+    return out;
+  }
+  // 離 k 最近的已知項（同距離取前面的）
+  function nearest(knownKs, k) {
+    return knownKs.slice().sort((x, y) => (Math.abs(x - k) - Math.abs(y - k)) || (x - y))[0];
+  }
+
+  /* ── 常見錯誤（等差）── */
+  function apWrongs(b, k, info) {
+    const { a1, d, knownKs, val } = info;
+    const m = nearest(knownKs, k), am = val(m);
+    // 公差正負號弄反
+    addW(b, apFrom(m, am, -d, k), `公差 ${V('d')} = 後項 − 前項 = ${num(d)}，你用成 ${num(-d)}：${k > m ? `往後要加 ${V('d')}` : `往前要減 ${V('d')}`}，方向弄反了。`);
+    // 差一個公差
+    const gap = Math.abs(k - m);
+    const why = `${aL(m)} 到 ${aL(k)} 隔了 <b>${gap} 個公差</b>，這個數多算或少算了一個 ${V('d')}。`;
+    addW(b, apTerm(a1, d, k) + d, why);
+    addW(b, apTerm(a1, d, k) - d, why);
+    // 第 n 項公式少減 1
+    if (k > 3) addW(b, a1 + k * d, `第 ${V('n')} 項是 ${nw(`${V('a')}₁ + (${V('n')} − 1)${V('d')}`)}，不是 ${nw(`${V('a')}₁ + ${V('n')}${V('d')}`)}：${aL(k)} = ${V('a')}₁ + ${k - 1}${V('d')}。`);
+  }
+  // 兩個已知項不相鄰：中間有 j − i 個公差，數成 j − i ± 1 個
+  function apGapWrongs(b, k, i, ai, j, aj) {
+    [1, -1].forEach(s => {
+      const cnt = j - i + s;
+      if (cnt < 1) return;
+      const dd = (aj - ai) / cnt;
+      if (!isInt(dd) || dd === 0) return;
+      addW(b, apFrom(i, ai, dd, k), `${aL(i)} 到 ${aL(j)} 中間有 <b>${j} − ${i} = ${j - i} 個公差</b>，不是 ${cnt} 個；公差是 (${num(aj)} − ${paren(ai)}) ÷ ${j - i}。`);
+    });
+  }
+  function apCalc(k, m, am, d) {
+    const n = k - m, v = am + n * d;
+    const D = V('d');
+    if (n === 1) return `${aL(k)} = ${aL(m)} + ${D} = ${num(am)} + ${paren(d)} = ${num(v)}`;
+    if (n === -1) return `${aL(k)} = ${aL(m)} − ${D} = ${num(am)} − ${paren(d)} = ${num(v)}`;
+    if (n > 0) return `${aL(k)} = ${aL(m)} + ${n}${D} = ${num(am)} + ${n} × ${paren(d)} = ${num(v)}`;
+    return `${aL(k)} = ${aL(m)} − ${-n}${D} = ${num(am)} − ${-n} × ${paren(d)} = ${num(v)}`;
+  }
+
+  /* ── 常見錯誤（等比）── */
+  function gpWrongs(b, k, info) {
+    const { a1, r, knownKs, val } = info;
+    const m = nearest(knownKs, k), am = val(m);
+    // 正負號
+    const neg = { p: -r.p, q: r.q };
+    addW(b, gpFrom(m, am, neg, k), r.p < 0
+      ? `公比 ${V('r')} = ${rTxt(r)} 是<b>負的</b>，各項要一正一負交錯。`
+      : `公比 ${V('r')} = ${rTxt(r)} 是<b>正的</b>，各項的正負號不會改變。`);
+    // 往前、往後弄反（乘成除）
+    if (Math.abs(r.p) !== r.q) {
+      const inv = r.p < 0 ? { p: -r.q, q: -r.p } : { p: r.q, q: r.p };
+      addW(b, gpFrom(m, am, inv, k), `往後要<b>乘</b> ${V('r')}、往前要<b>除以</b> ${V('r')}，方向弄反了。`);
+    }
+    // 當成等差（相鄰兩項的差一直加）
+    const adj = knownKs.find(x => knownKs.includes(x + 1));
+    if (adj !== undefined) {
+      const dd = val(adj + 1) - val(adj);
+      addW(b, apFrom(adj, val(adj), dd, k), `這是把相差的 ${num(dd)} 一直加，那是<b>等差</b>的做法；等比是「後項 ÷ 前項」都相同，要一直乘 ${V('r')}。`);
+    }
+    // 指數多一或少一
+    if (k > 3) {
+      addW(b, gpTerm(a1, r, k + 1), `第 ${V('n')} 項是 ${nw(`${V('a')}₁ × ${V('r')}<sup>${V('n')} − 1</sup>`)}，${aL(k)} 只乘 ${k - 1} 次 ${V('r')}，你多乘了一次。`);
+      addW(b, gpTerm(a1, r, k - 1), `${aL(k)} = ${V('a')}₁ × ${V('r')}${sup(k - 1)}，要乘 ${k - 1} 次 ${V('r')}，你少乘了一次。`);
+    }
+  }
+  function gpCalc(k, m, am, r) {
+    const e = k - m, v = gpFrom(m, am, r, k);
+    const Rr = V('r');
+    if (e === 1) return `${aL(k)} = ${aL(m)} × ${Rr} = ${num(am)} × ${rPar(r)} = ${num(v)}`;
+    if (e === -1) return `${aL(k)} = ${aL(m)} ÷ ${Rr} = ${num(am)} ÷ ${rPar(r)} = ${num(v)}`;
+    if (e > 0) return `${aL(k)} = ${aL(m)} × ${Rr}${sup(e)} = ${num(am)} × ${rPar(r)}${sup(e)} = ${num(v)}`;
+    return `${aL(k)} = ${aL(m)} ÷ ${Rr}${sup(-e)} = ${num(am)} ÷ ${rPar(r)}${sup(-e)} = ${num(v)}`;
+  }
+
+  /* ══ 出題：等差數列 ══════════════════════════════ */
+  function genApBasic() {
+    const pat = pickW([['adj', 45], ['gap', 40], ['mid', 15]]);
+    if (pat === 'mid') {
+      const a = R(-10, 30), d = nz(1, 12), c = a + 2 * d, b = a + d;
+      const B = mkBlank('m', b, `等差中項`, {
+        calc: `等差中項 = (${num(a)} + ${paren(c)}) ÷ 2 = ${num(b)}`
+      });
+      addW(B, a + c, `${num(a)} + ${paren(c)} = ${num(a + c)}，<b>忘了除以 2</b>。`);
+      addW(B, d, `${num(d)} 是公差（相鄰兩項的差），不是中項。`);
+      addW(B, c - a, `${num(c - a)} 是兩數的差，中項是兩數的<b>平均</b>。`);
+      addW(B, b + 1, `等差中項是兩數和的一半：(${num(a)} + ${paren(c)}) ÷ 2。`);
+      addW(B, b - 1, `等差中項是兩數和的一半：(${num(a)} + ${paren(c)}) ÷ 2。`);
+      return {
+        kind: 'apMid', mode: 'ap', truth: { a1: a, d },
+        ask: `${num(a)} 和 ${num(c)} 的<b>等差中項</b>是多少？`,
+        sub: `${num(a)}、▢、${num(c)} 成等差數列：中間那一項是前後兩項<em>和的一半</em>。`,
+        row: [cellK(1, a), cellB(2, 'm'), cellK(3, c)],
+        blanks: [B],
+        rule: `${V('a')}、${V('b')}、${V('c')} 成等差數列 → ${V('b')} − ${V('a')} = ${V('c')} − ${V('b')}，所以 ${V('b')} = (${V('a')} + ${V('c')}) ÷ 2`
+      };
+    }
+    const L = pat === 'adj' ? R(5, 6) : 5;
+    const a1 = R(-12, 20), d = nz(1, 9);
+    let K;
+    if (pat === 'adj') {
+      const i = R(1, L - 1);
+      K = [i, i + 1];
+      const others = shuffle(Array.from({ length: L }, (_, x) => x + 1).filter(x => !K.includes(x)));
+      K = K.concat(others.slice(3)).sort((x, y) => x - y);
+    } else {
+      K = pickOf([[1, 3], [2, 4], [1, 4], [2, 5], [1, 5], [3, 5], [1, 3, 5]]);
+    }
+    const val = k => apTerm(a1, d, k);
+    const blanks = [], row = [];
+    for (let k = 1; k <= L; k++) {
+      if (K.includes(k)) { row.push(cellK(k, val(k))); continue; }
+      const m = nearest(K, k);
+      const b = mkBlank(`a${k}`, val(k), aL(k), { k, calc: apCalc(k, m, val(m), d) });
+      apWrongs(b, k, { a1, d, knownKs: K, val });
+      if (pat === 'gap') { const [i, j] = K; apGapWrongs(b, k, i, val(i), j, val(j)); }
+      blanks.push(b);
+      row.push(cellB(k, b.key));
+    }
+    let rule;
+    const adjK = K.find(x => K.includes(x + 1));
+    if (adjK !== undefined) rule = `公差 ${V('d')} = ${aL(adjK + 1)} − ${aL(adjK)} = ${num(val(adjK + 1))} − ${paren(val(adjK))} = ${num(d)}`;
+    else {
+      const [i, j] = K;
+      rule = `${aL(j)} − ${aL(i)} = ${j - i}${V('d')}：${num(val(j))} − ${paren(val(i))} = ${num(val(j) - val(i))} = ${j - i}${V('d')}，所以公差 ${V('d')} = ${num(d)}`;
+    }
+    return {
+      kind: pat === 'adj' ? 'apAdj' : 'apGap', mode: 'ap', truth: { a1, d }, row, blanks, rule,
+      ask: '下面是一個<b>等差數列</b>，把空格補上',
+      sub: adjK !== undefined ? '先由相鄰的兩項求<em>公差</em>：往後加 d、往前減 d。' : '已知的兩項不相鄰：看它們中間隔了<em>幾個公差</em>。'
+    };
+  }
+
+  function genApChal() {
+    const pat = pickW([['far', 35], ['twoFar', 35], ['which', 30]]);
+    const a1 = R(-12, 20), d = nz(2, 9);
+    const val = k => apTerm(a1, d, k);
+    if (pat === 'far') {
+      const m = R(5, 9), n = R(12, 40);
+      const K = [1, 2];
+      const blanks = [m, n].map(k => {
+        const b = mkBlank(`a${k}`, val(k), aL(k), { k, calc: `${aL(k)} = ${V('a')}₁ + (${k} − 1)${V('d')} = ${num(a1)} + ${k - 1} × ${paren(d)} = ${num(val(k))}` });
+        apWrongs(b, k, { a1, d, knownKs: K, val });
+        return b;
+      });
+      return {
+        kind: 'apFar', mode: 'ap', truth: { a1, d }, blanks,
+        row: rowOf([cellK(1, a1), cellK(2, val(2)), cellB(m, `a${m}`), cellB(n, `a${n}`)]),
+        rule: `公差 ${V('d')} = ${num(val(2))} − ${paren(a1)} = ${num(d)}；第 ${V('n')} 項 ${V('a')}<sub>${V('n')}</sub> = ${V('a')}₁ + (${V('n')} − 1)${V('d')}`,
+        ask: '<b>等差數列</b>，補上很遠的兩項',
+        sub: '用第 n 項公式：aₙ = a₁ + (n − 1)d。'
+      };
+    }
+    if (pat === 'twoFar') {
+      const i = R(3, 6), j = i + R(3, 7), n = j + R(5, 20);
+      const ai = val(i), aj = val(j);
+      const K = [i, j];
+      const b1 = mkBlank('a1', a1, aL(1), { k: 1, calc: apCalc(1, i, ai, d) });
+      apWrongs(b1, 1, { a1, d, knownKs: K, val });
+      apGapWrongs(b1, 1, i, ai, j, aj);
+      const bn = mkBlank(`a${n}`, val(n), aL(n), { k: n, calc: apCalc(n, j, aj, d) });
+      apWrongs(bn, n, { a1, d, knownKs: K, val });
+      apGapWrongs(bn, n, i, ai, j, aj);
+      return {
+        kind: 'apTwoFar', mode: 'ap', truth: { a1, d }, blanks: [b1, bn],
+        row: rowOf([cellB(1, 'a1'), cellK(i, ai), cellK(j, aj), cellB(n, `a${n}`)]),
+        rule: `${aL(j)} − ${aL(i)} = ${j - i}${V('d')}：${num(aj)} − ${paren(ai)} = ${num(aj - ai)} = ${j - i}${V('d')}，所以公差 ${V('d')} = ${num(d)}`,
+        ask: '<b>等差數列</b>只知道中間兩項，補上首項和很遠的一項',
+        sub: '先求公差：兩項中間隔了幾個 d？再往前減、往後加。'
+      };
+    }
+    // which：已知末項，求它是第幾項
+    let n, m;
+    for (;;) { n = R(12, 45); m = R(5, n - 3); if (val(n) !== n && Math.abs(val(n)) <= 400) break; }
+    const an = val(n);
+    const K = [1, 2, 3];
+    const bm = mkBlank(`a${m}`, val(m), aL(m), { k: m, calc: `${aL(m)} = ${V('a')}₁ + (${m} − 1)${V('d')} = ${num(a1)} + ${m - 1} × ${paren(d)} = ${num(val(m))}` });
+    apWrongs(bm, m, { a1, d, knownKs: K, val });
+    const bn = mkBlank('n', n, '項數', {
+      calc: `${num(a1)} + (${V('n')} − 1) × ${paren(d)} = ${num(an)}，${V('n')} − 1 = (${num(an)} − ${paren(a1)}) ÷ ${paren(d)} = ${n - 1}，${V('n')} = ${n}`,
+      dyn: v => `如果是第 ${v} 項，${aL(v)} = ${num(a1)} + ${v - 1} × ${paren(d)} = ${num(val(v))}，不是 ${num(an)}。`
+    });
+    addW(bn, n - 1, `(${num(an)} − ${paren(a1)}) ÷ ${paren(d)} = ${n - 1} 是<b>公差的個數</b>，項數還要<b>再加 1</b>（首項本身也算一項）。`);
+    addW(bn, n + 1, `如果是第 ${n + 1} 項，${aL(n + 1)} = ${num(a1)} + ${n} × ${paren(d)} = ${num(val(n + 1))}，不是 ${num(an)}。`);
+    addW(bn, n + 2, `如果是第 ${n + 2} 項，${aL(n + 2)} = ${num(a1)} + ${n + 1} × ${paren(d)} = ${num(val(n + 2))}，不是 ${num(an)}。`);
+    return {
+      kind: 'apWhich', mode: 'ap', truth: { a1, d, n }, blanks: [bm, bn],
+      row: [cellK(1, a1), cellK(2, val(2)), cellK(3, val(3)), { t: 'dots' }, cellB(m, bm.key), { t: 'dots' }, cellK('n', an),
+        { t: 'brk' }, { t: 'txt', s: `${num(an)} 是第` }, cellB(null, 'n'), { t: 'txt', s: '項' }],
+      rule: `公差 ${V('d')} = ${num(val(2))} − ${paren(a1)} = ${num(d)}；${V('a')}<sub>${V('n')}</sub> = ${V('a')}₁ + (${V('n')} − 1)${V('d')}`,
+      ask: `<b>等差數列</b>：${num(an)} 是第幾項？`,
+      sub: '已知末項求項數：把 aₙ = a₁ + (n − 1)d 倒過來解 n。'
+    };
+  }
+
+  /* ══ 出題：等差級數 ══════════════════════════════ */
+  const apSum = (a1, d, n) => n * (2 * a1 + (n - 1) * d) / 2;
+  function sumWrongs(B, a1, an, n) {
+    addW(B, n * (a1 + an), `${n} × (${num(a1)} + ${paren(an)}) = ${num(n * (a1 + an))}，<b>忘了除以 2</b>。`);
+    addW(B, (n - 1) * (a1 + an) / 2, `用了 ${n - 1} 項去算；這個級數共 <b>${n} 項</b>。`);
+    addW(B, (n + 1) * (a1 + an) / 2, `用了 ${n + 1} 項去算；這個級數共 <b>${n} 項</b>。`);
+    addW(B, a1 + an, `${num(a1)} + ${paren(an)} 只是首項加末項，還要乘項數 ${n}、再除以 2。`);
+  }
+  function genSumBasic() {
+    let a1, d, n;
+    if (coin(0.25)) { a1 = R(40, 90); d = -R(2, 6); n = R(6, 14); }
+    else { a1 = R(1, 20); d = R(1, 7); n = R(6, 16); }
+    const an = apTerm(a1, d, n), S = apSum(a1, d, n);
+    const bn = mkBlank('n', n, '項數', {
+      calc: `項數 = (${num(an)} − ${paren(a1)}) ÷ ${paren(d)} + 1 = ${(an - a1) / d} + 1 = ${n}`,
+      dyn: v => `如果是 ${v} 項，最後一項是 ${num(a1)} + ${v - 1} × ${paren(d)} = ${num(apTerm(a1, d, v))}，不是 ${num(an)}。`
+    });
+    addW(bn, n - 1, `(${num(an)} − ${paren(a1)}) ÷ ${paren(d)} = ${n - 1} 是<b>公差的個數</b>，項數要<b>再加 1</b>。`);
+    addW(bn, n + 1, `如果是 ${n + 1} 項，最後一項是 ${num(a1)} + ${n} × ${paren(d)} = ${num(apTerm(a1, d, n + 1))}，不是 ${num(an)}。`);
+    const bS = mkBlank('S', S, `和 ${sL(n)}`, { calc: `${sL(n)} = ${n} × (${num(a1)} + ${paren(an)}) ÷ 2 = ${num(S)}` });
+    sumWrongs(bS, a1, an, n);
+    return {
+      kind: 'sumBasic', mode: 'ap', sep: '+', truth: { a1, d, n }, blanks: [bn, bS],
+      row: [cellK(1, a1), cellK(2, apTerm(a1, d, 2)), cellK(3, apTerm(a1, d, 3)), { t: 'dots' }, cellK('n', an),
+        { t: 'brk' }, { t: 'txt', s: '共' }, cellB(null, 'n'), { t: 'txt', s: '項，和 =' }, cellB(null, 'S')],
+      rule: `公差 ${V('d')} = ${num(d)}；項數 ${V('n')} = (末項 − 首項) ÷ ${V('d')} + 1；${sL('n')} = ${V('n')}(${V('a')}₁ + ${V('a')}<sub>${V('n')}</sub>) ÷ 2`,
+      ask: '<b>等差級數</b>：共幾項？和是多少？',
+      sub: '先求項數（記得 + 1），再用「（首項 + 末項）× 項數 ÷ 2」。'
+    };
+  }
+  function genSumChal() {
+    if (coin(0.5)) {
+      const a1 = R(-10, 20), d = nz(2, 8), n = R(10, 30);
+      const an = apTerm(a1, d, n), S = apSum(a1, d, n);
+      const val = k => apTerm(a1, d, k);
+      const ba = mkBlank(`a${n}`, an, `末項 ${aL(n)}`, { k: n, calc: `${aL(n)} = ${num(a1)} + (${n} − 1) × ${paren(d)} = ${num(an)}` });
+      apWrongs(ba, n, { a1, d, knownKs: [1, 2, 3], val });
+      const bS = mkBlank('S', S, `和 ${sL(n)}`, { calc: `${sL(n)} = ${n} × (${num(a1)} + ${paren(an)}) ÷ 2 = ${num(S)}` });
+      sumWrongs(bS, a1, an, n);
+      addW(bS, n * (a1 + a1 + n * d) / 2, `末項用了 ${num(a1)} + ${n} × ${paren(d)}，多加了一個公差；${aL(n)} = ${V('a')}₁ + ${n - 1}${V('d')} = ${num(an)}。`);
+      return {
+        kind: 'sumLast', mode: 'ap', sep: '+', truth: { a1, d, n }, blanks: [ba, bS],
+        row: [cellK(1, a1), cellK(2, val(2)), cellK(3, val(3)), { t: 'dots' }, cellB(n, ba.key), { t: 'txt', s: '=' }, cellB(null, 'S')],
+        rule: `公差 ${V('d')} = ${num(d)}；${aL(n)} = ${V('a')}₁ + ${n - 1}${V('d')}；${sL(n)} = ${n}(${V('a')}₁ + ${aL(n)}) ÷ 2`,
+        ask: `<b>等差級數</b>加到第 ${n} 項：末項和總和是多少？`,
+        sub: '先用 aₙ = a₁ + (n − 1)d 求末項，再求和。'
+      };
+    }
+    const a1 = R(1, 12), d = R(1, 5), n = R(6, 15);
+    const S = apSum(a1, d, n), an = apTerm(a1, d, n);
+    const val = k => apTerm(a1, d, k);
+    const bn = mkBlank('n', n, '項數', {
+      calc: `${sL(n)} = ${n} × (${num(a1)} + ${num(an)}) ÷ 2 = ${num(S)}，所以加到第 ${n} 項`,
+      dyn: v => `前 ${v} 項的和是 ${v} × (${num(a1)} + ${num(val(v))}) ÷ 2 = ${num(apSum(a1, d, v))}，不是 ${num(S)}。`
+    });
+    [n - 1, n + 1, n - 2, n + 2].forEach(v => { if (v > 3) addW(bn, v, bn.dyn(v)); });
+    const ba = mkBlank(`a${n}`, an, `最後一項`, { k: n, calc: `${aL(n)} = ${num(a1)} + (${n} − 1) × ${num(d)} = ${num(an)}` });
+    apWrongs(ba, n, { a1, d, knownKs: [1, 2, 3], val });
+    return {
+      kind: 'sumN', mode: 'ap', sep: '+', truth: { a1, d, n }, blanks: [bn, ba],
+      row: [cellK(1, a1), cellK(2, val(2)), cellK(3, val(3)), { t: 'dots' },
+        { t: 'brk' }, { t: 'txt', s: '加到第' }, cellB(null, 'n'), { t: 'txt', s: `項，和是 ${num(S)}；` },
+        { t: 'brk', narrow: true }, { t: 'txt', s: '最後一項是' }, cellB(null, ba.key)],
+      rule: `公差 ${V('d')} = ${num(d)}；${sL('n')} = ${V('n')}[2${V('a')}₁ + (${V('n')} − 1)${V('d')}] ÷ 2，代入試試看哪個 ${V('n')} 剛好是 ${num(S)}`,
+      ask: `<b>等差級數</b>加到第幾項，和會是 ${num(S)}？`,
+      sub: '可以把數字磚代進 Sₙ = n[2a₁ + (n − 1)d] ÷ 2 試試看；再求最後一項。'
+    };
+  }
+
+  /* ══ 出題：等比數列 ══════════════════════════════ */
+  const R_BASIC = [[{ p: 2, q: 1 }, 3], [{ p: 3, q: 1 }, 2], [{ p: -2, q: 1 }, 3], [{ p: -3, q: 1 }, 2], [{ p: 1, q: 2 }, 2], [{ p: -1, q: 2 }, 2], [{ p: 1, q: 3 }, 1]];
+  // 讓 1～L 項都是整數、而且不會太大的首項
+  function gpA1(r, L) {
+    if (r.q === 1) {
+      const top = Math.abs(r.p) ** (L - 1);
+      const cap = Math.max(1, Math.floor(500 / top));
+      return nz(1, Math.min(5, cap), 0.7);
+    }
+    return nz(1, r.q === 2 ? 3 : 1, 0.7) * r.q ** (L - 1);
+  }
+  function gpMid() {
+    for (;;) {
+      const s = R(1, 6), t = R(1, 6), m = nz(1, 3, 0.7);
+      if (s === t) continue;
+      const a = m * s * s, c = m * t * t, b = Math.abs(m * s * t);
+      if (Math.abs(a * c) > 400) continue;
+      const B = mkBlank('m', `±${b}`, '等比中項', {
+        calc: `${V('b')}² = ${num(a)} × ${paren(c)} = ${b * b}，${V('b')} = ±${b}`
+      });
+      addW(B, b, `${num(-b)} 也可以：${num(a)}、${num(-b)}、${num(c)} 也是等比數列（公比變號）。${V('b')}² = ${b * b}，${V('b')} 有<b>正、負兩個</b>。`);
+      addW(B, -b, `${num(b)} 也可以：${num(a)}、${num(b)}、${num(c)} 也是等比數列。${V('b')}² = ${b * b}，${V('b')} 有<b>正、負兩個</b>。`);
+      addW(B, (a + c) / 2, `(${num(a)} + ${paren(c)}) ÷ 2 是<b>等差中項</b>；等比中項要用 ${V('b')}² = ${V('a')}${V('c')}。`, true);
+      addW(B, a * c, `${num(a)} × ${paren(c)} = ${a * c} 是 ${V('b')}²，<b>還要開平方</b>。`);
+      return {
+        kind: 'gpMid', mode: 'gp', truth: { a, c, b },
+        ask: `${num(a)} 和 ${num(c)} 的<b>等比中項</b>是多少？`,
+        sub: `${num(a)}、▢、${num(c)} 成等比數列：中項的<em>平方</em>等於前後兩項的乘積。`,
+        row: [cellK(1, a), cellB(2, 'm'), cellK(3, c)],
+        blanks: [B], extraTiles: [`±${b}`],
+        rule: `${V('a')}、${V('b')}、${V('c')} 成等比數列 → ${V('b')} ÷ ${V('a')} = ${V('c')} ÷ ${V('b')}，所以 ${V('b')}² = ${V('a')}${V('c')}，${V('b')} = ±√(${V('a')}${V('c')})`
+      };
+    }
+  }
+  function genGpBasic() {
+    if (coin(0.2)) return gpMid();
+    const r = pickW(R_BASIC), L = 5, a1 = gpA1(r, L);
+    const val = k => gpTerm(a1, r, k);
+    const i = R(1, L - 1), K = [i, i + 1];
+    const blanks = [], row = [];
+    for (let k = 1; k <= L; k++) {
+      if (K.includes(k)) { row.push(cellK(k, val(k))); continue; }
+      const m = nearest(K, k);
+      const b = mkBlank(`a${k}`, val(k), aL(k), { k, calc: gpCalc(k, m, val(m), r) });
+      gpWrongs(b, k, { a1, r, knownKs: K, val });
+      blanks.push(b);
+      row.push(cellB(k, b.key));
+    }
+    return {
+      kind: 'gpAdj', mode: 'gp', truth: { a1, r }, row, blanks,
+      rule: `公比 ${V('r')} = ${aL(i + 1)} ÷ ${aL(i)} = ${num(val(i + 1))} ÷ ${paren(val(i))} = ${rTxt(r)}`,
+      ask: '下面是一個<b>等比數列</b>，把空格補上',
+      sub: '先由相鄰的兩項求<em>公比</em>：往後乘 r、往前除以 r。'
+    };
+  }
+  function genGpChal() {
+    if (coin(0.5)) {
+      const r = pickW([[{ p: 2, q: 1 }, 3], [{ p: -2, q: 1 }, 3], [{ p: 3, q: 1 }, 2], [{ p: -3, q: 1 }, 2]]);
+      const n = Math.abs(r.p) === 2 ? R(7, 10) : R(6, 7);
+      const m = R(4, n - 2);
+      const cap = Math.max(1, Math.floor(6000 / Math.abs(r.p) ** (n - 1)));
+      const a1 = nz(1, Math.min(4, cap), 0.7);
+      const val = k => gpTerm(a1, r, k);
+      const K = [1, 2];
+      const blanks = [m, n].map(k => {
+        const b = mkBlank(`a${k}`, val(k), aL(k), { k, calc: gpCalc(k, 1, a1, r) });
+        gpWrongs(b, k, { a1, r, knownKs: K, val });
+        return b;
+      });
+      return {
+        kind: 'gpFar', mode: 'gp', truth: { a1, r }, blanks,
+        row: rowOf([cellK(1, a1), cellK(2, val(2)), cellB(m, `a${m}`), cellB(n, `a${n}`)]),
+        rule: `公比 ${V('r')} = ${num(val(2))} ÷ ${paren(a1)} = ${rTxt(r)}；第 ${V('n')} 項 ${V('a')}<sub>${V('n')}</sub> = ${V('a')}₁ × ${V('r')}<sup>${V('n')} − 1</sup>`,
+        ask: '<b>等比數列</b>，補上很遠的兩項',
+        sub: '用第 n 項公式：aₙ = a₁ × rⁿ⁻¹（乘 n − 1 次 r）。'
+      };
+    }
+    // 隔三項：r³ = aⱼ ÷ aᵢ
+    const r = pickW([[{ p: 2, q: 1 }, 3], [{ p: -2, q: 1 }, 3], [{ p: 3, q: 1 }, 2], [{ p: -3, q: 1 }, 2], [{ p: 1, q: 2 }, 1], [{ p: -1, q: 2 }, 1]]);
+    const L = 5, a1 = gpA1(r, L);
+    const val = k => gpTerm(a1, r, k);
+    const i = pickOf([1, 2]), j = i + 3, K = [i, j];
+    const ratio = val(j) / val(i);
+    const blanks = [], row = [];
+    for (let k = 1; k <= L; k++) {
+      if (K.includes(k)) { row.push(cellK(k, val(k))); continue; }
+      const m = nearest(K, k);
+      const b = mkBlank(`a${k}`, val(k), aL(k), { k, calc: gpCalc(k, m, val(m), r) });
+      gpWrongs(b, k, { a1, r, knownKs: K, val });
+      // 等距想成等差
+      const dd = (val(j) - val(i)) / 3;
+      if (isInt(dd)) addW(b, apFrom(i, val(i), dd, k), `這是把 ${aL(i)} 到 ${aL(j)} 平均分成三段（等差的做法）；等比是一直<b>乘</b> ${V('r')}：${V('r')}³ = ${num(val(j))} ÷ ${paren(val(i))}。`);
+      // r³ 當成 3r
+      if (r.q === 1 && isInt(ratio / 3) && ratio / 3 !== r.p) {
+        const wr = { p: ratio / 3, q: 1 };
+        addW(b, gpFrom(i, val(i), wr, k), `${V('r')}³ = ${num(ratio)}，是「哪個數的<b>三次方</b>」等於 ${num(ratio)}，不是 ${num(ratio)} ÷ 3。`);
+      }
+      blanks.push(b);
+      row.push(cellB(k, b.key));
+    }
+    return {
+      kind: 'gpOdd', mode: 'gp', truth: { a1, r }, row, blanks,
+      rule: `${aL(j)} = ${aL(i)} × ${V('r')}³：${V('r')}³ = ${num(val(j))} ÷ ${paren(val(i))} = ${r.q === 1 ? num(ratio) : (ratio < 0 ? MINUS : '') + frac(1, r.q ** 3)}，所以 ${V('r')} = ${rTxt(r)}`,
+      ask: '<b>等比數列</b>只知道隔三項的兩項，把空格補上',
+      sub: '兩項中間隔了 3 次乘 r：先求 r³，再想「哪個數的三次方」。'
+    };
+  }
+
+  /* ══ 組題目、配數字磚 ══════════════════════════ */
+  const GEN = {
+    ap: { basic: genApBasic, chal: genApChal },
+    sum: { basic: genSumBasic, chal: genSumChal },
+    gp: { basic: genGpBasic, chal: genGpChal }
+  };
+  function makeQ(t = type, df = diff) {
+    for (let tries = 0; ; tries++) {
+      const tt = t === 'mix' ? pickW([['ap', 40], ['sum', 30], ['gp', 30]]) : t;
+      const q = GEN[tt][df]();
+      q.type = tt; q.diff = df; q.sep = q.sep || ',';
+      const ans = q.blanks.map(b => b.ans);
+      if (new Set(ans).size !== ans.length) continue;           // 兩格答案一樣：重出
+      if (q.blanks.some(b => b.val !== undefined && typeof b.val === 'number' && Math.abs(b.val) > CAP)) continue;
+      // 數字磚：答案＋各格的錯誤答案（輪流取），不夠再補附近的數
+      const T = df === 'basic' ? 6 : 8;
+      const need = Math.max(T - ans.length, 3);
+      // 和題目上已經看得到的數一樣的錯誤答案不放（不像真的會算錯）
+      const shown = q.row.filter(c => c.t === 'cell' && c.blank === undefined).map(c => keyOf(c.v));
+      const ok = k => !ans.includes(k) && !shown.includes(k);
+      const pools = shuffle(q.blanks).map(b => shuffle([...b.wrongs.keys()].filter(ok)));
+      const picked = [];
+      for (let round = 0; picked.length < need && pools.some(p => p.length); round++) {
+        pools.forEach(p => { if (picked.length < need && p.length) { const k = p.shift(); if (!picked.includes(k)) picked.push(k); } });
+      }
+      const numeric = q.blanks.filter(b => typeof b.val === 'number');
+      for (let guard = 0; picked.length < need && numeric.length && guard < 60; guard++) {
+        const b = pickOf(numeric);
+        const k = keyOf(b.val + pickOf([-3, -2, -1, 1, 2, 3]) * (Math.abs(b.val) > 30 ? R(1, 4) : 1));
+        if (ok(k) && !picked.includes(k)) picked.push(k);
+      }
+      q.tiles = shuffle(ans.concat(picked));
+      return q;
+    }
+  }
+
+  /* ══ 診斷：一格填錯的說明 ══════════════════════ */
+  function wrongWhy(q, b, k) {
+    if (b.wrongs.has(k)) return b.wrongs.get(k);
+    const other = q.blanks.find(o => o !== b && o.ans === k);
+    if (other) return `${num(k)} 是${other.label}的答案，<b>放錯格了</b>。`;
+    const n = keyNum(k);
+    if (b.dyn && n !== null && isInt(n) && n > 0) return b.dyn(n);
+    return `${b.label} 應該是 ${num(b.ans)}。`;
+  }
+
+  /* ── 音效 ── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) { const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return null; ac = new Ctx(); }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, type_ = 'sine', vol = 0.16) {
+    const c = audio(); if (!c) return;
+    const t0 = c.currentTime + when, osc = c.createOscillator(), g = c.createGain();
+    osc.type = type_; osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination); osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+  const sfxTap = () => tone(740, 0.05, 0, 'triangle', 0.06);
+
+  /* ── 狀態 ── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, curLimit = 40;
+  let fill = {}, sel = null;
+
+  const setView = v => { document.body.dataset.view = v; };
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      b.disabled = Number(b.dataset.step) < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+  function paintLevel() {
+    document.querySelectorAll('#type button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.type === type)));
+    document.querySelectorAll('#diff button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.diff === diff)));
+    $('level-note').textContent = NOTE[type][diff];
+    paintLimit();
+  }
+  function paintMute() { $('mute').textContent = $('mute2').textContent = muted ? '🔇' : '🔊'; }
+
+  /* ── 畫一排數列 ──
+     mode：'play'（可點空格）／'result'（填上答案、標出對錯）。
+     相鄰兩項（項次差 1、兩格都有數字）下方標出差或比：基礎難度作答時、以及結果畫面。 */
+  function gapLabel(qm, x, y) {
+    if (qm === 'ap') { const d = y - x; return (d < 0 ? MINUS : '+') + Math.abs(d); }
+    if (x === 0) return '';
+    let p = y, qq = x;
+    if (!isInt(p) || !isInt(qq)) return '';
+    if (qq < 0) { p = -p; qq = -qq; }
+    const g = gcd(p, qq) || 1; p /= g; qq /= g;
+    return '×' + rPar({ p, q: qq });
+  }
+  function cellVal(q, c, mode) {
+    if (c.blank === undefined) return c.v;
+    const b = q.blanks.find(x => x.key === c.blank);
+    const k = mode === 'result' ? b.ans : fill[c.blank];
+    return k === undefined ? undefined : (keyNum(k) ?? k);
+  }
+  function seqHtml(q, mode) {
+    const showGap = mode === 'result' || q.diff === 'basic';
+    const items = q.row;
+    let h = '';
+    items.forEach((c, i) => {
+      if (c.t === 'brk') { h += `<span class="brk${c.narrow ? ' narrow' : ''}"></span>`; return; }
+      if (c.t === 'txt') { h += `<div class="txt"><span class="top"></span><span class="s">${c.s}</span><span class="low"></span></div>`; return; }
+      // 分隔（逗號或加號）
+      const prev = items[i - 1];
+      if (i > 0 && prev.t !== 'brk' && prev.t !== 'txt' && c.t !== 'dots' && prev.t !== 'dots' && c.k !== null) {
+        let gl = '', given = false;
+        if (typeof prev.k === 'number' && typeof c.k === 'number' && c.k === prev.k + 1 && showGap && q.mode) {
+          const x = cellVal(q, prev, mode), y = cellVal(q, c, mode);
+          if (typeof x === 'number' && typeof y === 'number') { gl = gapLabel(q.mode, x, y); given = prev.blank === undefined && c.blank === undefined; }
+        }
+        h += `<div class="sep"><span class="top"></span><span class="s">${q.sep === '+' ? '+' : ','}</span><span class="gl${given ? ' given' : ''}">${gl}</span></div>`;
+      }
+      if (c.t === 'dots') {
+        const atEnd = !items[i + 1] || items[i + 1].t === 'brk';
+        const sp = q.sep === '+' ? '+' : ',';
+        h += `<div class="sep dots"><span class="top"></span><span class="s">${atEnd ? `${sp} …` : `${sp} … ${sp}`}</span><span class="gl"></span></div>`;
+        return;
+      }
+      const idx = c.k === null ? '' : aL(c.k);
+      if (c.blank === undefined) {
+        h += `<div class="cell"><span class="idx">${idx}</span><div class="box">${num(c.v)}</div><span class="low"></span></div>`;
+        return;
+      }
+      const b = q.blanks.find(x => x.key === c.blank);
+      if (mode === 'result') {
+        const f = fill[c.blank];
+        const ok = f === b.ans;
+        h += `<div class="cell"><span class="idx">${idx}</span><div class="box ${ok ? 'ok' : 'ng'}">${num(b.ans)}</div><span class="yours">${!ok && f !== undefined ? num(f) : ''}</span></div>`;
+      } else {
+        const f = fill[c.blank];
+        const cls = ['box', 'blank', f !== undefined ? 'filled' : '', sel === c.blank && !locked ? 'sel' : ''].join(' ');
+        h += `<div class="cell"><span class="idx">${idx}</span><button type="button" class="${cls}" data-key="${c.blank}" ${locked ? 'disabled' : ''}>${f !== undefined ? num(f) : '<span class="ph">?</span>'}</button><span class="low"></span></div>`;
+      }
+    });
+    return h;
+  }
+
+  function paintPlay() {
+    $('seq').innerHTML = seqHtml(cur, 'play');
+    const used = new Set(Object.values(fill));
+    $('tiles').innerHTML = cur.tiles.map(k => `<button type="button" class="tile${used.has(k) ? ' used' : ''}" data-k="${k}" ${locked ? 'disabled' : ''}>${num(k)}</button>`).join('');
+  }
+  const blankOrder = () => cur.row.filter(c => c.blank !== undefined).map(c => c.blank);
+
+  /* ── 出題 ── */
+  function startQuestion(forced) {
+    cur = forced && forced.blanks ? forced : makeQ(type, diff);
+    curLimit = limit();
+    locked = false;
+    fill = {};
+    sel = blankOrder()[0];
+    $('rule').textContent = RULE[cur.type];
+    $('ask').innerHTML = cur.ask;
+    $('sub').innerHTML = cur.sub;
+    $('msg').textContent = '';
+    paintPlay();
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + curLimit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+
+  $('seq').addEventListener('click', e => {
+    const b = e.target.closest('[data-key]');
+    if (!b || locked) return;
+    sel = b.dataset.key;
+    paintPlay();
+  });
+  $('tiles').addEventListener('click', e => {
+    const t = e.target.closest('[data-k]');
+    if (!t || locked || !sel) return;
+    const k = t.dataset.k;
+    Object.keys(fill).forEach(x => { if (fill[x] === k) delete fill[x]; });   // 同一塊磚只能放一格
+    fill[sel] = k;
+    sfxTap();
+    $('msg').textContent = '';
+    const order = blankOrder();
+    const nextEmpty = order.slice(order.indexOf(sel) + 1).concat(order).find(x => fill[x] === undefined);
+    if (nextEmpty) sel = nextEmpty;
+    paintPlay();
+  });
+  $('clear').addEventListener('click', () => {
+    if (locked) return;
+    fill = {}; sel = blankOrder()[0];
+    $('msg').textContent = '';
+    paintPlay();
+  });
+  $('submit').addEventListener('click', submit);
+
+  function submit() {
+    if (locked || !cur) return;
+    if (!cur.blanks.every(b => fill[b.key] !== undefined)) { $('msg').textContent = '每個空格都補好才能送出喔！'; return; }
+    judge(cur.blanks.every(b => fill[b.key] === b.ans));
+  }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      $('bar').style.transform = `scaleX(${left / (curLimit * 1000)})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 5 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { cur.timeout = true; judge(false); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 結果 ── */
+  function whyHtml(q, timeout) {
+    let h = `<div class="rule-line">${q.rule}</div>`;
+    q.blanks.forEach(b => {
+      const f = fill[b.key];
+      const ok = f === b.ans;
+      let line = `${b.calc}`;
+      if (!ok && f !== undefined && !timeout) line += `<br><span class="warn">你填 ${num(f)}：${wrongWhy(q, b, f)}</span>`;
+      else if (!ok && f !== undefined) line += `<br><span class="warn">你填的 ${num(f)} 不對。</span>`;
+      h += `<div class="${ok ? 'ok-line' : 'ng-line'}">${line}</div>`;
+    });
+    if (q.kind === 'gpMid') h += `<div class="soft">兩個都成立：${num(q.truth.a)}、${num(q.truth.b)}、${num(q.truth.c)} 和 ${num(q.truth.a)}、${num(-q.truth.b)}、${num(q.truth.c)} 都是等比數列。</div>`;
+    if (q.kind === 'apMid') h += '<div class="soft">等差中項就是前後兩項的平均。</div>';
+    return h;
+  }
+
+  function judge(win) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    document.body.classList.remove('urgent');
+    const q = cur;
+    const timeout = !!q.timeout;
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+    paintPlay();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+    $('sol-seq').innerHTML = seqHtml(q, 'result');
+    $('sol-why').innerHTML = whyHtml(q, timeout);
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => { cancelAnimationFrame(raf); locked = true; setView('menu'); });
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => b.addEventListener('click', () => {
+    const key = `${type}-${diff}`;
+    limits[key] = clampLimit(limits[key] + Number(b.dataset.step));
+    store.set(`sf-limit-${key}`, String(limits[key]));
+    paintLimit();
+  }));
+  document.querySelectorAll('#type button').forEach(b => b.addEventListener('click', () => {
+    type = b.dataset.type; store.set('sf-type', type); paintLevel();
+  }));
+  document.querySelectorAll('#diff button').forEach(b => b.addEventListener('click', () => {
+    diff = b.dataset.diff; store.set('sf-diff', diff); paintLevel();
+  }));
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted; store.set('sf-muted', muted ? '1' : '0'); paintMute();
+  }));
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      else if (e.key === 'Backspace' && !locked && sel) { e.preventDefault(); delete fill[sel]; paintPlay(); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu' && (e.key === ' ' || e.key === 'Enter')) {
+      if (document.activeElement && document.activeElement.closest('button, a') && document.activeElement !== $('start')) return;
+      e.preventDefault(); audio(); startQuestion();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）───────
+     每題用 truth（首項、公差或公比）獨立重算：已知格的值、每個空格的答案（級數的和用逐項相加、
+     項數用一項一項數）；檢查已知格足以唯一決定數列、答案互不相同且都在數字磚裡、
+     數字磚不重複、每個錯誤選項不等於該格答案、說明字串沒有壞值。 */
+  window.__sequenceFill = {
+    makeQ, wrongWhy,
+    current: () => cur,
+    // 實測用：出指定種類的題目（例如 show('gpMid', 'gp', 'basic')）
+    show(kind, t, df) { for (let i = 0; i < 500; i++) { const q = makeQ(t, df); if (q.kind === kind) { startQuestion(q); return q.kind; } } return null; },
+    fillAll(right = true) { if (!cur || locked) return; cur.blanks.forEach(b => { fill[b.key] = right ? b.ans : cur.tiles.find(k => k !== b.ans); }); paintPlay(); },
+    submit,
+    selfTest(n = 1000) {
+      const report = {}, errors = [];
+      const err = (...a) => { errors.push(a); };
+      ['ap', 'sum', 'gp'].forEach(t => DIFFS.forEach(df => {
+        const t0 = performance.now();
+        const kinds = {};
+        for (let i = 0; i < n; i++) {
+          let q;
+          try { q = makeQ(t, df); } catch (e) { err(t, df, 'throw', e.message); continue; }
+          kinds[q.kind] = (kinds[q.kind] || 0) + 1;
+          const tag = [t, df, q.kind];
+          const tr = q.truth;
+          // 已知格、空格答案
+          const term = k => (q.mode === 'ap' ? tr.a1 + (k - 1) * tr.d : tr.a1 * (tr.r.p / tr.r.q) ** (k - 1));
+          const knownKs = [];
+          q.row.forEach(c => {
+            if (c.t !== 'cell') return;
+            if (c.blank === undefined && typeof c.k === 'number') {
+              knownKs.push(c.k);
+              if (q.kind === 'apMid' || q.kind === 'gpMid') return;
+              if (Math.abs(term(c.k) - c.v) > 1e-9) err(...tag, '已知格的值不對', c.k, c.v);
+            }
+            if (c.blank === undefined && c.k === 'n') {
+              let k = 1; while (k < 500 && term(k) !== c.v) k++;
+              if (k !== tr.n) err(...tag, '末項不是第 n 項', c.v);
+            }
+          });
+          q.blanks.forEach(b => {
+            if (!isInt(Number(b.ans)) && !/^±\d+$/.test(b.ans)) err(...tag, '答案不是整數', b.ans);
+            if (typeof b.k === 'number' && Math.abs(term(b.k) - b.val) > 1e-9) err(...tag, '空格答案不對', b.k, b.val);
+            if (b.key === 'S') { let s = 0; for (let k = 1; k <= tr.n; k++) s += term(k); if (s !== b.val) err(...tag, '和不對', s, b.val); }
+            if (b.key === 'n') { if (b.val !== tr.n) err(...tag, '項數不對'); }
+            if (b.wrongs.has(b.ans)) err(...tag, '錯誤選項等於答案');
+            if (!q.tiles.includes(b.ans)) err(...tag, '數字磚沒有答案', b.ans);
+            q.tiles.forEach(k => {
+              if (k === b.ans) return;
+              const w = wrongWhy(q, b, k);
+              if (!w || /undefined|NaN|Infinity|null/.test(w)) err(...tag, '錯誤說明壞掉', k, w);
+            });
+            if (!b.calc || /undefined|NaN|Infinity|null/.test(b.calc)) err(...tag, '算式壞掉', b.calc);
+          });
+          if (q.kind === 'gpMid') {
+            const { a, c, b } = tr;
+            if (b * b !== a * c) err(...tag, '等比中項不對');
+          }
+          if (q.kind === 'apMid' && 2 * q.blanks[0].val !== q.row[0].v + q.row[2].v) err(...tag, '等差中項不對');
+          // 已知格能唯一決定數列
+          if (!/Mid$/.test(q.kind) && q.kind !== 'sumN') {
+            const ks = [...new Set(knownKs)];
+            if (q.mode === 'ap' && ks.length < 2) err(...tag, '已知格不夠');
+            if (q.mode === 'gp' && !ks.some(x => ks.some(y => y > x && (y - x) % 2 === 1))) err(...tag, '等比的已知格決定不了公比正負');
+          }
+          if (q.kind === 'sumN') {
+            // 和是 S 的項數唯一（首項、公差都是正的，和一路變大）
+            const S = Number(q.blanks.find(b => b.key === 'n').val);
+            let s = 0, hits = 0; for (let k = 1; k <= 200; k++) { s += term(k); if (s === apSum(tr.a1, tr.d, S)) hits++; }
+            if (hits !== 1) err(...tag, '項數不唯一');
+          }
+          if (q.mode === 'gp' && q.kind !== 'gpMid') for (let k = 1; k <= 12; k++) if (term(k) === 0) err(...tag, '等比出現 0');
+          // 數字磚
+          const ans = q.blanks.map(b => b.ans);
+          if (new Set(ans).size !== ans.length) err(...tag, '答案重複');
+          if (new Set(q.tiles).size !== q.tiles.length) err(...tag, '數字磚重複', q.tiles);
+          if (q.tiles.length < ans.length + 3) err(...tag, '數字磚太少', q.tiles.length);
+          const shown = q.row.filter(c => c.t === 'cell' && c.blank === undefined).map(c => keyOf(c.v));
+          if (q.tiles.some(k => !ans.includes(k) && shown.includes(k))) err(...tag, '數字磚有題目上看得到的數');
+          // 畫面字串
+          fill = {}; q.blanks.forEach(b => { fill[b.key] = q.tiles.find(k => k !== b.ans); });
+          const html = seqHtml(q, 'play') + seqHtml(q, 'result') + whyHtml(q, false) + q.ask + q.sub;
+          if (/undefined|NaN|Infinity|\[object|null/.test(html)) err(...tag, '字串有壞值', html.slice(0, 200));
+          fill = {};
+        }
+        report[`${t}-${df}`] = `${n} 題 ${JSON.stringify(kinds)}，${(performance.now() - t0).toFixed(0)} ms`;
+      }));
+      return { report, errors: errors.slice(0, 20), errorCount: errors.length };
+    }
+  };
+
+  paintLevel();
+  paintMute();
+  paintScore();
+})();
+</script>
+</body>
+</html>

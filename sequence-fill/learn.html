@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>數列小抄 - 數列補空格</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="等差數列、等差級數、等比數列：公差與公比、第 n 項公式、等差中項與等比中項、項數與級數和，附常見錯誤對照表。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --pink: #f9a8d4;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    i { font-family: "Times New Roman", "Noto Serif", serif; font-style: italic; }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+    .topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 16px; }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+    .btn {
+      padding: 9px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel);
+      color: var(--text); font-family: inherit; font-size: 0.98rem; text-decoration: none; cursor: pointer;
+    }
+    .btn-play { border: 0; background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05; font-weight: 800; }
+    .btn-play:hover { filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px; font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+    .lead strong { color: var(--text); }
+    h2 { margin: 36px 0 14px; font-size: 1.3rem; color: var(--accent-2); border-left: 4px solid var(--accent); padding-left: 12px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+    .card { border: 1px solid var(--line); border-top: 4px solid var(--cyan); border-radius: 16px; background: var(--card); padding: 18px; }
+    .card .law { font-size: clamp(1.1rem, 3vw, 1.3rem); font-weight: 700; margin: 2px 0 8px; }
+    .card .say { color: var(--muted); font-size: 0.98rem; margin: 0 0 6px; }
+    .card .say strong { color: var(--text); }
+    .hl { color: var(--accent-2); font-weight: 700; }
+
+    .note { border: 1px solid var(--line); border-left: 4px solid var(--cyan); border-radius: 12px; background: var(--panel); padding: 14px 18px; margin: 14px 0; }
+    .note b { color: var(--accent-2); }
+
+    /* 數列示意 */
+    .row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 2px; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+    .row .c { display: flex; flex-direction: column; align-items: center; }
+    .row .c .ix { font-size: 0.85rem; color: var(--muted); height: 1.4em; }
+    .row .c .b { min-width: 46px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 10px; background: rgba(15, 23, 42, 0.6); text-align: center; font-weight: 800; font-size: 1.15rem; }
+    .row .c .b.q { border-style: dashed; color: var(--accent-2); }
+    .row .s { display: flex; flex-direction: column; align-items: center; min-width: 26px; }
+    .row .s .ix { height: 1.4em; }
+    .row .s .k { height: 2.1em; display: flex; align-items: center; color: var(--muted); font-weight: 700; }
+    .row .s .g { font-size: 0.85rem; color: var(--cyan); font-weight: 700; white-space: nowrap; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: clamp(0.95rem, 2.4vw, 1.1rem); }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td { border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: middle; }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+    .nw { white-space: nowrap; }
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions"><a class="btn btn-play" href="./">🎮 開始挑戰</a></div>
+    </header>
+
+    <h1>數列小抄</h1>
+    <p class="lead">康軒 2 下第 1 章 數列與級數。補空格之前先問：這是<strong>等差</strong>（一直加同一個數）還是<strong>等比</strong>（一直乘同一個數）？只看前幾項，規律不一定唯一，所以題目都會先說是哪一種。</p>
+
+    <h2>1-1 等差數列：一直加公差 <i>d</i></h2>
+    <div class="note">
+      <div class="row">
+        <div class="c"><span class="ix"><i>a</i>₁</span><span class="b">3</span></div>
+        <div class="s"><span class="ix"></span><span class="k">,</span><span class="g">+4</span></div>
+        <div class="c"><span class="ix"><i>a</i>₂</span><span class="b q">7</span></div>
+        <div class="s"><span class="ix"></span><span class="k">,</span><span class="g">+4</span></div>
+        <div class="c"><span class="ix"><i>a</i>₃</span><span class="b">11</span></div>
+        <div class="s"><span class="ix"></span><span class="k">,</span><span class="g">+4</span></div>
+        <div class="c"><span class="ix"><i>a</i>₄</span><span class="b q">15</span></div>
+        <div class="s"><span class="ix"></span><span class="k">,</span><span class="g">+4</span></div>
+        <div class="c"><span class="ix"><i>a</i>₅</span><span class="b">19</span></div>
+      </div>
+      公差 <b><i>d</i> = 後項 − 前項</b>（每一組都相同）。往後<b>加</b> <i>d</i>、往前<b>減</b> <i>d</i>。<br>
+      已知的兩項不相鄰：<i>a</i>₁ 到 <i>a</i>₃ 中間隔了 <b>2 個公差</b>，所以 <span class="nw">11 − 3 = 2<i>d</i></span>，<i>d</i> = 4。
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="law">第 <i>n</i> 項：<span class="hl"><i>a<sub>n</sub></i> = <i>a</i>₁ + (<i>n</i> − 1)<i>d</i></span></div>
+        <p class="say">從 <i>a</i>₁ 走到 <i>a<sub>n</sub></i> 只要加 <strong><i>n</i> − 1 個</strong> <i>d</i>：<i>a</i>₂₀ = <i>a</i>₁ + 19<i>d</i>。</p>
+      </div>
+      <div class="card">
+        <div class="law">兩項之間：<span class="hl"><i>a<sub>j</sub></i> − <i>a<sub>i</sub></i> = (<i>j</i> − <i>i</i>)<i>d</i></span></div>
+        <p class="say"><i>a</i>₄ = 11、<i>a</i>₉ = 26：26 − 11 = <strong>5<i>d</i></strong>，<i>d</i> = 3，再往前推 <i>a</i>₁ = 11 − 3 × 3 = 2。</p>
+      </div>
+      <div class="card">
+        <div class="law">已知末項求項數</div>
+        <p class="say">5, 8, 11, …, 62：(62 − 5) ÷ 3 = 19 是<strong>公差的個數</strong>，項數要<strong>再加 1</strong>，62 是第 20 項。</p>
+      </div>
+      <div class="card">
+        <div class="law">等差中項：<span class="hl"><i>b</i> = (<i>a</i> + <i>c</i>) ÷ 2</span></div>
+        <p class="say"><i>a</i>、<i>b</i>、<i>c</i> 成等差 → <i>b</i> − <i>a</i> = <i>c</i> − <i>b</i>。4 和 18 的等差中項是 (4 + 18) ÷ 2 = 11。</p>
+      </div>
+    </div>
+
+    <h2>1-2 等差級數：把等差數列加起來</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">和：<span class="hl"><i>S<sub>n</sub></i> = <i>n</i>(<i>a</i>₁ + <i>a<sub>n</sub></i>) ÷ 2</span></div>
+        <p class="say">高斯的倒序相加：正著寫一次、倒著寫一次，每一對的和都是首項 + 末項，共 <i>n</i> 對，再<strong>除以 2</strong>。</p>
+      </div>
+      <div class="card">
+        <div class="law">不知道末項：<span class="hl"><i>S<sub>n</sub></i> = <i>n</i>[2<i>a</i>₁ + (<i>n</i> − 1)<i>d</i>] ÷ 2</span></div>
+        <p class="say">也可以先用 <i>a<sub>n</sub></i> = <i>a</i>₁ + (<i>n</i> − 1)<i>d</i> 求末項，再代上面的公式。</p>
+      </div>
+      <div class="card">
+        <div class="law">例：2 + 5 + 8 + … + 29</div>
+        <p class="say">項數 = (29 − 2) ÷ 3 + 1 = <strong>10</strong>；和 = 10 × (2 + 29) ÷ 2 = <span class="hl">155</span>。</p>
+      </div>
+    </div>
+
+    <h2>1-3 等比數列：一直乘公比 <i>r</i></h2>
+    <div class="note">
+      <div class="row">
+        <div class="c"><span class="ix"><i>a</i>₁</span><span class="b">3</span></div>
+        <div class="s"><span class="ix"></span><span class="k">,</span><span class="g">×(−2)</span></div>
+        <div class="c"><span class="ix"><i>a</i>₂</span><span class="b q">−6</span></div>
+        <div class="s"><span class="ix"></span><span class="k">,</span><span class="g">×(−2)</span></div>
+        <div class="c"><span class="ix"><i>a</i>₃</span><span class="b">12</span></div>
+        <div class="s"><span class="ix"></span><span class="k">,</span><span class="g">×(−2)</span></div>
+        <div class="c"><span class="ix"><i>a</i>₄</span><span class="b q">−24</span></div>
+        <div class="s"><span class="ix"></span><span class="k">,</span><span class="g">×(−2)</span></div>
+        <div class="c"><span class="ix"><i>a</i>₅</span><span class="b">48</span></div>
+      </div>
+      公比 <b><i>r</i> = 後項 ÷ 前項</b>（每一組都相同，各項都不能是 0）。往後<b>乘</b> <i>r</i>、往前<b>除以</b> <i>r</i>。<br>
+      公比是<b>負的</b>，各項一正一負交錯；公比是分數（如 ½），各項越來越小。
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="law">第 <i>n</i> 項：<span class="hl"><i>a<sub>n</sub></i> = <i>a</i>₁ × <i>r</i><sup><i>n</i> − 1</sup></span></div>
+        <p class="say">從 <i>a</i>₁ 到 <i>a<sub>n</sub></i> 乘 <strong><i>n</i> − 1 次</strong> <i>r</i>：3, 6, 12, … 的 <i>a</i>₈ = 3 × 2⁷ = 384。</p>
+      </div>
+      <div class="card">
+        <div class="law">隔三項：先求 <i>r</i>³</div>
+        <p class="say"><i>a</i>₁ = 2、<i>a</i>₄ = −54：<i>r</i>³ = −54 ÷ 2 = −27，<strong>哪個數的三次方</strong>是 −27？<i>r</i> = −3。</p>
+      </div>
+      <div class="card">
+        <div class="law">等比中項：<span class="hl"><i>b</i>² = <i>ac</i>，<i>b</i> = ±√(<i>ac</i>)</span></div>
+        <p class="say">4 和 9 的等比中項：<i>b</i>² = 36，<i>b</i> = <strong>±6</strong>。4, 6, 9 和 4, −6, 9 都是等比數列，兩個都要寫。</p>
+      </div>
+    </div>
+
+    <h2>常見錯誤對照表</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>遊戲裡判錯的原因大多是左邊這幾種。</caption>
+        <thead><tr><th style="width:46%">常見的錯誤</th><th>正確</th></tr></thead>
+        <tbody>
+          <tr><td class="bad"><i>a</i>₂₀ = <i>a</i>₁ + 20<i>d</i></td><td class="good"><i>a</i>₂₀ = <i>a</i>₁ + 19<i>d</i>（加 <i>n</i> − 1 個公差）</td></tr>
+          <tr><td class="bad"><i>a</i>₃ = 10、<i>a</i>₈ = 25，<i>d</i> = 15 ÷ 6</td><td class="good"><i>a</i>₃ 到 <i>a</i>₈ 隔 8 − 3 = 5 個公差：<i>d</i> = 15 ÷ 5 = 3</td></tr>
+          <tr><td class="bad">5, 8, …, 62：(62 − 5) ÷ 3 = 19，共 19 項</td><td class="good">19 是公差的個數，共 19 + 1 = 20 項</td></tr>
+          <tr><td class="bad">2 + 5 + … + 29 = 10 × (2 + 29) = 310</td><td class="good">還要除以 2：10 × (2 + 29) ÷ 2 = 155</td></tr>
+          <tr><td class="bad">3, 6, 12 的下一項是 18（一直加 3、6…）</td><td class="good">等比要一直乘 <i>r</i> = 2：下一項是 24</td></tr>
+          <tr><td class="bad">公比 −2，各項都寫正的</td><td class="good">公比是負的，正負號要交錯</td></tr>
+          <tr><td class="bad">4 和 9 的等比中項是 6（或 6.5）</td><td class="good"><i>b</i>² = 36，<i>b</i> = ±6；6.5 是等差中項</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer><a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a></footer>
+  </div>
+</body>
+</html>
