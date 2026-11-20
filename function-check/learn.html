@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>函數小抄 - 是不是函數快判</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="函數的意義：每一個 x 恰好對到一個 y。看對應表、箭頭圖、圖形（鉛垂線檢驗）、式子、生活情境怎麼判斷，以及一次函數、常數函數與鉛垂線的分別。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.85);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --violet: #a78bfa;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    var { font-family: "Times New Roman", "Cambria", serif; font-style: italic; padding: 0 0.04em; }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 12px 16px 56px; }
+
+    .topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 16px; }
+    .home { color: var(--muted); text-decoration: none; }
+    .home:hover { color: var(--text); }
+    .actions { margin-left: auto; display: flex; gap: 10px; }
+
+    .btn {
+      padding: 9px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.98rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn-play { border: 0; background: linear-gradient(180deg, var(--accent-2), var(--accent)); color: #231a05; font-weight: 800; }
+    .btn-play:hover { filter: brightness(1.06); }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+    .lead strong { color: var(--text); }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 1.3rem;
+      color: var(--accent-2);
+      border-left: 4px solid var(--accent);
+      padding-left: 12px;
+    }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+    .card { border: 1px solid var(--line); border-radius: 16px; background: var(--card); padding: 18px; }
+    .card.linear { border-top: 4px solid var(--cyan); }
+    .card.const { border-top: 4px solid var(--violet); }
+    .card.not { border-top: 4px solid var(--lose); }
+    .card .law { font-size: clamp(1.15rem, 3.2vw, 1.45rem); font-weight: 700; margin-bottom: 8px; }
+    .card.linear .law { color: var(--cyan); }
+    .card.const .law { color: var(--violet); }
+    .card.not .law { color: #fca5a5; }
+    .card .say { color: var(--muted); font-size: 0.96rem; margin: 0 0 10px; }
+    .card .say strong { color: var(--text); }
+    .card .eg { border-top: 1px dashed var(--line); padding-top: 10px; font-size: 1.05rem; line-height: 1.9; }
+    .card svg { display: block; width: 100%; max-width: 220px; height: auto; margin: 4px auto 0; }
+
+    sup { font-size: 0.6em; }
+
+    .note {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--cyan);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 14px 18px;
+      margin: 14px 0;
+    }
+    .note b { color: var(--accent-2); }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: clamp(0.95rem, 2.4vw, 1.1rem); }
+    caption { text-align: left; color: var(--muted); padding-bottom: 8px; font-size: 0.95rem; }
+    th, td { border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: middle; }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; }
+    td.bad { color: #fca5a5; }
+    td.good { color: #86efac; }
+    td.bad::before { content: "✗ "; color: var(--lose); }
+    td.good::before { content: "○ "; color: var(--win); }
+
+    .mini { width: auto; margin: 6px 0; font-size: 1rem; font-variant-numeric: tabular-nums; }
+    .mini th, .mini td { padding: 4px 10px; text-align: center; }
+    .mini td.hit { color: #fecaca; background: rgba(239, 68, 68, 0.22); }
+
+    /* 小圖 */
+    .g-grid { stroke: rgba(148, 163, 184, 0.16); stroke-width: 1; }
+    .g-axis { stroke: rgba(226, 232, 240, 0.7); stroke-width: 1.4; }
+    .g-curve { fill: none; stroke: var(--accent-2); stroke-width: 3; }
+    .g-bad { stroke: var(--lose); stroke-width: 2; stroke-dasharray: 6 4; }
+    .g-ok { stroke: var(--win); stroke-width: 2; stroke-dasharray: 6 4; }
+    .g-badpt { fill: var(--lose); }
+    .g-okpt { fill: var(--win); }
+
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.82em;
+      margin: 0 0.06em;
+    }
+    .fr > span { padding: 0 0.24em; white-space: nowrap; }
+    .fr > span:first-child { border-bottom: 0.09em solid currentColor; }
+
+    footer { margin-top: 44px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--cyan); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="actions">
+        <a class="btn btn-play" href="./">🎮 開始挑戰</a>
+      </div>
+    </header>
+
+    <h1>函數小抄</h1>
+    <p class="lead">康軒 2 下 2-1 函數與函數圖形。判斷只有一句話：<strong>給定每一個 <var>x</var>，都恰好有一個 <var>y</var> 和它對應</strong>，<var>y</var> 就是 <var>x</var> 的函數。一個 <var>x</var> 對到兩個以上的 <var>y</var> 就不是；不同的 <var>x</var> 對到同一個 <var>y</var> 沒關係。</p>
+
+    <h2>四種題目怎麼看</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="law">① 對應表、箭頭圖</div>
+        <p class="say">找有沒有<strong>同一個 <var>x</var> 出現兩次、卻對到不同的 <var>y</var></strong>；箭頭圖就看有沒有一個 <var>x</var> 射出兩支箭頭。</p>
+        <div class="eg">
+          <table class="mini">
+            <tr><th><var>x</var></th><td class="hit">1</td><td>2</td><td>3</td><td class="hit">1</td></tr>
+            <tr><th><var>y</var></th><td class="hit">4</td><td>5</td><td>5</td><td class="hit">7</td></tr>
+          </table>
+          <var>x</var> = 1 對到 4 和 7 → <b>不是函數</b><br>
+          <var>x</var> = 2、3 都對到 5 → 這一點<b>沒關係</b>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="law">② 圖形：鉛垂線檢驗</div>
+        <p class="say">想像一條<strong>鉛垂線</strong>（直的線）由左往右掃過去，只要有一個位置<strong>碰到圖形兩點以上</strong>，就不是函數。</p>
+        <div class="eg">
+          <svg viewBox="0 0 220 120" role="img" aria-label="鉛垂線檢驗示意圖">
+            <line class="g-axis" x1="0" y1="60" x2="100" y2="60"/><line class="g-axis" x1="50" y1="5" x2="50" y2="115"/>
+            <path class="g-curve" d="M8 20 Q50 140 92 20"/>
+            <line class="g-ok" x1="72" y1="5" x2="72" y2="115"/><circle class="g-okpt" cx="72" cy="63.5" r="4"/>
+            <line class="g-axis" x1="120" y1="60" x2="220" y2="60"/><line class="g-axis" x1="170" y1="5" x2="170" y2="115"/>
+            <circle class="g-curve" cx="170" cy="60" r="38"/>
+            <line class="g-bad" x1="160" y1="5" x2="160" y2="115"/><circle class="g-badpt" cx="160" cy="23" r="4"/><circle class="g-badpt" cx="160" cy="97" r="4"/>
+          </svg>
+          左：每條鉛垂線只碰一點 → <b>是函數</b><br>右：圓會碰到兩點 → <b>不是函數</b>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="law">③ 式子</div>
+        <p class="say">試著整理成「<var>y</var> = ……」。<strong>代一個 <var>x</var> 進去只算出一個 <var>y</var></strong> 才是函數。</p>
+        <div class="eg">
+          <var>y</var> = 2<var>x</var> + 1、<var>x</var> = 3<var>y</var> − 6、<var>y</var> = <var>x</var><sup>2</sup> → <b>是函數</b><br>
+          <var>y</var><sup>2</sup> = <var>x</var>：<var>x</var> = 4 時 <var>y</var> = 2 或 −2 → <b>不是</b><br>
+          <var>x</var><sup>2</sup> + <var>y</var><sup>2</sup> = 25、|<var>y</var>| = <var>x</var>、<var>x</var> = 3 → <b>不是</b>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="law">④ 生活情境</div>
+        <p class="say">挑一個 <var>x</var> 的值試試看：<strong>能不能找到兩個不同的 <var>y</var>？</strong>找得到就不是函數。</p>
+        <div class="eg">
+          正數 <var>x</var> 的平方根 <var>y</var>：4 的平方根有 2 和 −2 → <b>不是</b><br>
+          周長 <var>x</var> 的長方形面積 <var>y</var>：周長 12 可以是 3×3 或 4×2 → <b>不是</b><br>
+          正方形邊長 <var>x</var>、面積 <var>y</var>：<var>y</var> = <var>x</var><sup>2</sup> → <b>是函數</b>
+        </div>
+      </div>
+    </div>
+
+    <h2>挑戰難度：一次函數、常數函數、不是函數</h2>
+    <div class="grid">
+      <div class="card linear">
+        <div class="law">一次函數 <var>y</var> = <var>a</var><var>x</var> + <var>b</var>（<var>a</var> ≠ 0）</div>
+        <p class="say">圖形是<strong>斜直線</strong>。式子要先整理：<var>x</var> 的係數不是 0 就是一次函數，<var>b</var> = 0 也可以。</p>
+        <div class="eg">
+          2<var>x</var> + <var>y</var> = 5 → <var>y</var> = −2<var>x</var> + 5<br>
+          <var>x</var> = 2<var>y</var> + 4 → <var>y</var> = <span class="fr"><span>1</span><span>2</span></span><var>x</var> − 2
+        </div>
+      </div>
+      <div class="card const">
+        <div class="law">常數函數 <var>y</var> = <var>b</var></div>
+        <p class="say">不論 <var>x</var> 是多少，<var>y</var> 都一樣。圖形是<strong>水平線</strong>（平行 <var>x</var> 軸）。</p>
+        <div class="eg">
+          3<var>y</var> − 6 = 0 → <var>y</var> = 2<br>
+          <var>y</var> + 2<var>x</var> = 2<var>x</var> + 5 → <var>y</var> = 5（<var>x</var> 消掉了）<br>
+          停車不論停多久都收 50 元 → <var>y</var> = 50
+        </div>
+      </div>
+      <div class="card not">
+        <div class="law">鉛垂線 <var>x</var> = <var>c</var>：不是函數</div>
+        <p class="say">圖形平行 <var>y</var> 軸。<var>x</var> = <var>c</var> 時 <var>y</var> 可以是任何數，<strong>不是常數函數</strong>，根本不是函數。</p>
+        <div class="eg">
+          <var>x</var> = 3、2<var>x</var> − 6 = 0 → <b>不是函數</b><br>
+          <var>y</var><sup>2</sup> = 9：<var>y</var> 可以是 3 或 −3 → 也<b>不是函數</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>一次函數、常數函數合稱線型函數</b>，圖形都是直線。但「是直線」不代表一定是函數：<b>鉛垂線就不是</b>。
+    </div>
+
+    <h2>常見迷思對照表</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>遊戲裡容易答錯的題目大多是左邊這種想法。</caption>
+        <thead>
+          <tr><th style="width:46%">常見的想法</th><th>正確</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="bad">兩個不同的 <var>x</var> 對到同一個 <var>y</var>，所以不是函數</td>
+            <td class="good">多個 <var>x</var> 對到同一個 <var>y</var> 可以；不行的是<b>一個 <var>x</var> 對到多個 <var>y</var></b></td>
+          </tr>
+          <tr>
+            <td class="bad">每個 <var>x</var> 都對到同一個 <var>y</var>，太奇怪了，不是函數</td>
+            <td class="good">每個 <var>x</var> 還是恰有一個 <var>y</var>，是函數（常數函數）</td>
+          </tr>
+          <tr>
+            <td class="bad">表格裡 <var>x</var> = 2 出現兩次，所以不是函數</td>
+            <td class="good">要看兩次對到的 <var>y</var> 一不一樣；一樣的話還是只有一個 <var>y</var></td>
+          </tr>
+          <tr>
+            <td class="bad"><var>x</var> = 3 和 <var>y</var> = 3 一樣，都是常數函數</td>
+            <td class="good"><var>y</var> = 3 是水平線，是常數函數；<var>x</var> = 3 是鉛垂線，<b>不是函數</b></td>
+          </tr>
+          <tr>
+            <td class="bad">直線都是函數</td>
+            <td class="good">斜直線、水平線是；<b>鉛垂線不是</b></td>
+          </tr>
+          <tr>
+            <td class="bad"><var>x</var> = 2<var>y</var> + 4 是「<var>x</var> = ……」，所以不是 <var>y</var> 對 <var>x</var> 的函數</td>
+            <td class="good">先整理成 <var>y</var> = <span class="fr"><span>1</span><span>2</span></span><var>x</var> − 2，每個 <var>x</var> 只有一個 <var>y</var>，是一次函數</td>
+          </tr>
+          <tr>
+            <td class="bad">曲線一定不是函數</td>
+            <td class="good">拋物線 <var>y</var> = <var>x</var><sup>2</sup>、V 字形 <var>y</var> = |<var>x</var>| 都通過鉛垂線檢驗，是函數；圓、開口朝左右的曲線才不是</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <a href="./">🎮 回去挑戰</a>　·　<a href="../index.html">回遊戲大廳</a>
+    </footer>
+  </div>
+</body>
+</html>

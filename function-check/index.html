@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>是不是函數快判 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <meta name="description" content="螢幕出一張對應表、箭頭圖、函數圖形、式子或生活情境，限時內判斷 y 是不是 x 的函數；挑戰難度再分一次函數、常數函數。">
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141b34;
+      --panel: rgba(20, 27, 52, 0.82);
+      --card: rgba(30, 41, 72, 0.9);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --cyan: #22d3ee;
+      --violet: #a78bfa;
+      --grey: #cbd5e1;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; height: 100%; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 20%, var(--bg-2), var(--bg) 70%) fixed;
+      color: var(--text);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    var { font-family: "Times New Roman", "Cambria", serif; font-style: italic; padding: 0 0.04em; }
+
+    /* ── 版面骨架 ───────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+    }
+    body[data-view="menu"] #menu,
+    body[data-view="play"] #play,
+    body[data-view="result"] #play { display: flex; }
+
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.55);
+      backdrop-filter: blur(6px);
+    }
+
+    .home {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .home:hover, .home:focus-visible { color: var(--text); }
+
+    .spacer { flex: 1 1 auto; }
+
+    .stat {
+      font-size: 0.95rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .stat b { color: var(--accent-2); font-size: 1.15rem; }
+    .streak { color: var(--accent); }
+    .streak[hidden] { display: none; }
+
+    .icon-btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      border-radius: 10px;
+      width: 40px;
+      height: 36px;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .icon-btn:hover { border-color: var(--cyan); }
+
+    /* ── 待機畫面 ───────────────────────────── */
+    .menu-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 20px 16px 32px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    h1.title {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 4.2rem);
+      letter-spacing: 0.06em;
+      background: linear-gradient(90deg, var(--accent-2), var(--cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .unit { margin: 0 0 8px; opacity: 0.75; font-size: 0.95rem; }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+      max-width: 40ch;
+      line-height: 1.7;
+    }
+
+    .ctl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      font-size: 1rem;
+    }
+    .ctl .label { color: var(--muted); font-size: 0.92rem; }
+    .ctl button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .ctl button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+    .ctl button:disabled { opacity: 0.35; cursor: default; }
+    .ctl b { min-width: 1.6em; text-align: center; color: var(--accent-2); }
+
+    .seg { display: flex; flex-wrap: wrap; justify-content: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--panel); }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: rgba(245, 158, 11, 0.18); color: var(--accent-2); }
+    .seg button:disabled { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
+
+    .level-note { margin: -4px 0 0; color: var(--muted); font-size: 0.9rem; max-width: 42ch; line-height: 1.6; }
+
+    .big-btn {
+      margin-top: 4px;
+      padding: 18px 44px;
+      border: 0;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent-2), var(--accent));
+      color: #231a05;
+      font-size: clamp(1.2rem, 3.4vw, 1.9rem);
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+    }
+    .big-btn:hover { filter: brightness(1.06); }
+    .big-btn:active { transform: translateY(2px); }
+
+    .learn-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(34, 211, 238, 0.5);
+      padding-bottom: 2px;
+    }
+    .learn-link:hover { color: var(--accent-2); border-color: var(--accent-2); }
+
+    .keys { color: var(--muted); font-size: 0.85rem; opacity: 0.8; }
+    .keys kbd {
+      display: inline-block;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      font-family: inherit;
+      font-size: 0.85em;
+    }
+
+    /* ── 作答畫面 ───────────────────────────── */
+    .timer { flex: 0 0 auto; height: 10px; background: rgba(15, 23, 42, 0.8); }
+    .timer > i {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, var(--cyan), var(--accent-2));
+      transition: background 0.3s;
+    }
+    body.urgent .timer > i { background: linear-gradient(90deg, var(--accent), var(--lose)); }
+
+    .play-body {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(8px, 2vh, 24px);
+      padding: 12px 16px;
+      min-height: 0;
+    }
+
+    .rule-tag {
+      padding: 4px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cyan);
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+      background: var(--panel);
+    }
+
+    .expr {
+      font-size: clamp(2rem, 7.4vw, 5rem);
+      font-weight: 700;
+      line-height: 1.45;
+      text-align: center;
+      padding: 0 8px;
+      text-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+      max-width: 100%;
+      min-height: 0;
+      display: flex;
+      justify-content: center;
+    }
+    .expr sup, .solution sup { font-size: 0.55em; }
+    .nw { white-space: nowrap; }
+
+    .scene {
+      font-size: clamp(1.25rem, 3.6vw, 2.5rem);
+      font-weight: 600;
+      line-height: 1.7;
+      max-width: 30em;
+      text-align: left;
+    }
+
+    .ask { color: var(--muted); font-size: clamp(1rem, 2.4vw, 1.4rem); margin-top: -4px; text-align: center; }
+
+    /* x、y 對應表 */
+    .tbl {
+      border-collapse: collapse;
+      font-size: clamp(1.4rem, 5vw, 3.2rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-shadow: none;
+    }
+    .tbl th, .tbl td {
+      border: 2px solid var(--line);
+      padding: 0.16em 0.42em;
+      text-align: center;
+      min-width: 1.7em;
+    }
+    .tbl th { color: var(--accent-2); background: rgba(245, 158, 11, 0.08); }
+    .tbl td { background: rgba(15, 23, 42, 0.45); }
+    .tbl td.odd { color: #fecaca; background: rgba(239, 68, 68, 0.28); }
+    .tbl td.same { color: #bbf7d0; background: rgba(34, 197, 94, 0.18); }
+
+    /* 箭頭圖、坐標圖 */
+    svg.arrow { width: min(92vw, 440px, calc((100vh - 300px) * 1.45)); height: auto; display: block; }
+    svg.graph { width: min(88vw, calc(100vh - 290px), 470px); height: auto; display: block; }
+    .solution svg.arrow { width: min(86vw, 360px, calc((100vh - 360px) * 1.45)); margin: 0 auto; }
+    .solution svg.graph { width: min(80vw, calc(100vh - 360px), 330px); margin: 0 auto; }
+
+    svg text { font-family: "Times New Roman", "Cambria", serif; }
+    .g-grid { stroke: rgba(148, 163, 184, 0.16); stroke-width: 1; }
+    .g-axis { stroke: rgba(226, 232, 240, 0.75); stroke-width: 1.6; }
+    .g-tick { fill: var(--muted); font-size: 11px; }
+    .g-lab { fill: var(--text); font-size: 15px; font-style: italic; }
+    .g-curve { fill: none; stroke: var(--accent-2); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+    .g-dot { fill: var(--accent-2); }
+    .g-bad { stroke: var(--lose); stroke-width: 2.4; stroke-dasharray: 7 5; }
+    .g-ok { stroke: var(--win); stroke-width: 2.4; stroke-dasharray: 7 5; }
+    .g-badpt { fill: var(--lose); stroke: #fff; stroke-width: 1.5; }
+    .g-okpt { fill: var(--win); stroke: #fff; stroke-width: 1.5; }
+
+    .a-oval { fill: rgba(15, 23, 42, 0.55); stroke: var(--line); stroke-width: 2; }
+    .a-num { fill: var(--text); font-size: 22px; font-weight: 700; font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+    .a-head { fill: var(--accent-2); font-size: 22px; font-style: italic; }
+    .a-line { stroke: var(--cyan); stroke-width: 2.4; fill: none; }
+    .a-line.bad { stroke: var(--lose); stroke-width: 3.4; }
+    .a-tip { fill: var(--cyan); }
+    .a-tip.bad { fill: var(--lose); }
+
+    .count {
+      position: absolute;
+      top: 54px;
+      right: 18px;
+      font-size: clamp(2.4rem, 7vw, 4.4rem);
+      font-weight: 800;
+      color: var(--accent-2);
+      opacity: 0.85;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+    body.urgent .count { color: var(--lose); }
+    body[data-view="result"] .count { display: none; }
+
+    .answers {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: repeat(var(--cols, 2), 1fr);
+      gap: clamp(10px, 2.2vw, 24px);
+      width: min(900px, 100%);
+      padding: 0 4px 8px;
+    }
+
+    .ans {
+      padding: clamp(10px, 2.6vh, 26px) 6px;
+      border: 2px solid var(--line);
+      border-radius: 20px;
+      background: var(--card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: clamp(1.2rem, 3.6vw, 2.1rem);
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s, background 0.15s;
+    }
+    .ans small {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.5em;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .ans.fn, .ans.linear { color: var(--cyan); }
+    .ans.const { color: var(--violet); }
+    .ans.not { color: #fca5a5; }
+    .ans:hover:not(:disabled) { transform: translateY(-3px); }
+    .ans.fn:hover:not(:disabled), .ans.linear:hover:not(:disabled) { border-color: var(--cyan); background: rgba(34, 211, 238, 0.12); }
+    .ans.const:hover:not(:disabled) { border-color: var(--violet); background: rgba(167, 139, 250, 0.14); }
+    .ans.not:hover:not(:disabled) { border-color: var(--lose); background: rgba(239, 68, 68, 0.12); }
+    .ans:disabled { opacity: 0.45; cursor: default; }
+
+    /* ── 結果 ───────────────────────────────── */
+    .verdict {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: safe center;
+      gap: 12px;
+      padding: 20px 16px;
+      background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95));
+      backdrop-filter: blur(3px);
+      overflow-y: auto;
+    }
+    body[data-view="result"] .verdict { display: flex; }
+
+    .verdict h2 {
+      margin: 0;
+      font-size: clamp(1.8rem, 7vw, 4rem);
+      letter-spacing: 0.06em;
+      animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+    }
+    .verdict.ok h2 { color: var(--win); text-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+    .verdict.ng h2 { color: var(--lose); text-shadow: 0 0 30px rgba(239, 68, 68, 0.45); }
+
+    @keyframes pop {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .solution {
+      width: min(900px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: clamp(12px, 2.4vw, 22px);
+      text-align: center;
+    }
+    .solution .q {
+      font-size: clamp(1.2rem, 4vw, 2.2rem);
+      font-weight: 700;
+      line-height: 1.5;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+    }
+    .solution .q .scene { font-size: clamp(1rem, 2.6vw, 1.45rem); }
+    .solution .q .tbl { font-size: clamp(1.05rem, 3.6vw, 2rem); }
+    .solution .answer-chip {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 4px 18px;
+      border-radius: 999px;
+      font-size: clamp(1.05rem, 2.8vw, 1.5rem);
+      font-weight: 800;
+      border: 2px solid currentColor;
+    }
+    .answer-chip.fn, .answer-chip.linear { color: var(--cyan); }
+    .answer-chip.const { color: var(--violet); }
+    .answer-chip.not { color: #fca5a5; }
+    .solution .picked { color: var(--muted); font-size: 0.95rem; margin: -4px 0 8px; }
+    .solution .why {
+      color: var(--text);
+      font-size: clamp(1rem, 2.5vw, 1.3rem);
+      line-height: 1.85;
+      opacity: 0.95;
+    }
+    .solution .why em { font-style: normal; color: var(--accent-2); font-weight: 700; }
+
+    .verdict-btns { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+    .ghost-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .ghost-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── 堆疊分數 ───────────────────────────── */
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      line-height: 1.1;
+      font-size: 0.74em;
+      margin: 0 0.06em;
+    }
+    .fr > span { padding: 0 0.24em; white-space: nowrap; }
+    .fr > span:first-child { border-bottom: 0.09em solid currentColor; }
+
+    @media (max-width: 480px) {
+      .topbar { padding: 8px 12px; gap: 8px; }
+      .stat { font-size: 0.85rem; }
+      .count { top: 46px; right: 12px; }
+      .ans small { font-size: 0.44em; }
+      .seg button { padding: 8px 12px; }
+    }
+
+    /* 矮螢幕（白板 16:9、筆電）：結果畫面縮標題，圖放左、說明放右 */
+    @media (max-height: 700px) {
+      .verdict { gap: 8px; padding: 12px 16px; }
+      .verdict h2 { font-size: clamp(1.6rem, 5vh, 2.4rem); }
+      .verdict .big-btn { padding: 11px 34px; font-size: 1.3rem; }
+      .verdict .ghost-btn { padding: 10px 22px; }
+    }
+    @media (max-height: 700px) and (min-width: 700px) {
+      .solution.fig {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto auto 1fr;
+        column-gap: 22px;
+        align-items: center;
+        text-align: left;
+      }
+      .solution.fig .q { grid-row: 1 / 4; margin: 0; }
+      .solution.fig .answer-chip { justify-self: start; margin-bottom: 4px; }
+      .solution.fig .picked { margin: 0 0 4px; }
+      .solution.fig .why { align-self: start; }
+      .solution svg.graph { width: min(40vw, calc(100vh - 200px), 330px); }
+      .solution svg.arrow { width: min(40vw, 360px, calc((100vh - 200px) * 1.45)); }
+    }
+
+    @media (max-height: 560px) {
+      .expr { font-size: clamp(1.5rem, 6vw, 2.8rem); }
+      .scene { font-size: clamp(1.05rem, 2.8vw, 1.6rem); }
+      .tbl { font-size: clamp(1.2rem, 4vw, 2.2rem); }
+      .ans { padding: 8px 6px; }
+      .ans small { margin-top: 1px; }
+      .play-body { gap: 8px; padding: 8px 16px; }
+    }
+  </style>
+</head>
+<body data-view="menu">
+
+  <!-- ── 待機 ───────────────────────────── -->
+  <section class="screen" id="menu">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat">答對 <b id="m-correct">0</b> ／ 挑戰 <b id="m-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="menu-body">
+      <h1 class="title">是不是函數快判</h1>
+      <p class="unit">📘 第4冊・第2章 函數・第1節 函數與函數圖形</p>
+      <p class="hint">螢幕出一張對應表、箭頭圖、圖形、式子或生活情境，<span class="limit-val">12</span> 秒內判斷 <var>y</var> 是不是 <var>x</var> 的<strong>函數</strong>：<strong>每一個 <var>x</var> 都恰好對到一個 <var>y</var></strong> 才是。</p>
+
+      <div class="ctl-row">
+        <div class="seg" id="type" role="group" aria-label="題型">
+          <button type="button" data-type="table" aria-pressed="false">對應表</button>
+          <button type="button" data-type="graph" aria-pressed="false">圖形</button>
+          <button type="button" data-type="formula" aria-pressed="false">式子</button>
+          <button type="button" data-type="scene" aria-pressed="false">生活情境</button>
+          <button type="button" data-type="all" aria-pressed="true">混合</button>
+        </div>
+      </div>
+      <div class="ctl-row">
+        <div class="seg" id="diff" role="group" aria-label="難度">
+          <button type="button" data-diff="basic" aria-pressed="true">基礎：是／不是</button>
+          <button type="button" data-diff="chal" aria-pressed="false">挑戰：一次／常數／不是</button>
+        </div>
+        <div class="ctl">
+          <span class="label">⏱ 限時</span>
+          <button type="button" data-step="-1" aria-label="減少 1 秒">−</button>
+          <b class="limit-val">12</b>秒
+          <button type="button" data-step="1" aria-label="增加 1 秒">＋</button>
+        </div>
+      </div>
+      <p class="level-note" id="level-note"></p>
+
+      <button type="button" class="big-btn" id="start">🎯 開始挑戰</button>
+      <a class="learn-link" href="learn.html">📖 先看函數小抄</a>
+      <p class="keys" id="keys"></p>
+    </div>
+  </section>
+
+  <!-- ── 作答 ───────────────────────────── -->
+  <section class="screen" id="play">
+    <div class="timer"><i id="bar"></i></div>
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="spacer"></div>
+      <div class="stat streak" id="streak" hidden>🔥 連對 <b id="streak-n">0</b></div>
+      <div class="stat">答對 <b id="p-correct">0</b> ／ 挑戰 <b id="p-total">0</b></div>
+      <button type="button" class="icon-btn" id="mute2" aria-label="音效開關" title="音效開關">🔊</button>
+    </header>
+
+    <div class="count" id="count">12</div>
+
+    <div class="play-body">
+      <div class="rule-tag" id="rule">圖形</div>
+      <div class="expr" id="expr"></div>
+      <div class="ask" id="ask"></div>
+      <div class="answers" id="answers"></div>
+    </div>
+  </section>
+
+  <!-- ── 判定 ───────────────────────────── -->
+  <div class="verdict" id="verdict">
+    <h2 id="verdict-text">答對了！</h2>
+    <div class="solution">
+      <div class="q" id="sol-q"></div>
+      <div class="answer-chip" id="sol-ans">是函數</div>
+      <div class="picked" id="sol-picked"></div>
+      <div class="why" id="sol-why"></div>
+    </div>
+    <div class="verdict-btns">
+      <button type="button" class="big-btn" id="next">▸ 下一題</button>
+      <button type="button" class="ghost-btn" id="back">結束這輪</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  /* ── 設定（記在這台瀏覽器，限時依題型各自記）── */
+  const TYPES = ['table', 'graph', 'formula', 'scene', 'all'];
+  const TYPE_NAME = { table: '對應表', graph: '圖形', formula: '式子', scene: '生活情境', all: '混合' };
+  const DIFFS = ['basic', 'chal'];
+  const LIMIT_DEFAULT = { table: 10, graph: 8, formula: 12, scene: 15, all: 12 };
+  const LIMIT_MIN = 4, LIMIT_MAX = 40;
+  const TYPE_NOTE = {
+    table: '看 x、y 對應表或箭頭圖：有沒有同一個 x 對到兩個不同的 y？不同的 x 對到同一個 y 沒關係。',
+    graph: '看圖形：想像一條鉛垂線左右掃過去，只要有一個地方碰到圖形兩點以上，就不是函數。',
+    formula: '看式子：先試著整理成「y = ……」。給一個 x，算出來的 y 只有一個才是函數；y² = …、x = 3 要小心。',
+    scene: '看生活情境：給定一個 x，y 是不是只有一個答案？想一個例子，看能不能找到兩個不同的 y。',
+    all: '對應表、圖形、式子、生活情境混在一起出。'
+  };
+  const DIFF_NOTE = {
+    basic: '',
+    chal: '挑戰：是函數的話還要分出一次函數 y = ax + b（a ≠ 0，圖形是斜直線）或常數函數 y = b（圖形是水平線）。對應表只在基礎出題。'
+  };
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 私密視窗等情況：不記也能玩 */ } }
+  };
+
+  function clampLimit(v) { return Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, v)); }
+
+  let type = TYPES.includes(store.get('fc-type')) ? store.get('fc-type') : 'all';
+  let diff = DIFFS.includes(store.get('fc-diff')) ? store.get('fc-diff') : 'basic';
+  if (diff === 'chal' && type === 'table') type = 'all';
+  const limits = {};
+  TYPES.forEach(t => {
+    const v = parseInt(store.get(`fc-limit-${t}`), 10);
+    limits[t] = clampLimit(Number.isFinite(v) ? v : LIMIT_DEFAULT[t]);
+  });
+  let muted = store.get('fc-muted') === '1';
+  const limit = () => limits[type];
+
+  /* ── 小工具 ─────────────────────────── */
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const coin = (p = 0.5) => Math.random() < p;
+  const pickOf = arr => arr[R(0, arr.length - 1)];
+  const nz = (lo, hi) => (coin() ? 1 : -1) * R(lo, hi);
+  const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = R(0, i); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  const pickSorted = (arr, n) => shuffle(arr).slice(0, n).sort((a, b) => a - b);
+  const close = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+
+  const MINUS = '−';
+  const X = '<var>x</var>', Y = '<var>y</var>';
+  const SQ = '<sup>2</sup>', CU = '<sup>3</sup>';
+
+  /* ── 有理數 ─────────────────────────── */
+  const gcd = (a, b) => (b ? gcd(b, a % b) : Math.abs(a));
+  function Q(n, d = 1) {
+    if (d === 0) throw new Error('分母為 0');
+    if (d < 0) { n = -n; d = -d; }
+    const k = gcd(Math.abs(n), d) || 1;
+    return { n: n / k, d: d / k };
+  }
+  const qval = a => a.n / a.d;
+
+  /* ── 排版 ───────────────────────────── */
+  const fr = (n, d) => `<span class="fr"><span>${n}</span><span>${d}</span></span>`;
+  const intHtml = n => (n < 0 ? `${MINUS}${-n}` : String(n));
+  const qHtml = a => (a.n < 0 ? MINUS : '') + (a.d === 1 ? String(Math.abs(a.n)) : fr(Math.abs(a.n), a.d));
+  // 係數接文字：1 省略、−1 只留負號
+  function coefHtml(q, v) {
+    if (q.d === 1 && Math.abs(q.n) === 1) return (q.n < 0 ? MINUS : '') + v;
+    return qHtml(q) + v;
+  }
+  // 「+ b」「− b」，b = 0 不寫
+  function tailQ(q) {
+    if (q.n === 0) return '';
+    return q.n < 0 ? ` ${MINUS} ${qHtml(Q(-q.n, q.d))}` : ` + ${qHtml(q)}`;
+  }
+  const tail = n => tailQ(Q(n));
+  // 文字項接在後面：「+ 2y」「− y」
+  function tailTerm(c, v) { return c < 0 ? ` ${MINUS} ${coefHtml(Q(-c), v)}` : ` + ${coefHtml(Q(c), v)}`; }
+  // y = ax + b 的式子（a = 0 時是 y = b）
+  function linHtml(a, b) {
+    if (a.n === 0) return `<span class="nw">${Y} = ${qHtml(b)}</span>`;
+    return `<span class="nw">${Y} = ${coefHtml(a, X)}${tailQ(b)}</span>`;
+  }
+  const nw = s => `<span class="nw">${s}</span>`;
+  const ysHtml = ys => ys.map(intHtml).join('、');
+  const plain = html => html.replace(/<[^>]+>/g, '');
+
+  const CLS_NAME = { linear: '一次函數', const: '常數函數', other: '函數', not: '不是函數' };
+  const ANS_NAME = { fn: '是函數', not: '不是函數', linear: '一次函數', const: '常數函數' };
+  const ansOf = (cls, d) => (d === 'basic' ? (cls === 'not' ? 'not' : 'fn') : cls);
+
+  const FN_END = `每一個 ${X} 都恰好對到一個 ${Y}，所以 <em>${Y} 是 ${X} 的函數</em>。`;
+  const NOT_END = `<em>一個 ${X} 對到兩個以上的 ${Y}</em>，所以 ${Y} 不是 ${X} 的函數。`;
+
+  /* ══ ① 對應表：表格、箭頭圖（只在基礎出）══════════════
+     check：題目上所有 (x, y) 數對，自動檢查用。 */
+
+  function makeTable(d, cls) {
+    const isFn = cls ? cls !== 'not' : coin();
+    const n = R(4, 5);
+    const xs = pickSorted(range(-3, 9), n);
+    const style = pickOf(['rand', 'rand', 'lin', 'same']);
+    let ys;
+    if (style === 'lin') { const a = nz(1, 3), b = R(-4, 4); ys = xs.map(x => a * x + b); }
+    else if (style === 'same') { const c = R(-3, 9); ys = xs.map(() => c); }
+    else {
+      ys = xs.map(() => R(-3, 12));
+      if (coin(0.6)) { const [i, j] = shuffle(range(0, n - 1)); ys[j] = ys[i]; }
+    }
+    let cols = xs.map((x, i) => [x, ys[i]]);
+    let bad = null, twice = null;
+    if (!isFn) {
+      const i = R(0, n - 1);
+      let y2; do { y2 = R(-3, 12); } while (y2 === cols[i][1]);
+      cols.push([cols[i][0], y2]);
+      bad = cols[i][0];
+    } else if (coin(0.25)) {
+      const i = R(0, n - 1);
+      cols.push([cols[i][0], cols[i][1]]);
+      twice = cols[i][0];
+    }
+    if (bad !== null || twice !== null || coin(0.4)) {
+      // 打散，讓重複的 x 不一定相鄰
+      for (let k = 0; k < 10; k++) {
+        cols = shuffle(cols);
+        const pos = cols.map((c, i) => (c[0] === (bad ?? twice) ? i : -1)).filter(i => i >= 0);
+        if (pos.length < 2 || pos[1] - pos[0] > 1) break;
+      }
+    }
+
+    let why;
+    if (!isFn) {
+      const two = cols.filter(c => c[0] === bad).map(c => c[1]);
+      why = `${X} = ${intHtml(bad)} 出現兩次，分別對到 ${Y} = ${ysHtml(two)}。${NOT_END}`;
+    } else {
+      why = FN_END;
+      const seen = new Map();
+      cols.forEach(([x, y]) => { if (!seen.has(y)) seen.set(y, new Set()); seen.get(y).add(x); });
+      const share = [...seen.entries()].find(([, s]) => s.size >= 2);
+      if (share) {
+        const xsShare = [...share[1]].sort((a, b) => a - b);
+        why += `<br>${X} = ${ysHtml(xsShare)} 都對到 ${Y} = ${intHtml(share[0])}：<em>不同的 ${X} 對到同一個 ${Y} 沒關係</em>。`;
+      }
+      if (twice !== null) why += `<br>${X} = ${intHtml(twice)} 出現兩次，但兩次都對到同一個 ${Y}，還是只有一個 ${Y}。`;
+    }
+    return {
+      cls: isFn ? 'other' : 'not',
+      html: tableHtml(cols),
+      solHtml: tableHtml(cols, bad, true),
+      why,
+      check: cols.map(c => c.slice())
+    };
+  }
+
+  function tableHtml(cols, bad = null, sol = false) {
+    const ySame = new Map();
+    cols.forEach(([, y]) => ySame.set(y, (ySame.get(y) || 0) + 1));
+    const cell = (v, i, isY) => {
+      let cls = '';
+      if (sol && bad !== null && cols[i][0] === bad) cls = 'odd';
+      else if (sol && bad === null && isY && ySame.get(v) > 1) cls = 'same';
+      return `<td class="${cls}">${intHtml(v)}</td>`;
+    };
+    return `<table class="tbl"><tr><th>${X}</th>${cols.map((c, i) => cell(c[0], i, false)).join('')}</tr>` +
+      `<tr><th>${Y}</th>${cols.map((c, i) => cell(c[1], i, true)).join('')}</tr></table>`;
+  }
+
+  function makeArrow(d, cls) {
+    const isFn = cls ? cls !== 'not' : coin();
+    const nx = R(3, 4), ny = R(3, 4);
+    const xs = pickSorted(range(-3, 9), nx);
+    const ys = pickSorted(range(-4, 12), ny);
+    const allSame = coin(0.15);
+    const one = R(0, ny - 1);
+    let arrows = xs.map((_, i) => [i, allSame ? one : R(0, ny - 1)]);
+    let bad = null;
+    if (!isFn) {
+      const i = R(0, nx - 1);
+      let j; do { j = R(0, ny - 1); } while (j === arrows[i][1]);
+      arrows.push([i, j]);
+      bad = i;
+    }
+    let why;
+    if (!isFn) {
+      const two = arrows.filter(a => a[0] === bad).map(a => ys[a[1]]).sort((a, b) => a - b);
+      why = `${X} = ${intHtml(xs[bad])} 射出兩支箭頭，對到 ${Y} = ${ysHtml(two)}。${NOT_END}`;
+    } else {
+      why = `每一個 ${X} 都<em>剛好射出一支</em>箭頭。` + FN_END;
+      const hit = new Map();
+      arrows.forEach(([i, j]) => hit.set(j, (hit.get(j) || 0) + 1));
+      if ([...hit.values()].some(v => v >= 2)) why += `<br>好幾支箭頭射到同一個 ${Y} <em>沒關係</em>。`;
+      if (hit.size < ny) why += `<br>右邊有 ${Y} 沒有被射到也<em>沒關係</em>，只要求每個 ${X} 恰有一個 ${Y}。`;
+    }
+    return {
+      cls: isFn ? 'other' : 'not',
+      html: arrowSvg(xs, ys, arrows, null),
+      solHtml: arrowSvg(xs, ys, arrows, bad),
+      why,
+      check: arrows.map(([i, j]) => [xs[i], ys[j]])
+    };
+  }
+
+  function arrowSvg(xs, ys, arrows, bad) {
+    const rows = Math.max(xs.length, ys.length);
+    const gap = 46, top = 46;
+    const H = top + rows * gap + 14, W = 340;
+    const lx = 70, rx = 270;
+    const yPos = (k, n) => top + gap / 2 + (k + (rows - n) / 2) * gap;
+    let s = `<svg class="arrow" viewBox="0 0 ${W} ${H}" role="img" aria-label="箭頭圖">`;
+    s += `<text class="a-head" x="${lx}" y="28" text-anchor="middle">x</text><text class="a-head" x="${rx}" y="28" text-anchor="middle">y</text>`;
+    const ovalH = rows * gap / 2 + 8;
+    s += `<ellipse class="a-oval" cx="${lx}" cy="${top + rows * gap / 2}" rx="48" ry="${ovalH}"/>`;
+    s += `<ellipse class="a-oval" cx="${rx}" cy="${top + rows * gap / 2}" rx="48" ry="${ovalH}"/>`;
+    arrows.forEach(([i, j]) => {
+      const y1 = yPos(i, xs.length), y2 = yPos(j, ys.length);
+      const x1 = lx + 26, x2 = rx - 30;
+      const ang = Math.atan2(y2 - y1, x2 - x1);
+      const hx = x2 - 12 * Math.cos(ang), hy = y2 - 12 * Math.sin(ang);
+      const px = 6 * Math.sin(ang), py = -6 * Math.cos(ang);
+      const c = i === bad ? ' bad' : '';
+      s += `<line class="a-line${c}" x1="${x1}" y1="${y1}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}"/>`;
+      s += `<polygon class="a-tip${c}" points="${x2},${y2} ${(hx + px).toFixed(1)},${(hy + py).toFixed(1)} ${(hx - px).toFixed(1)},${(hy - py).toFixed(1)}"/>`;
+    });
+    xs.forEach((v, k) => { s += `<text class="a-num" x="${lx}" y="${yPos(k, xs.length) + 8}" text-anchor="middle">${intHtml(v)}</text>`; });
+    ys.forEach((v, k) => { s += `<text class="a-num" x="${rx}" y="${yPos(k, ys.length) + 8}" text-anchor="middle">${intHtml(v)}</text>`; });
+    return s + '</svg>';
+  }
+
+  /* ══ ② 圖形題：坐標平面上畫出的圖形，用鉛垂線檢驗 ══════════
+     每題有 lines（折線，數學坐標）與 dots（點）。
+     不是函數的題目附 wit = { x, ys }：鉛垂線 x 碰到圖形的那幾點。
+     是函數的題目附 probe = [x, y]：結果畫面示範的一條鉛垂線。 */
+
+  const VIEW = 6.5;
+  function sampleFn(f, step = 0.02) {
+    const lines = [];
+    let cur = [];
+    const n = Math.round(2 * VIEW / step);
+    for (let i = 0; i <= n; i++) {
+      const x = -VIEW + i * step, y = f(x);
+      if (Number.isFinite(y) && Math.abs(y) <= VIEW) cur.push([x, y]);
+      else if (cur.length) { lines.push(cur); cur = []; }
+    }
+    if (cur.length) lines.push(cur);
+    return lines.filter(l => l.length > 1);
+  }
+  function sampleParam(fx, fy, t0, t1, steps) {
+    const lines = [];
+    let cur = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = t0 + (t1 - t0) * i / steps;
+      const x = fx(t), y = fy(t);
+      if (Math.abs(x) <= VIEW && Math.abs(y) <= VIEW) cur.push([x, y]);
+      else if (cur.length) { lines.push(cur); cur = []; }
+    }
+    if (cur.length) lines.push(cur);
+    return lines.filter(l => l.length > 1);
+  }
+  // 是函數的圖形：找一個整數 x 當示範的鉛垂線
+  function probeOf(f) {
+    const ok = range(-5, 5).filter(x => Number.isFinite(f(x)) && Math.abs(f(x)) <= 5.5);
+    const x = pickOf(ok.length ? ok : [0]);
+    return [x, f(x)];
+  }
+  const SLOPES = [Q(1), Q(-1), Q(2), Q(-2), Q(3), Q(-3), Q(1, 2), Q(-1, 2), Q(1, 3), Q(-1, 3), Q(2, 3), Q(-2, 3), Q(3, 2), Q(-3, 2)];
+
+  const GRAPH = {
+    linear: [
+      () => {
+        const a = pickOf(SLOPES), b = R(-4, 4);
+        const f = x => qval(a) * x + b;
+        return { lines: sampleFn(f), probe: probeOf(f), desc: '斜直線', eq: linHtml(a, Q(b)) };
+      }
+    ],
+    const: [
+      () => {
+        const b = nz(1, 5);
+        const f = () => b;
+        return { lines: sampleFn(f), probe: probeOf(f), desc: '水平線', eq: linHtml(Q(0), Q(b)) };
+      }
+    ],
+    other: [
+      () => { // 拋物線
+        const a = pickOf([1, 0.5, 0.25, -1, -0.5, -0.25]), h = R(-2, 2), k = a > 0 ? R(-4, 1) : R(-1, 4);
+        const f = x => a * (x - h) * (x - h) + k;
+        return { lines: sampleFn(f), probe: probeOf(f), desc: '開口朝' + (a > 0 ? '上' : '下') + '的曲線' };
+      },
+      () => { // V 字形
+        const a = pickOf([1, 2, 0.5, -1, -2, -0.5]), h = R(-2, 2), k = a > 0 ? R(-4, 0) : R(0, 4);
+        const f = x => a * Math.abs(x - h) + k;
+        return { lines: sampleFn(f), probe: probeOf(f), desc: (a > 0 ? 'V' : '倒 V') + ' 字形' };
+      },
+      () => { // 三次曲線
+        const c = pickOf([2, 3, 4, -2, -3, -4]), h = R(-1, 1), k = R(-1, 1);
+        const f = x => (x - h) ** 3 / c + k;
+        return { lines: sampleFn(f), probe: probeOf(f), desc: 'S 形曲線' };
+      },
+      () => { // 半圓
+        const h = R(-1, 1), k = R(-1, 1), r = R(3, 5), up = coin();
+        const f = x => (Math.abs(x - h) <= r ? k + (up ? 1 : -1) * Math.sqrt(r * r - (x - h) * (x - h)) : NaN);
+        return {
+          lines: sampleParam(t => h + r * Math.cos(t), t => k + (up ? 1 : -1) * r * Math.sin(t), 0, Math.PI, 600),
+          probe: probeOf(f), desc: (up ? '上' : '下') + '半圓'
+        };
+      },
+      () => { // 一組點，x 坐標都不同
+        const xs = pickSorted(range(-5, 5), R(5, 6));
+        const dots = xs.map(x => [x, R(-5, 5)]);
+        if (coin(0.6)) dots[R(1, dots.length - 1)][1] = dots[0][1]; // 不同 x 同一個 y 也可以
+        return { lines: [], dots, probe: null, desc: '一些點' };
+      }
+    ],
+    not: [
+      () => { // 鉛垂線
+        const c = nz(1, 5);
+        const ys = pickSorted(range(-4, 4), 2);
+        return { lines: [[[c, -VIEW], [c, VIEW]]], wit: { x: c, ys, all: true }, desc: '鉛垂線', vert: c };
+      },
+      () => { // 圓
+        const h = R(-1, 1), k = R(-1, 1), r = R(3, 5);
+        return {
+          lines: sampleParam(t => h + r * Math.cos(t), t => k + r * Math.sin(t), 0, 2 * Math.PI, 900),
+          wit: { x: h, ys: [k - r, k + r] }, desc: '圓'
+        };
+      },
+      () => { // 開口朝左右的曲線 x = a(y − k)² + h
+        const a = pickOf([1, 0.5, 0.25, -1, -0.5, -0.25]), k = R(-2, 2);
+        const h = a > 0 ? R(-5, -2) : R(2, 5);
+        const dd = [1, 2].filter(d => Math.abs(h + a * d * d) <= 5 && Math.abs(k) + d <= 5 && Number.isInteger(h + a * d * d));
+        const dv = dd.length ? pickOf(dd) : 2;
+        return {
+          lines: sampleParam(t => a * (t - k) * (t - k) + h, t => t, -VIEW, VIEW, 900),
+          wit: { x: h + a * dv * dv, ys: [k - dv, k + dv] }, desc: '開口朝' + (a > 0 ? '右' : '左') + '的曲線'
+        };
+      },
+      () => { // 「&lt;」「&gt;」形：x = a|y − k| + h
+        const a = pickOf([1, 2, -1, -2]), k = R(-2, 2);
+        const h = a > 0 ? R(-5, -2) : R(2, 5);
+        const dv = pickOf([1, 2].filter(d => Math.abs(h + a * d) <= 5));
+        return {
+          lines: sampleParam(t => a * Math.abs(t - k) + h, t => t, -VIEW, VIEW, 900),
+          wit: { x: h + a * dv, ys: [k - dv, k + dv] }, desc: '橫躺的 V 字形'
+        };
+      },
+      () => { // 兩條相交直線（X 形）
+        let a1, a2, b1, b2, x0;
+        for (;;) {
+          a1 = nz(1, 2); a2 = pickOf([0, -a1, nz(1, 3)]); b1 = R(-2, 2); b2 = R(-2, 2);
+          if (a1 === a2) continue;
+          const cand = range(-4, 4).filter(x => a1 * x + b1 !== a2 * x + b2 && Math.abs(a1 * x + b1) <= 5 && Math.abs(a2 * x + b2) <= 5);
+          if (cand.length) { x0 = pickOf(cand); break; }
+        }
+        return {
+          lines: [...sampleFn(x => a1 * x + b1), ...sampleFn(x => a2 * x + b2)],
+          wit: { x: x0, ys: [a1 * x0 + b1, a2 * x0 + b2].sort((p, q) => p - q) }, desc: '兩條相交的直線'
+        };
+      },
+      () => { // 一組點，有兩點 x 坐標相同
+        const xs = pickSorted(range(-5, 5), R(4, 5));
+        const dots = xs.map(x => [x, R(-5, 5)]);
+        const i = R(0, dots.length - 1);
+        let y2; do { y2 = R(-5, 5); } while (y2 === dots[i][1]);
+        dots.push([dots[i][0], y2]);
+        return { lines: [], dots, wit: { x: dots[i][0], ys: [dots[i][1], y2].sort((p, q) => p - q) }, desc: '一些點' };
+      },
+      () => { // 橫躺的 S 形：x = (y³ − 16y) / 16 + h
+        const h = R(-1, 1), s = coin() ? 1 : -1;
+        return {
+          lines: sampleParam(t => s * (t ** 3 - 16 * t) / 16 + h, t => t, -VIEW, VIEW, 1200),
+          wit: { x: h, ys: [-4, 0, 4] }, desc: '橫躺的 S 形曲線'
+        };
+      }
+    ]
+  };
+  // 挑戰難度的「不是函數」：鉛垂線多出一些，最容易和常數函數搞混
+  const GRAPH_NOT_CHAL = [0, 0, 1, 2, 4];
+
+  function makeGraph(d, forced) {
+    const cls = forced || (d === 'basic'
+      ? (coin() ? 'not' : pickOf(['linear', 'const', 'other', 'other', 'other']))
+      : pickOf(['linear', 'const', 'not']));
+    const g = cls === 'not' && d === 'chal' ? GRAPH.not[pickOf(GRAPH_NOT_CHAL)]() : pickOf(GRAPH[cls])();
+    g.cls = cls;
+    g.dots = g.dots || [];
+    let why;
+    if (cls === 'not') {
+      const w = g.wit;
+      if (w.all) {
+        why = `圖形是<em>鉛垂線</em> ${nw(`${X} = ${intHtml(w.x)}`)}（平行 ${Y} 軸）：${X} = ${intHtml(w.x)} 時，${Y} 可以是 ${ysHtml(w.ys)}……任何數。${NOT_END}`;
+        if (d === 'chal') why += `<br>水平線 ${Y} = <var>b</var> 才是常數函數，<em>鉛垂線不是函數</em>。`;
+      } else {
+        why = `畫鉛垂線 ${nw(`${X} = ${intHtml(w.x)}`)}，碰到${g.desc} ${w.ys.length} 點：${Y} = ${ysHtml(w.ys)}。${NOT_END}`;
+      }
+    } else if (g.dots.length) {
+      why = `每個點的 ${X} 坐標都不一樣，任何一條鉛垂線最多只碰到一個點。${FN_END}`;
+    } else {
+      const [px, py] = g.probe;
+      why = `不管鉛垂線畫在哪裡，都<em>最多只碰到圖形一點</em>（例如 ${nw(`${X} = ${intHtml(px)}`)} 只碰到 ${Y} = ${fmtNum(py)} 那一點）。${FN_END}`;
+      if (cls === 'linear') why += `<br>圖形是<em>斜直線</em>，是一次函數 ${g.eq}。`;
+      if (cls === 'const') why += `<br>圖形是<em>水平線</em>（平行 ${X} 軸），是常數函數 ${g.eq}。`;
+    }
+    return { cls, html: graphSvg(g, false), solHtml: graphSvg(g, true), why, geo: g };
+  }
+
+  // 圖上讀到的數：整數直接寫，其他寫到小數一位（只出現在示範用的鉛垂線）
+  function fmtNum(v) {
+    if (Math.abs(v - Math.round(v)) < 1e-9) return intHtml(Math.round(v));
+    for (const den of [2, 3, 4]) {
+      const n = Math.round(v * den);
+      if (Math.abs(v * den - n) < 1e-9) return qHtml(Q(n, den));
+    }
+    return (v < 0 ? MINUS : '') + Math.abs(v).toFixed(1).replace(/\.0$/, '') + '…';
+  }
+
+  function graphSvg(g, sol) {
+    const S = 20, O = VIEW * S, W = 2 * O;
+    const px = x => (O + x * S).toFixed(1), py = y => (O - y * S).toFixed(1);
+    let s = `<svg class="graph" viewBox="-6 -6 ${W + 12} ${W + 12}" role="img" aria-label="坐標平面上的圖形">`;
+    for (let i = -6; i <= 6; i++) {
+      if (i === 0) continue;
+      s += `<line class="g-grid" x1="${px(i)}" y1="0" x2="${px(i)}" y2="${W}"/><line class="g-grid" x1="0" y1="${py(i)}" x2="${W}" y2="${py(i)}"/>`;
+    }
+    s += `<line class="g-axis" x1="0" y1="${O}" x2="${W}" y2="${O}"/><line class="g-axis" x1="${O}" y1="0" x2="${O}" y2="${W}"/>`;
+    for (let i = -6; i <= 6; i += 2) {
+      if (i === 0) continue;
+      s += `<text class="g-tick" x="${px(i)}" y="${O + 14}" text-anchor="middle">${i < 0 ? MINUS + -i : i}</text>`;
+      s += `<text class="g-tick" x="${O - 5}" y="${(+py(i) + 4).toFixed(1)}" text-anchor="end">${i < 0 ? MINUS + -i : i}</text>`;
+    }
+    s += `<text class="g-lab" x="${W - 4}" y="${O - 7}" text-anchor="end">x</text><text class="g-lab" x="${O + 8}" y="14">y</text>`;
+    s += `<text class="g-tick" x="${O - 5}" y="${O + 14}" text-anchor="end">O</text>`;
+    if (sol && g.cls !== 'not' && g.probe) {
+      const [x0, y0] = g.probe;
+      s += `<line class="g-ok" x1="${px(x0)}" y1="0" x2="${px(x0)}" y2="${W}"/>`;
+      s += drawCurves(g, px, py);
+      s += `<circle class="g-okpt" cx="${px(x0)}" cy="${py(y0)}" r="6"/>`;
+    } else if (sol && g.cls === 'not') {
+      const w = g.wit;
+      s += drawCurves(g, px, py);
+      s += `<line class="g-bad" x1="${px(w.x)}" y1="0" x2="${px(w.x)}" y2="${W}"/>`;
+      w.ys.forEach(y => { s += `<circle class="g-badpt" cx="${px(w.x)}" cy="${py(y)}" r="6"/>`; });
+    } else {
+      s += drawCurves(g, px, py);
+    }
+    return s + '</svg>';
+  }
+  function drawCurves(g, px, py) {
+    let s = '';
+    g.lines.forEach(l => {
+      s += `<path class="g-curve" d="${l.map((p, i) => (i ? 'L' : 'M') + px(p[0]) + ' ' + py(p[1])).join('')}"/>`;
+    });
+    g.dots.forEach(([x, y]) => { s += `<circle class="g-dot" cx="${px(x)}" cy="${py(y)}" r="6"/>`; });
+    return s;
+  }
+
+  /* ══ ③ 式子題 ══════════════════════════════
+     rel(x, y)：式子本身（兩邊相等就成立），自動檢查用。
+     wit：不是函數時，示範一個 x 對到兩個 y。 */
+
+  const FORMULA = {
+    linear: [
+      () => { // y = ax + b
+        const a = pickOf([Q(nz(1, 5)), Q(nz(1, 5)), Q(nz(1, 2), 3), Q(nz(1, 1), 2)]), b = R(-9, 9);
+        return {
+          html: linHtml(a, Q(b)), rel: (x, y) => close(y, qval(a) * x + b), eq: linHtml(a, Q(b)),
+          pre: `已經是 ${nw(`${Y} = <var>a</var>${X} + <var>b</var>`)} 的樣子${b === 0 ? `（<var>b</var> = 0 也可以）` : ''}，`
+        };
+      },
+      () => { // ax + by = c
+        const a = nz(1, 4), b = pickOf([1, 1, 2, 3, -1]), c = R(-9, 9);
+        const eq = linHtml(Q(-a, b), Q(c, b));
+        return {
+          html: nw(`${coefHtml(Q(a), X)}${tailTerm(b, Y)} = ${intHtml(c)}`), rel: (x, y) => close(a * x + b * y, c), eq,
+          pre: `移項整理得 ${eq}，`
+        };
+      },
+      () => { // x = py + q
+        const p = nz(1, 3), q = R(-6, 6);
+        const eq = linHtml(Q(1, p), Q(-q, p));
+        return {
+          html: nw(`${X} = ${coefHtml(Q(p), Y)}${tail(q)}`), rel: (x, y) => close(x, p * y + q), eq,
+          pre: `雖然寫成「${X} = ……」，整理後是 ${eq}，`
+        };
+      },
+      () => { // y = a(x + h)
+        const a = nz(2, 4), h = nz(1, 6);
+        const eq = linHtml(Q(a), Q(a * h));
+        return {
+          html: nw(`${Y} = ${intHtml(a)}(${X}${tail(h)})`), rel: (x, y) => close(y, a * (x + h)), eq,
+          pre: `展開得 ${eq}，`
+        };
+      }
+    ],
+    const: [
+      () => { // y = b
+        const b = nz(1, 9);
+        return { html: linHtml(Q(0), Q(b)), rel: (x, y) => close(y, b), eq: linHtml(Q(0), Q(b)), pre: `${X} 是多少都可以，${Y} 永遠是 ${intHtml(b)}，` };
+      },
+      () => { // ay + c = d
+        const a = R(2, 5), m = nz(1, 6), c = nz(1, 9);
+        const eq = linHtml(Q(0), Q(m));
+        return { html: nw(`${a}${Y}${tail(c)} = ${intHtml(a * m + c)}`), rel: (x, y) => close(a * y + c, a * m + c), eq, pre: `解出 ${eq}，和 ${X} 無關，` };
+      },
+      () => { // y + ax = ax + c
+        const a = R(2, 5), c = nz(1, 9);
+        const eq = linHtml(Q(0), Q(c));
+        return {
+          html: nw(`${Y} + ${a}${X} = ${a}${X}${tail(c)}`), rel: (x, y) => close(y + a * x, a * x + c), eq,
+          pre: `兩邊同減 ${a}${X}，得 ${eq}，${X} 消掉了，`
+        };
+      },
+      () => { // y = a(x + h) − ax
+        const a = R(2, 4), h = nz(1, 5);
+        const eq = linHtml(Q(0), Q(a * h));
+        return {
+          html: nw(`${Y} = ${a}(${X}${tail(h)}) ${MINUS} ${a}${X}`), rel: (x, y) => close(y, a * (x + h) - a * x), eq,
+          pre: `展開後 ${a}${X} 和 ${MINUS}${a}${X} 抵消，得 ${eq}，`
+        };
+      }
+    ],
+    other: [
+      () => { const c = R(-5, 5); return { html: nw(`${Y} = ${X}${SQ}${tail(c)}`), rel: (x, y) => close(y, x * x + c), pre: `把 ${X} 平方${c ? '再加減' : ''}，算出來只有一個值，` }; },
+      () => { const a = pickOf([2, 3, -1, -2]); return { html: nw(`${Y} = ${coefHtml(Q(a), X)}${SQ}`), rel: (x, y) => close(y, a * x * x), pre: `${X} 代進去只算出一個 ${Y}，` }; },
+      () => { const h = R(-3, 3); return { html: nw(`${Y} = |${X}${tail(h)}|`), rel: (x, y) => close(y, Math.abs(x + h)), pre: `絕對值算出來只有一個值，` }; },
+      () => ({ html: nw(`${Y} = ${X}${CU}`), rel: (x, y) => close(y, x * x * x), pre: `${X} 的立方只有一個值，` })
+    ],
+    not: [
+      () => { // x = c
+        const c = nz(1, 9);
+        return { html: nw(`${X} = ${intHtml(c)}`), rel: x => close(x, c), wit: { x: c, all: true }, vert: true };
+      },
+      () => { // ax − c = 0
+        const a = R(2, 5), m = nz(1, 6);
+        return { html: nw(`${a}${X}${tail(-a * m)} = 0`), rel: x => close(a * x - a * m, 0), wit: { x: m, all: true }, vert: true, pre: `解出 ${nw(`${X} = ${intHtml(m)}`)}，` };
+      },
+      () => { // y² = x + c
+        const c = R(-4, 4), d = pickOf([1, 2, 3].filter(v => Math.abs(v * v - c) <= 9));
+        return { html: nw(`${Y}${SQ} = ${X}${tail(c)}`), rel: (x, y) => close(y * y, x + c), wit: { x: d * d - c, ys: [d, -d] } };
+      },
+      () => { // x² + y² = r²
+        const r = pickOf([5, 10, 13]);
+        return { html: nw(`${X}${SQ} + ${Y}${SQ} = ${r * r}`), rel: (x, y) => close(x * x + y * y, r * r), wit: { x: 0, ys: [r, -r] } };
+      },
+      () => { // |y| = x + c
+        const c = R(-4, 4), d = R(1, 4);
+        return { html: nw(`|${Y}| = ${X}${tail(c)}`), rel: (x, y) => close(Math.abs(y), x + c), wit: { x: d - c, ys: [d, -d] } };
+      },
+      () => { // x = y² + c
+        const c = R(-4, 4), d = pickOf([1, 2, 3].filter(v => Math.abs(v * v + c) <= 9));
+        return { html: nw(`${X} = ${Y}${SQ}${tail(c)}`), rel: (x, y) => close(x, y * y + c), wit: { x: d * d + c, ys: [d, -d] } };
+      },
+      () => { // x = |y| + c
+        const c = R(-4, 4), d = R(1, 4);
+        return { html: nw(`${X} = |${Y}|${tail(c)}`), rel: (x, y) => close(x, Math.abs(y) + c), wit: { x: d + c, ys: [d, -d] } };
+      },
+      () => { // y² = k²
+        const k = R(2, 6);
+        return {
+          html: nw(`${Y}${SQ} = ${k * k}`), rel: (x, y) => close(y * y, k * k), wit: { x: R(-3, 3), ys: [k, -k] },
+          pre: `${Y} 可以是 ${k} 或 ${MINUS}${k}，和 ${X} 無關；`
+        };
+      }
+    ]
+  };
+  // 挑戰難度的「不是函數」：x = c 和 y² = k² 最像常數函數，多出一些
+  const FORMULA_NOT_CHAL = [0, 0, 1, 1, 2, 3, 5, 7];
+
+  function makeFormula(d, forced) {
+    const cls = forced || (d === 'basic'
+      ? (coin() ? 'not' : pickOf(['linear', 'const', 'other']))
+      : pickOf(['linear', 'const', 'not']));
+    const f = cls === 'not' && d === 'chal' ? FORMULA.not[pickOf(FORMULA_NOT_CHAL)]() : pickOf(FORMULA[cls])();
+    let why;
+    if (cls === 'not') {
+      const w = f.wit;
+      if (w.all) {
+        why = `${f.pre || ''}這是<em>鉛垂線</em>：${X} = ${intHtml(w.x)} 時，${Y} 可以是 1、2、3……任何數。${NOT_END}`;
+        if (d === 'chal') why += `<br>常數函數是 ${Y} = <var>b</var>（水平線），<em>${X} = <var>c</var> 不是常數函數</em>。`;
+      } else {
+        why = `${f.pre || ''}例如 ${X} = ${intHtml(w.x)} 時，${Y} = ${intHtml(w.ys[0])} 或 ${intHtml(w.ys[1])} 都成立。${NOT_END}`;
+      }
+    } else {
+      why = `${f.pre}給一個 ${X} 只算出一個 ${Y}。${FN_END}`;
+      if (cls === 'linear') why += `<br><var>x</var> 的係數不是 0，是<em>一次函數</em>。`;
+      if (cls === 'const') why += `<br>這是<em>常數函數</em>，圖形是水平線。`;
+    }
+    return { cls, html: f.html, solHtml: f.html, why, rel: f.rel, wit: f.wit };
+  }
+
+  /* ══ ④ 生活情境題 ═══════════════════════════
+     pairs：依情境列舉出的 (x, y)，自動檢查用（不是用答案反推）。 */
+
+  const SCENE = {
+    linear: [
+      () => { const a = pickOf([5, 10, 12, 15, 20]); return {
+        text: `每枝筆 ${a} 元，買 ${X} 枝筆共要付 ${Y} 元。`, eq: linHtml(Q(a), Q(0)),
+        pairs: range(1, 6).map(x => [x, a * x]) }; },
+      () => { const a = pickOf([12, 15, 20]), b = pickOf([1, 2, 3]); return {
+        text: `一根 ${a} 公分長的蠟燭，點燃後每分鐘燒掉 ${b} 公分。點燃 ${X} 分鐘後，蠟燭剩下 ${Y} 公分。`, eq: linHtml(Q(-b), Q(a)),
+        pairs: range(0, Math.floor(a / b)).map(x => [x, a - b * x]) }; },
+      () => { const a = pickOf([20, 30, 50]), b = pickOf([10, 15, 20]); return {
+        text: `租腳踏車先付基本費 ${a} 元，每騎 1 小時再加 ${b} 元。騎 ${X} 小時共付 ${Y} 元。`, eq: linHtml(Q(b), Q(a)),
+        pairs: range(1, 6).map(x => [x, a + b * x]) }; },
+      () => ({
+        text: `正方形的邊長是 ${X} 公分，周長是 ${Y} 公分。`, eq: linHtml(Q(4), Q(0)),
+        pairs: range(1, 6).map(x => [x, x + x + x + x]) }),
+      () => { const k = R(2, 5), c = nz(1, 9); return {
+        text: `某數 ${X} 的 ${k} 倍再${c > 0 ? '加' : '減'} ${Math.abs(c)} 是 ${Y}。`, eq: linHtml(Q(k), Q(c)),
+        pairs: range(-3, 3).map(x => [x, k * x + c]) }; },
+      () => ({
+        text: `某數 ${X} 的相反數是 ${Y}。`, eq: linHtml(Q(-1), Q(0)),
+        pairs: range(-3, 3).map(x => [x, 0 - x]) }),
+      () => { const a = R(2, 6); return {
+        text: `哥哥比小翊大 ${a} 歲。小翊 ${X} 歲時，哥哥 ${Y} 歲。`, eq: linHtml(Q(1), Q(a)),
+        pairs: range(5, 12).map(x => [x, x + a]) }; },
+      () => { const a = pickOf([5, 10, 20]), b = pickOf([2, 3, 4]); return {
+        text: `水桶裡原本有 ${a} 公升的水，再打開水龍頭每分鐘注入 ${b} 公升。${X} 分鐘後桶裡共有 ${Y} 公升。`, eq: linHtml(Q(b), Q(a)),
+        pairs: range(0, 6).map(x => [x, a + b * x]) }; }
+    ],
+    const: [
+      () => { const a = pickOf([30, 40, 50, 60]); return {
+        text: `某停車場不論停多久，每次都收 ${a} 元。停 ${X} 小時要付 ${Y} 元。`, eq: linHtml(Q(0), Q(a)),
+        pairs: range(1, 8).map(x => [x, a]) }; },
+      () => { const a = pickOf([399, 499, 599]); return {
+        text: `手機吃到飽方案每月固定收 ${a} 元。某個月上網用了 ${X} GB，這個月要付 ${Y} 元。`, eq: linHtml(Q(0), Q(a)),
+        pairs: [1, 5, 10, 20, 50].map(x => [x, a]) }; },
+      () => { const a = pickOf([12, 15, 20]); return {
+        text: `市區公車不論坐幾站，票價都是 ${a} 元。坐 ${X} 站要付 ${Y} 元。`, eq: linHtml(Q(0), Q(a)),
+        pairs: range(1, 10).map(x => [x, a]) }; },
+      () => ({
+        text: `三角形的其中一個內角是 ${X} 度，三個內角的和是 ${Y} 度。`, eq: linHtml(Q(0), Q(180)),
+        // 另兩角任取，三角加起來
+        pairs: [20, 45, 60, 90, 120].map(x => { const b = (180 - x) / 3; return [x, x + b + (180 - x - b)]; }) }),
+      () => ({
+        text: `正方形的邊長是 ${X} 公分，四個內角的和是 ${Y} 度。`, eq: linHtml(Q(0), Q(360)),
+        pairs: range(1, 6).map(x => [x, 90 + 90 + 90 + 90]) })
+    ],
+    other: [
+      () => ({ text: `正方形的邊長是 ${X} 公分，面積是 ${Y} 平方公分。`, eq: nw(`${Y} = ${X}${SQ}`), pairs: range(1, 6).map(x => [x, x * x]) }),
+      () => ({ text: `圓的半徑是 ${X} 公分，面積是 ${Y} 平方公分（圓周率以 π 表示）。`, eq: nw(`${Y} = π${X}${SQ}`), pairs: range(1, 6).map(x => [x, Math.PI * x * x]) }),
+      () => ({ text: `某數 ${X} 的絕對值是 ${Y}。`, eq: nw(`${Y} = |${X}|`), pairs: range(-3, 3).map(x => [x, Math.abs(x)]) }),
+      () => ({
+        text: `本班座號 ${X} 號的同學，身高是 ${Y} 公分。`, eq: null,
+        note: `每個座號只有一位同學，身高只有一個值（兩位同學一樣高也沒關係）。`,
+        pairs: range(1, 28).map(x => [x, R(148, 172)]) })
+    ],
+    not: [
+      () => { const v = pickOf([4, 9, 16, 25]), r = Math.sqrt(v); return {
+        text: `正數 ${X} 的平方根是 ${Y}。`,
+        wit: `${X} = ${v} 時，${v} 的平方根有 ${r} 和 ${MINUS}${r} 兩個`,
+        pairs: [1, 4, 9, 16, 25].flatMap(x => [[x, Math.sqrt(x)], [x, -Math.sqrt(x)]]) }; },
+      () => { const v = R(2, 9); return {
+        text: `絕對值等於 ${X} 的數是 ${Y}（${X} 是正數）。`,
+        wit: `${X} = ${v} 時，絕對值是 ${v} 的數有 ${v} 和 ${MINUS}${v} 兩個`,
+        pairs: range(1, 5).flatMap(x => [[x, x], [x, -x]]) }; },
+      () => { const p = pickOf([12, 16, 20, 24]), s = p / 4; return {
+        text: `周長是 ${X} 公分的長方形，面積是 ${Y} 平方公分。`,
+        wit: `${X} = ${p} 時，長 ${s}、寬 ${s} 的面積是 ${s * s}；長 ${s + 1}、寬 ${s - 1} 的面積是 ${(s + 1) * (s - 1)}`,
+        pairs: [12, 16, 20, 24].flatMap(x => range(1, x / 2 - 1).map(l => [x, l * (x / 2 - l)])) }; },
+      () => { const A = pickOf([12, 16, 24, 36]), w = pickOf([2, 3, 4].filter(v => A % v === 0 && v * v !== A)); return {
+        text: `面積是 ${X} 平方公分的長方形，周長是 ${Y} 公分。`,
+        wit: `${X} = ${A} 時，長 ${A}、寬 1 的周長是 ${2 * (A + 1)}；長 ${A / w}、寬 ${w} 的周長是 ${2 * (A / w + w)}`,
+        pairs: [12, 16, 24, 36].flatMap(x => range(1, x).filter(l => x % l === 0).map(l => [x, 2 * (l + x / l)])) }; },
+      () => { const v = pickOf([6, 8, 10, 12]); return {
+        text: `正整數 ${X} 的因數是 ${Y}。`,
+        wit: `${X} = ${v} 時，因數有 ${range(1, v).filter(k => v % k === 0).join('、')} 好幾個`,
+        pairs: [6, 8, 10, 12].flatMap(x => range(1, x).filter(k => x % k === 0).map(k => [x, k])) }; },
+      () => { const v = R(2, 5); return {
+        text: `正整數 ${X} 的倍數是 ${Y}。`,
+        wit: `${X} = ${v} 時，倍數有 ${v}、${2 * v}、${3 * v}……好多個`,
+        pairs: range(2, 5).flatMap(x => range(1, 4).map(k => [x, k * x])) }; },
+      () => { const age = pickOf([13, 14]), h1 = R(148, 158), h2 = h1 + R(3, 12); return {
+        text: `班上年齡 ${X} 歲的同學，身高是 ${Y} 公分。`,
+        wit: `${X} = ${age} 時，班上可能有一位 ${h1} 公分、另一位 ${h2} 公分的同學`,
+        pairs: [[age, h1], [age, h2], [age === 13 ? 14 : 13, R(145, 170)]] }; },
+      () => { const v = pickOf([6, 7, 8, 9]); return {
+        text: `兩個正整數的和是 ${X}，積是 ${Y}。`,
+        wit: `${X} = ${v} 時，1 和 ${v - 1} 的積是 ${v - 1}；2 和 ${v - 2} 的積是 ${2 * (v - 2)}`,
+        pairs: [6, 7, 8, 9].flatMap(x => range(1, x - 1).map(a => [x, a * (x - a)])) }; }
+    ]
+  };
+
+  function makeScene(d, forced) {
+    const cls = forced || (d === 'basic'
+      ? (coin() ? 'not' : pickOf(['linear', 'const', 'other']))
+      : pickOf(['linear', 'const', 'not']));
+    const s = pickOf(SCENE[cls])();
+    const html = `<div class="scene">${s.text}</div>`;
+    let why;
+    if (cls === 'not') {
+      why = `${s.wit}。${NOT_END}`;
+    } else {
+      why = s.eq ? `關係式 ${s.eq.replace('<span class="nw">', '<span class="nw"><em>').replace(/<\/span>$/, '</em></span>')}，給一個 ${X} 只算出一個 ${Y}。` : s.note;
+      why += FN_END;
+      if (cls === 'linear') why += `<br><var>x</var> 的係數不是 0，是<em>一次函數</em>。`;
+      if (cls === 'const') why += `<br>不論 ${X} 是多少，${Y} 都一樣，是<em>常數函數</em>。`;
+    }
+    return { cls, html, solHtml: html, why, check: s.pairs };
+  }
+
+  const GENS = [
+    { key: 'table', type: 'table', rule: '對應表', ask: `${Y} 是 ${X} 的函數嗎？`, diffs: ['basic'], make: makeTable },
+    { key: 'arrow', type: 'table', rule: '箭頭圖', ask: `${Y} 是 ${X} 的函數嗎？`, diffs: ['basic'], make: makeArrow },
+    { key: 'graph', type: 'graph', rule: '圖形', ask: `這個圖形是不是函數圖形？`, diffs: ['basic', 'chal'], make: makeGraph },
+    { key: 'formula', type: 'formula', rule: '式子', ask: `${Y} 是 ${X} 的函數嗎？`, diffs: ['basic', 'chal'], make: makeFormula },
+    { key: 'scene', type: 'scene', rule: '生活情境', ask: `${Y} 是 ${X} 的函數嗎？`, diffs: ['basic', 'chal'], make: makeScene }
+  ];
+  const ASK_CHAL = { graph: '這是哪一種函數的圖形？還是不是函數？', other: `${Y} 是 ${X} 的哪一種函數？還是不是函數？` };
+
+  function pool() {
+    return GENS.filter(g => g.diffs.includes(diff) && (type === 'all' || g.type === type));
+  }
+
+  let lastHtml = '';
+  function buildQ(g, d, forced) {
+    const q = g.make(d, forced);
+    q.rule = g.rule;
+    q.key = g.key;
+    q.diff = d;
+    q.ans = ansOf(q.cls, d);
+    q.ask = d === 'basic' ? g.ask : (g.key === 'graph' ? ASK_CHAL.graph : ASK_CHAL.other);
+    return q;
+  }
+  function nextQuestion() {
+    const list = pool();
+    let q;
+    for (let i = 0; i < 12; i++) {
+      q = buildQ(pickOf(list), diff);
+      if (q.html !== lastHtml) break;
+    }
+    lastHtml = q.html;
+    return q;
+  }
+
+  /* ── 音效 ───────────────────────────── */
+  let ac = null;
+  function audio() {
+    if (muted) return null;
+    if (!ac) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ac = new C();
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, when = 0, wave = 'sine', vol = 0.16) {
+    const c = audio();
+    if (!c) return;
+    const t0 = c.currentTime + when;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = wave;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const sfxOk = () => { tone(660, 0.12, 0); tone(880, 0.12, 0.09); tone(1320, 0.26, 0.18); };
+  const sfxNg = () => { tone(300, 0.18, 0, 'square', 0.1); tone(190, 0.32, 0.14, 'square', 0.1); };
+  const sfxTick = () => tone(1000, 0.05, 0, 'triangle', 0.07);
+  const sfxUp = () => tone(520, 0.08, 0, 'triangle', 0.1);
+
+  /* ── 作答按鈕：基礎 2 顆、挑戰 3 顆 ── */
+  const BTNS = {
+    basic: [
+      { ans: 'fn', label: '是函數', sub: `每個 ${X} 恰一個 ${Y}` },
+      { ans: 'not', label: '不是函數', sub: `有 ${X} 對到兩個以上 ${Y}` }
+    ],
+    chal: [
+      { ans: 'linear', label: '一次函數', sub: `${Y} = <var>a</var>${X} + <var>b</var>，<var>a</var> ≠ 0` },
+      { ans: 'const', label: '常數函數', sub: `${Y} = <var>b</var>` },
+      { ans: 'not', label: '不是函數', sub: `有 ${X} 對到兩個以上 ${Y}` }
+    ]
+  };
+  let ansBtns = [];
+  function paintButtons(d) {
+    const box = $('answers');
+    box.style.setProperty('--cols', BTNS[d].length);
+    box.innerHTML = BTNS[d].map(b => `<button type="button" class="ans ${b.ans}" data-ans="${b.ans}">${b.label}<small>${b.sub}</small></button>`).join('');
+    ansBtns = Array.from(box.querySelectorAll('.ans'));
+    ansBtns.forEach(b => b.addEventListener('click', () => judge(b.dataset.ans)));
+  }
+
+  /* ── 狀態 ───────────────────────────── */
+  let correct = 0, total = 0, streak = 0;
+  let cur = null, deadline = 0, raf = 0, lastTick = -1, locked = true, curLimit = 12;
+
+  function setView(v) { document.body.dataset.view = v; }
+
+  function paintScore() {
+    $('m-correct').textContent = $('p-correct').textContent = correct;
+    $('m-total').textContent = $('p-total').textContent = total;
+    $('streak-n').textContent = streak;
+    $('streak').hidden = streak < 2;
+  }
+
+  function paintLimit() {
+    document.querySelectorAll('.limit-val').forEach(el => { el.textContent = limit(); });
+    document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+      const step = Number(b.dataset.step);
+      b.disabled = step < 0 ? limit() <= LIMIT_MIN : limit() >= LIMIT_MAX;
+    });
+  }
+
+  function paintSettings() {
+    document.querySelectorAll('#type button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.type === type));
+      b.disabled = diff === 'chal' && b.dataset.type === 'table';
+      b.title = b.disabled ? '對應表只在基礎難度出題' : '';
+    });
+    document.querySelectorAll('#diff button').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.diff === diff));
+    });
+    $('level-note').textContent = TYPE_NOTE[type] + (DIFF_NOTE[diff] ? ' ' + DIFF_NOTE[diff] : '');
+    $('keys').innerHTML = diff === 'basic'
+      ? '鍵盤：<kbd>1</kbd> 是函數　<kbd>2</kbd> 不是函數　<kbd>空白</kbd> 下一題'
+      : '鍵盤：<kbd>1</kbd> 一次函數　<kbd>2</kbd> 常數函數　<kbd>3</kbd> 不是函數　<kbd>空白</kbd> 下一題';
+    paintLimit();
+  }
+
+  function paintMute() {
+    const label = muted ? '🔇' : '🔊';
+    $('mute').textContent = label;
+    $('mute2').textContent = label;
+  }
+
+  /* ── 出題 ───────────────────────────── */
+  function showQuestion(q, lim) {
+    cur = q;
+    curLimit = lim;
+    paintButtons(q.diff);
+    $('rule').textContent = q.rule;
+    $('expr').innerHTML = q.html;
+    $('ask').innerHTML = q.ask;
+    locked = false;
+    document.body.classList.remove('urgent');
+    setView('play');
+    deadline = performance.now() + curLimit * 1000;
+    lastTick = -1;
+    tickLoop();
+  }
+  function startQuestion() { showQuestion(nextQuestion(), limit()); }
+
+  function tickLoop() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      const left = Math.max(0, deadline - performance.now());
+      $('bar').style.transform = `scaleX(${left / (curLimit * 1000)})`;
+      const sec = Math.ceil(left / 1000);
+      if (sec !== lastTick) {
+        lastTick = sec;
+        $('count').textContent = sec;
+        if (sec <= 3 && sec > 0) { document.body.classList.add('urgent'); sfxTick(); }
+      }
+      if (left <= 0) { judge(null); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+
+  /* ── 判定 ───────────────────────────── */
+  function judge(answer) {
+    if (locked) return;
+    locked = true;
+    cancelAnimationFrame(raf);
+    ansBtns.forEach(b => { b.disabled = true; });
+    document.body.classList.remove('urgent');
+
+    const timeout = answer === null;
+    const win = !timeout && answer === cur.ans;
+
+    total += 1;
+    if (win) { correct += 1; streak += 1; } else { streak = 0; }
+    paintScore();
+
+    const v = $('verdict');
+    v.classList.toggle('ok', win);
+    v.classList.toggle('ng', !win);
+    $('verdict-text').textContent = timeout ? '時間到！' : (win ? '答對了！' : '答錯了');
+
+    $('sol-q').innerHTML = cur.solHtml;
+    document.querySelector('.solution').classList.toggle('fig', cur.key !== 'scene' && cur.key !== 'formula');
+    const chip = $('sol-ans');
+    chip.className = `answer-chip ${cur.ans}`;
+    chip.textContent = `答案：${ANS_NAME[cur.ans]}`;
+    $('sol-picked').textContent = (!timeout && !win) ? `你選的是「${ANS_NAME[answer]}」` : '';
+    $('sol-why').innerHTML = cur.why;
+
+    if (win) { sfxOk(); if (streak >= 3) sfxUp(); } else { sfxNg(); }
+    setView('result');
+    v.scrollTop = 0;
+    $('next').focus({ preventScroll: true });
+  }
+
+  /* ── 事件 ───────────────────────────── */
+  $('start').addEventListener('click', () => { audio(); startQuestion(); });
+  $('next').addEventListener('click', startQuestion);
+  $('back').addEventListener('click', () => {
+    cancelAnimationFrame(raf);
+    locked = true;
+    setView('menu');
+  });
+
+  document.querySelectorAll('.ctl button[data-step]').forEach(b => {
+    b.addEventListener('click', () => {
+      limits[type] = clampLimit(limits[type] + Number(b.dataset.step));
+      store.set(`fc-limit-${type}`, String(limits[type]));
+      paintLimit();
+    });
+  });
+
+  document.querySelectorAll('#type button').forEach(b => {
+    b.addEventListener('click', () => {
+      if (b.disabled) return;
+      type = b.dataset.type;
+      store.set('fc-type', type);
+      paintSettings();
+    });
+  });
+  document.querySelectorAll('#diff button').forEach(b => {
+    b.addEventListener('click', () => {
+      diff = b.dataset.diff;
+      store.set('fc-diff', diff);
+      if (diff === 'chal' && type === 'table') { type = 'all'; store.set('fc-type', type); }
+      paintSettings();
+    });
+  });
+
+  [$('mute'), $('mute2')].forEach(b => b.addEventListener('click', () => {
+    muted = !muted;
+    store.set('fc-muted', muted ? '1' : '0');
+    paintMute();
+  }));
+
+  document.addEventListener('keydown', e => {
+    const view = document.body.dataset.view;
+    if (view === 'play') {
+      const list = BTNS[cur.diff];
+      const map = cur.diff === 'basic'
+        ? { '1': 'fn', '2': 'not', ArrowLeft: 'fn', ArrowRight: 'not' }
+        : { '1': 'linear', '2': 'const', '3': 'not', ArrowLeft: 'linear', ArrowDown: 'const', ArrowRight: 'not' };
+      if (map[e.key] && list.some(b => b.ans === map[e.key])) { e.preventDefault(); judge(map[e.key]); }
+    } else if (view === 'result') {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startQuestion(); }
+      else if (e.key === 'Escape') { e.preventDefault(); setView('menu'); }
+    } else if (view === 'menu') {
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (document.activeElement && document.activeElement.closest('button, a') && document.activeElement !== $('start')) return;
+        e.preventDefault(); audio(); startQuestion();
+      }
+    }
+  });
+
+  // 分頁切到背景時暫停倒數，避免回來就時間到
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && document.body.dataset.view === 'play' && !locked) {
+      cancelAnimationFrame(raf);
+      const left = Math.max(800, deadline - performance.now());
+      const resume = () => {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', resume);
+        deadline = performance.now() + left;
+        tickLoop();
+      };
+      document.addEventListener('visibilitychange', resume);
+    }
+  });
+
+  /* ── 主控台自動檢查用（不影響遊戲）───────
+     不看題目標的答案，各自用獨立方法重判：
+     對應表、情境：用列出的 (x, y) 數對，看有沒有同一個 x 對到兩個 y；
+     圖形：拿畫出來的折線和點，用一排鉛垂線數交點；
+     式子：x 取 −12～12 的整數、y 取 −100～100 間所有 1/6 的倍數，把式子成立的 (x, y) 全找出來。
+     是函數時再看所有點是否共線、斜率是否為 0，分出一次函數、常數函數。 */
+
+  function judgePairs(pairs) {
+    const m = new Map();
+    for (const [x, y] of pairs) {
+      const k = Math.round(x * 1e6);
+      if (!m.has(k)) m.set(k, []);
+      const arr = m.get(k);
+      if (!arr.some(v => close(v, y))) arr.push(y);
+    }
+    if ([...m.values()].some(a => a.length >= 2)) return 'not';
+    const pts = [...m.entries()].map(([k, a]) => [k / 1e6, a[0]]).sort((p, q) => p[0] - q[0]);
+    return lineKind(pts);
+  }
+  function lineKind(pts) {
+    if (pts.length < 3) return 'other';
+    const [x1, y1] = pts[0], [x2, y2] = pts[pts.length - 1];
+    const sl = (y2 - y1) / (x2 - x1);
+    const tol = 1e-6 * Math.max(1, ...pts.map(p => Math.abs(p[1])));
+    const onLine = pts.every(([x, y]) => Math.abs(y1 + sl * (x - x1) - y) <= tol);
+    if (!onLine) return 'other';
+    return Math.abs(sl) <= 1e-9 ? 'const' : 'linear';
+  }
+
+  // 鉛垂線 x = x0 和畫出來的圖形交在哪些 y（Infinity 代表整段重合）
+  function crossYs(g, x0) {
+    const ys = [];
+    const add = y => { if (!ys.some(v => Math.abs(v - y) < 0.05)) ys.push(y); };
+    g.lines.forEach(l => {
+      for (let i = 0; i + 1 < l.length; i++) {
+        const [xa, ya] = l[i], [xb, yb] = l[i + 1];
+        if (Math.abs(xa - xb) < 1e-12) {
+          if (Math.abs(xa - x0) < 1e-9) { add(ya); add(yb); }
+          continue;
+        }
+        if ((xa - x0) * (xb - x0) <= 0) add(ya + (yb - ya) * (x0 - xa) / (xb - xa));
+      }
+    });
+    g.dots.forEach(([x, y]) => { if (Math.abs(x - x0) < 1e-9) add(y); });
+    return ys;
+  }
+  function judgeGraph(g) {
+    const xs = [];
+    for (let i = 0; i <= 1300; i++) xs.push(-6.5 + i * 0.01);
+    range(-6, 6).forEach(x => xs.push(x));
+    let multi = false;
+    for (const x0 of xs) { if (crossYs(g, x0).length >= 2) { multi = true; break; } }
+    if (multi) return 'not';
+    if (g.dots.length) return 'other';
+    const pts = g.lines.flat();
+    return g.lines.length === 1 ? lineKind(pts) : 'other';
+  }
+
+  function solveFormula(rel) {
+    const pairs = [];
+    for (let x = -12; x <= 12; x++) {
+      for (let k = -600; k <= 600; k++) if (rel(x, k / 6)) pairs.push([x, k / 6]);
+    }
+    return pairs;
+  }
+
+  window.__functionCheck = {
+    GENS, judgePairs, judgeGraph, solveFormula, plain,
+    // 指定題型、難度、類別出一題（實測版面用）
+    show(key, d = 'basic', cls) {
+      const g = GENS.find(v => v.key === key);
+      showQuestion(buildQ(g, d, cls), 99);
+    },
+    answer(a) { judge(a); },
+    selfTest(n = 400) {
+      const report = {};
+      const errors = [];
+      GENS.forEach(g => g.diffs.forEach(d => {
+        const cnt = {};
+        for (let i = 0; i < n; i++) {
+          let q;
+          try { q = buildQ(g, d); } catch (e) { errors.push([g.key, d, 'throw', e.message]); continue; }
+          cnt[q.ans] = (cnt[q.ans] || 0) + 1;
+          const txt = q.html + q.solHtml + q.why + q.ask;
+          if (/undefined|NaN|Infinity|\[object|null/.test(txt)) { errors.push([g.key, d, '字串有壞值', plain(txt)]); continue; }
+          if (d === 'chal' && q.cls === 'other') { errors.push([g.key, d, '挑戰出現其他函數', plain(q.html)]); continue; }
+          if (!BTNS[d].some(b => b.ans === q.ans)) { errors.push([g.key, d, '答案不在按鈕裡', q.ans]); continue; }
+          let got;
+          if (g.key === 'graph') {
+            got = judgeGraph(q.geo);
+            if (q.cls === 'not') {
+              // 結果畫面標的那幾點，真的在鉛垂線上
+              const w = q.geo.wit, ys = crossYs(q.geo, w.x);
+              const bad = w.ys.filter(y => !ys.some(v => Math.abs(v - y) < 0.06) && !(w.all && Math.abs(y) <= VIEW));
+              if (bad.length || w.ys.length < 2) errors.push([g.key, d, '標示的交點不在圖上', w.x, w.ys.join(','), ys.join(',')]);
+            } else if (q.geo.probe) {
+              const [px, py] = q.geo.probe, ys = crossYs(q.geo, px);
+              if (ys.length !== 1 || Math.abs(ys[0] - py) > 0.06) errors.push([g.key, d, '示範鉛垂線不對', px, py, ys.join(',')]);
+            }
+          } else if (g.key === 'formula') {
+            const pairs = solveFormula(q.rel);
+            got = judgePairs(pairs);
+            if (q.cls === 'not') {
+              const w = q.wit;
+              const at = pairs.filter(p => p[0] === w.x).map(p => p[1]);
+              if (w.all ? at.length < 10 : !(w.ys.every(y => at.some(v => close(v, y))) && w.ys[0] !== w.ys[1]))
+                errors.push([g.key, d, '說明的例子不成立', plain(q.html), w.x]);
+            } else if (pairs.length < 5) errors.push([g.key, d, '解太少', plain(q.html)]);
+          } else {
+            got = judgePairs(q.check);
+            if (g.key === 'table' && q.check.length < 4) errors.push([g.key, d, '表格太短']);
+          }
+          // 基礎只比「是／不是」，其他函數（拋物線、隨機資料）只要求不是一次、常數
+          const want = q.cls;
+          const ok = d === 'basic' && (g.key === 'table' || g.key === 'arrow')
+            ? (got === 'not') === (want === 'not')
+            : want === 'other' ? got === 'other' || (g.key === 'scene' && got !== 'not') : got === want;
+          if (!ok) errors.push([g.key, d, `標 ${want} 但算出 ${got}`, plain(q.html).slice(0, 80)]);
+        }
+        report[`${g.key}-${d}`] = Object.entries(cnt).map(([k, v]) => `${ANS_NAME[k]} ${(v / n * 100).toFixed(0)}%`).join('、');
+      }));
+      return { report, errors: errors.slice(0, 20), errorCount: errors.length };
+    }
+  };
+
+  paintSettings();
+  paintMute();
+  paintScore();
+  paintButtons(diff);
+})();
+</script>
+</body>
+</html>
