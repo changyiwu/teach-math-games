@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="先選第三邊，再拖動線段看能不能圍成三角形。挑戰關在圖上找出指定的角或邊。">
+  <title>三角形合得起來嗎？ - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <link rel="stylesheet" href="style.css">
+  <script src="game.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <div class="top-actions">
+        <span id="score" class="score" hidden>答對 <b id="correct">0</b> ／ <b id="attempted">0</b></span>
+        <button type="button" id="mute" class="quiet" aria-pressed="false">音效關</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="menu" class="layout menu" aria-labelledby="title">
+        <div class="intro">
+          <h1 id="title">三角形<span>合得起來嗎？</span></h1>
+          <p class="unit"><span>第4冊・第3章 三角形的基本性質</span><span>・第5節 三角形的邊角關係</span></p>
+
+          <div class="menu-controls">
+            <div class="mode-grid" role="group" aria-label="選擇難度">
+              <button type="button" data-mode="basic" class="mode" aria-pressed="true">
+                <small>基礎</small><strong>選第三邊</strong>
+              </button>
+              <button type="button" data-mode="challenge" class="mode" aria-pressed="false">
+                <small>挑戰</small><strong>找對邊角</strong>
+              </button>
+            </div>
+            <p id="mode-hint" class="mode-hint">挑一根能合起來的線段，送出後親手試接。</p>
+            <div class="menu-actions">
+              <label class="limit">限時
+                <select id="limit">
+                  <option value="0">不限時</option>
+                  <option value="15">15 秒</option>
+                  <option value="25" selected>25 秒</option>
+                  <option value="40">40 秒</option>
+                  <option value="60">60 秒</option>
+                </select>
+              </label>
+              <button type="button" id="start" class="primary">開始挑戰 <span aria-hidden="true">→</span></button>
+            </div>
+            <a class="learn-link" href="learn.html">先看邊角小抄 ↗</a>
+          </div>
+        </div>
+
+        <div class="board demo-board">
+          <svg viewBox="0 0 560 346" class="demo" role="img" aria-label="兩段線繞固定端點旋轉，虛線顯示兩端移動的軌跡">
+            <path class="guide" d="M 36 244 H 489 M 280 40 V 294"/>
+            <path class="guide arc-left" d="M 36 244 A 204 204 0 0 1 444 244"/>
+            <path class="guide arc-right" d="M 241 244 A 169 169 0 0 1 467.801 85.192"/>
+            <polygon class="demo-fill" points="240,244 410,244 363.397,81.553"/>
+            <line class="rod base" x1="240" y1="244" x2="410" y2="244"/>
+            <line class="rod first" x1="240" y1="244" x2="342" y2="67.331"/>
+            <line class="rod third" x1="410" y1="244" x2="395.271" y2="75.643"/>
+            <line class="gap" x1="342" y1="67.331" x2="395.271" y2="75.643"/>
+            <circle class="joint fixed" cx="240" cy="244" r="7"/>
+            <circle class="joint fixed" cx="410" cy="244" r="7"/>
+            <circle class="joint first-joint" cx="342" cy="67.331" r="7"/>
+            <circle class="joint third-joint" cx="395.271" cy="75.643" r="7"/>
+          </svg>
+        </div>
+      </section>
+
+      <section id="round" class="layout round" aria-labelledby="prompt" hidden>
+        <div class="board play-board">
+          <div id="diagram" class="diagram"></div>
+          <div id="legend" class="legend" aria-label="線段長度"></div>
+          <div id="experiment" class="experiment" hidden>
+            <label class="range-label" for="hinge">轉動藍色線段</label>
+            <input id="hinge" type="range" min="0" max="1800" step="1" value="650" aria-label="藍色線段與底邊的夾角">
+            <button type="button" id="fit" class="quiet">試著接合</button>
+          </div>
+        </div>
+
+        <div class="question-panel">
+          <div class="round-top">
+            <span id="topic" class="topic"></span>
+            <div id="timer" class="timer" role="timer" aria-label="剩餘時間">
+              <span id="count"></span>
+              <div class="track" aria-hidden="true"><div id="bar"></div></div>
+            </div>
+          </div>
+          <h2 id="prompt" tabindex="-1"></h2>
+          <p id="context" class="context"></p>
+          <div id="choices" class="choices" role="group" aria-label="答案選項"></div>
+          <p id="verdict" class="verdict" role="status" hidden></p>
+          <div id="explanation" class="explanation" hidden>
+            <strong id="rule"></strong>
+            <p id="detail"></p>
+            <p id="observed" class="observed" aria-live="polite" hidden></p>
+          </div>
+          <div class="round-actions">
+            <button type="button" id="leave" class="quiet">回選單</button>
+            <button type="button" id="submit" class="primary" disabled>送出答案</button>
+            <button type="button" id="next" class="primary" hidden>下一題 <span aria-hidden="true">→</span></button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="用三角形的兩邊和與兩邊差判斷第三邊範圍，再練習三角形的邊角對應。">
+  <title>邊角小抄 - 三角形合得起來嗎？</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="shell learn">
+    <header class="topbar">
+      <a class="home" href="../index.html">← 回遊戲大廳</a>
+      <a class="primary learn-play" href="index.html">回遊戲 →</a>
+    </header>
+    <main>
+      <h1>三角形邊角小抄</h1>
+      <p class="unit"><span>第4冊・第3章 三角形的基本性質</span><span>・第5節 三角形的邊角關係</span></p>
+
+      <div class="learn-grid">
+        <section class="learn-card">
+          <h2>兩邊已知，第三邊能多長？</h2>
+          <p class="formula">兩邊的差 &lt; 第三邊長 &lt; 兩邊的和</p>
+          <p>兩邊長 7 和 4，第三邊長 <var>x</var> 必須符合 3 &lt; <var>x</var> &lt; 11。</p>
+          <ul>
+            <li><var>x</var> = 7 時，三條線段可以圍成三角形。</li>
+            <li><var>x</var> = 3 或 11 時，三條線段接起來會排成一直線。</li>
+            <li><var>x</var> = 2 或 12 時，三條線段接不起來。</li>
+          </ul>
+        </section>
+
+        <section class="learn-card">
+          <h2>三邊已知，只比哪兩個長度？</h2>
+          <p class="formula">最長邊 &lt; 另外兩邊的和</p>
+          <p>長 3、5、9 的三條線段，因為 9 &gt; 3 + 5，所以接不起來。長 3、5、7 的三條線段，因為 7 &lt; 3 + 5，所以能圍成三角形。</p>
+        </section>
+
+        <section class="learn-card">
+          <h2>看邊找角</h2>
+          <p class="formula">同一個三角形中，大邊對大角，等邊對等角。</p>
+          <p>在 △ABC 中，若 AB 最長，對角 ∠C 最大。若 BC = CA，則 ∠A = ∠B。</p>
+        </section>
+
+        <section class="learn-card">
+          <h2>看角找邊</h2>
+          <p class="formula">同一個三角形中，大角對大邊，等角對等邊。</p>
+          <p>若 ∠A = 50°、∠B = 55°，則 ∠C = 180° − 50° − 55° = 75°。∠C 最大，所以對邊 AB 最長。</p>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
