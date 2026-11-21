@@ -194,10 +194,13 @@ const geometryQuiz = (() => {
       clearInterval(timer);
       state = 'playing';
       question = deck[index];
-      groups = question.groups ?? [{ options: shuffle(question.options), answer: question.answer }];
+      groups = question.groups ?? [{
+        options: config.shuffleOptions === false ? question.options : shuffle(question.options),
+        answer: question.answer,
+      }];
       selected = Array(groups.length).fill(undefined);
       get('progress').textContent = `第 ${index + 1} / ${deck.length} 題`;
-      get('prompt').textContent = question.prompt;
+      get('prompt').replaceChildren(typeof question.prompt === 'function' ? question.prompt() : question.prompt);
       get('detail').textContent = question.detail;
       get('detail').hidden = false;
       get('answer-controls').hidden = false;
