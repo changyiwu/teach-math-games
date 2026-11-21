@@ -96,6 +96,7 @@ const geometryQuiz = (() => {
             </div>
             <div id="feedback" class="feedback" hidden>
               <h2 id="verdict" tabindex="-1"></h2>
+              <ul id="answer-review" class="answer-review" hidden></ul>
               <p id="explanation"></p>
               <div id="replays" class="replays"></div>
               <button id="next" class="primary" type="button">下一題</button>
@@ -134,6 +135,7 @@ const geometryQuiz = (() => {
     let expiredCount;
     let state;
     let question;
+    let groups;
     let selected;
     let viewed;
     let timer;
@@ -155,10 +157,10 @@ const geometryQuiz = (() => {
     function answer(expired = false) {
       if (state !== 'playing') return;
       expired ||= deadline > 0 && performance.now() >= deadline;
-      if (!expired && selected === undefined) return;
+      if (!expired && selected.includes(undefined)) return;
       state = 'review';
       clearInterval(timer);
-      const correct = !expired && selected === question.answer;
+      const correct = !expired && groups.every((group, index) => selected[index] === group.answer);
       correctCount += Number(correct);
       expiredCount += Number(expired);
       get('detail').hidden = true;
@@ -166,10 +168,23 @@ const geometryQuiz = (() => {
       get('feedback').hidden = false;
       get('feedback').dataset.correct = correct;
       get('verdict').textContent = correct ? '答對了！' : expired ? '時間到' : '再看一次這題';
-      const attempted = question.options.find((option) => option.value === selected);
-      get('explanation').textContent = `${!expired && !correct ? `你選了 ${attempted.label}。` : ''}${question.explanation}`;
+      const review = get('answer-review');
+      review.hidden = !question.groups;
+      if (question.groups) {
+        review.replaceChildren(...groups.map((group, groupIndex) => {
+          const item = document.createElement('li');
+          const expected = group.options.find((option) => option.value === group.answer).label;
+          const attempted = group.options.find((option) => option.value === selected[groupIndex])?.label;
+          if (attempted) item.dataset.correct = selected[groupIndex] === group.answer;
+          item.textContent = `${group.legend}：${expected}${attempted && attempted !== expected ? `（你選了${attempted}）` : ''}`;
+          return item;
+        }));
+      }
+      const attempted = question.options?.find((option) => option.value === selected[0]);
+      get('explanation').textContent = `${!expired && !correct && attempted ? `你選了 ${attempted.label}。` : ''}${question.explanation}`;
       get('next').textContent = index === deck.length - 1 ? '看本輪結果' : '下一題';
-      const actions = viewed.reveal(expired ? undefined : selected);
+      const selection = question.groups ? selected : selected[0];
+      const actions = viewed.reveal(expired ? undefined : selection);
       get('replays').replaceChildren(...actions.map(([text, action]) => makeButton(text, 'quiet', action)));
       get('verdict').focus({ preventScroll: true });
     }
@@ -179,7 +194,8 @@ const geometryQuiz = (() => {
       clearInterval(timer);
       state = 'playing';
       question = deck[index];
-      selected = undefined;
+      groups = question.groups ?? [{ options: shuffle(question.options), answer: question.answer }];
+      selected = Array(groups.length).fill(undefined);
       get('progress').textContent = `第 ${index + 1} / ${deck.length} 題`;
       get('prompt').textContent = question.prompt;
       get('detail').textContent = question.detail;
@@ -192,15 +208,29 @@ const geometryQuiz = (() => {
       viewed = config.draw(get('diagram'), get('caption'), question);
 
       const options = get('options');
-      options.replaceChildren(...shuffle(question.options).map((option) => {
-        const button = makeButton(option.label, 'choice', () => {
-          selected = option.value;
-          for (const choice of options.children) choice.setAttribute('aria-pressed', choice === button);
-          get('submit').disabled = false;
-        });
-        button.setAttribute('aria-pressed', 'false');
-        return button;
-      }));
+      options.replaceChildren();
+      options.classList.toggle('option-groups', Boolean(question.groups));
+      groups.forEach((group, groupIndex) => {
+        let choices = options;
+        if (group.legend) {
+          const field = document.createElement('fieldset');
+          const legend = document.createElement('legend');
+          legend.textContent = group.legend;
+          choices = document.createElement('div');
+          choices.className = 'options';
+          field.append(legend, choices);
+          options.append(field);
+        }
+        for (const option of group.options) {
+          const button = makeButton(option.label, 'choice', () => {
+            selected[groupIndex] = option.value;
+            for (const choice of choices.children) choice.setAttribute('aria-pressed', choice === button);
+            get('submit').disabled = selected.includes(undefined);
+          });
+          button.setAttribute('aria-pressed', 'false');
+          choices.append(button);
+        }
+      });
 
       const seconds = Number(limit.value);
       get('timer').hidden = seconds === 0;
