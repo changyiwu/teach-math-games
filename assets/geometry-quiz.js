@@ -291,5 +291,5 @@ const geometryQuiz = (() => {
     config.drawDemo(get('demo'));
   }
 
-  return { start, svg, line, label, animate, add, subtract, scale, length, unit, bounds };
+  return { start, svg, line, label, animate, shuffle, add, subtract, scale, length, unit, bounds };
 })();

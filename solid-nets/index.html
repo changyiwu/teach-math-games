@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="挑出能摺成立體的展開圖，送出後沿摺線驗證接邊、重疊與缺面。">
+  <title>這張紙摺得起來嗎？ - 國中數學遊戲場</title>
+  <link rel="icon" href="../header-logo.svg">
+  <link rel="stylesheet" href="../assets/geometry-quiz.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../assets/geometry-quiz.js" defer></script>
+  <script src="folding.js" defer></script>
+  <script src="questions.js" defer></script>
+  <script src="diagram.js" defer></script>
+  <script src="game.js" defer></script>
+</head>
+<body class="solid-nets">
+  <header class="topbar">
+    <a class="lobby-link" href="../index.html">← 回遊戲大廳</a>
+    <a class="text-link" href="learn.html">展開圖小抄</a>
+  </header>
+  <main class="page">
+    <noscript>請啟用 JavaScript 以開始遊戲。</noscript>
+    <section id="menu" class="menu" aria-labelledby="title">
+      <div class="intro">
+        <h1 id="title" tabindex="-1">這張紙摺得起來嗎？</h1>
+        <p class="unit">第6冊・第3章 生活中的立體圖形・第1節 空間中的線、平面與形體</p>
+        <p class="lead">看立體，挑出所有能摺成它的紙型。送出後，沿摺線看看哪些邊會接在一起。</p>
+        <fieldset class="modes">
+          <legend>選擇難度</legend>
+          <div class="mode-options">
+            <label><input type="radio" name="mode" value="basic" checked><span><strong>基礎</strong><small>正立方體、直三角柱</small></span></label>
+            <label><input type="radio" name="mode" value="challenge"><span><strong>挑戰</strong><small>直五角柱、正角錐</small></span></label>
+          </div>
+        </fieldset>
+        <div class="start-controls">
+          <label for="limit">每題限時</label>
+          <select id="limit"><option value="0">不限時</option><option value="15">15 秒</option><option value="25">25 秒</option><option value="40">40 秒</option><option value="60">60 秒</option></select>
+          <button id="start" class="primary" type="button">開始挑戰</button>
+        </div>
+      </div>
+      <figure class="board menu-preview">
+        <div class="preview-title"><strong>正四角錐</strong><button type="button" id="preview" class="quiet">試摺一次</button></div>
+        <div class="preview-steps" aria-label="正四角錐的展開圖與立體對照">
+          <div id="preview-net"></div><span aria-hidden="true">→</span><div id="preview-solid"></div>
+        </div>
+        <figcaption>虛線是摺線，藍綠色是底面。</figcaption>
+      </figure>
+    </section>
+    <section id="round" aria-labelledby="prompt" hidden>
+      <div class="round-top">
+        <span id="progress"></span>
+        <div id="timer" class="timer" hidden><progress id="clock" aria-label="剩餘時間"></progress><span id="seconds"></span></div>
+        <button id="back" class="quiet" type="button">回難度選單</button>
+      </div>
+      <h1 id="prompt" tabindex="-1">哪些紙型摺得起來？</h1>
+      <div class="fold-layout">
+        <figure id="target" class="board target">
+          <div id="target-solid"></div>
+          <figcaption id="target-name"></figcaption>
+        </figure>
+        <div class="fold-workspace">
+          <fieldset id="choices">
+            <legend id="instructions">點選所有能摺合的紙型，可複選。</legend>
+            <div id="cards" class="net-cards"></div>
+          </fieldset>
+          <div id="answer-actions" class="answer-actions">
+            <span id="selected-count" role="status">已選 0 張</span>
+            <button id="submit" class="primary" type="button" disabled>確認作答</button>
+          </div>
+          <div id="feedback" class="feedback" hidden>
+            <h2 id="verdict" tabindex="-1"></h2>
+            <p id="explanation"></p>
+            <div class="fold-actions">
+              <button id="replay" class="quiet" type="button">重播摺疊</button>
+              <button id="compare" class="quiet" type="button" aria-pressed="false">並排看兩種摺法</button>
+              <button id="next" class="primary" type="button">下一題</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="results" class="results" aria-labelledby="result-title" hidden>
+      <h1 id="result-title" tabindex="-1">挑戰完成</h1>
+      <p id="score" class="score"></p>
+      <p id="score-detail"></p>
+      <div class="result-controls">
+        <button id="retry" class="primary" type="button">再玩一輪</button>
+        <button id="settings" class="quiet" type="button">回難度選單</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

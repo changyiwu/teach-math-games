@@ -48,6 +48,7 @@
 | `triangle-centers/` | 三心定位站（3 上 3-2）：`index.html` 遊戲本體、`learn.html` 三心小抄 |
 | `quadratic-intersections/` | 會碰到 x 軸幾次？（3 下 1-1）：`index.html` 遊戲本體、`learn.html` 交點判斷小抄 |
 | `boxplot-compare/` | 哪一班比較集中？（3 下 2-1）：`index.html` 遊戲本體、`learn.html` 盒狀圖小抄 |
+| `solid-nets/` | 這張紙摺得起來嗎？（3 下 3-1）：`index.html` 遊戲本體、`learn.html` 展開圖小抄，設定前綴 `solid-nets-` |
 | `assets/geometry-quiz.*` | 幾何與圖形類遊戲的共用答題介面與 SVG 工具 |
 | `output/` | 產出物（不進 git） |
 

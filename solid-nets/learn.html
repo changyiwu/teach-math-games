@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>展開圖小抄 - 這張紙摺得起來嗎？</title>
+  <link rel="icon" href="../header-logo.svg">
+  <link rel="stylesheet" href="../assets/geometry-quiz.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../assets/geometry-quiz.js" defer></script>
+  <script src="folding.js" defer></script>
+  <script src="questions.js" defer></script>
+  <script src="diagram.js" defer></script>
+  <script src="learn.js" defer></script>
+</head>
+<body class="solid-nets">
+  <header class="topbar"><a class="lobby-link" href="../index.html">← 回遊戲大廳</a></header>
+  <main class="page">
+    <article class="study">
+      <h1>展開圖小抄</h1>
+      <p class="unit">第6冊・第3章 生活中的立體圖形・第1節 空間中的線、平面與形體</p>
+      <h2>先看有哪些面</h2>
+      <ul>
+        <li><strong>直角柱</strong>有兩個全等的多邊形底面。底面有幾條邊，就有幾個長方形側面。</li>
+        <li><strong>正角錐</strong>有一個正多邊形底面。底面有幾條邊，就有幾個全等的等腰三角形側面，摺起後在錐頂相會。</li>
+      </ul>
+      <h2>沿摺線找每個面的位置</h2>
+      <p>固定一個底面，想像其餘的面沿著虛線立起。能摺合的紙型會讓切開的邊兩兩接上，每個面都各有一個位置。同一個立體可以有多種展開圖。</p>
+      <div class="net-cards comparing study-nets">
+        <figure class="net-card" data-folds="true"><div class="net-graphic" id="valid"></div><figcaption class="net-result">四片側面各就各位</figcaption></figure>
+        <figure class="net-card" data-folds="false"><div class="net-graphic" id="invalid"></div><figcaption class="net-result">兩片重疊，留下一處缺面</figcaption></figure>
+      </div>
+      <div class="fold-actions"><button id="study-fold" class="quiet" type="button">一起摺起來</button><button id="study-reset" class="quiet" type="button">還原紙型</button></div>
+      <p>虛線是摺線。驗證時，金線標出一對接邊，紅斜線標重疊，紅虛線圈出缺面。</p>
+      <a class="text-link" href="index.html">← 回「這張紙摺得起來嗎？」</a>
+    </article>
+  </main>
+</body>
+</html>
