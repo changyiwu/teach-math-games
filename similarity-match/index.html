@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="在兩個三角形上配對邊與角，再用 AA、SAS 或 SSS 判別相似。">
+  <title>相似證據配對 - 國中數學遊戲場</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <link rel="stylesheet" href="style.css">
+  <script src="questions.js" defer></script>
+  <script src="diagram.js" defer></script>
+  <script src="game.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="quiet" href="../index.html">← 回遊戲大廳</a>
+      <button id="sound" class="quiet" type="button" aria-pressed="false">音效關</button>
+    </header>
+    <main>
+      <section id="menu" class="menu" aria-labelledby="title">
+        <div class="intro">
+          <h1 id="title" tabindex="-1">相似證據配對</h1>
+          <p class="unit">第5冊・第1章 相似形・第3節 縮放與相似</p>
+          <p class="lead">先在兩張圖上配對邊或角，再選出能判定相似的理由。</p>
+          <div class="modes" role="group" aria-label="選擇難度">
+            <button type="button" data-mode="basic" aria-pressed="true"><strong>基礎</strong><span>整數邊長為主</span></button>
+            <button type="button" data-mode="challenge" aria-pressed="false"><strong>挑戰</strong><span>旋轉、翻面與夾角</span></button>
+          </div>
+          <div class="menu-actions">
+            <label for="limit">每題限時</label>
+            <select id="limit">
+              <option value="0">不限時</option>
+              <option value="15">15 秒</option>
+              <option value="25">25 秒</option>
+              <option value="40">40 秒</option>
+              <option value="60">60 秒</option>
+            </select>
+            <button id="start" class="primary" type="button">開始配對 <span aria-hidden="true">→</span></button>
+          </div>
+          <a class="learn-link" href="learn.html">查看相似三角形小抄 ↗</a>
+        </div>
+        <figure class="demo" role="img" aria-label="示例：角 A 等於角 F，角 B 等於角 D，兩組對應角分別相等，所以兩個三角形相似。">
+          <div class="demo-diagrams" aria-hidden="true">
+            <div class="diagram" id="demo-left"></div>
+            <div class="diagram" id="demo-right"></div>
+          </div>
+          <figcaption aria-hidden="true"><span>∠A ↔ ∠F</span><span>∠B ↔ ∠D</span><strong>AA 相似</strong></figcaption>
+        </figure>
+      </section>
+
+      <section id="round" class="round" aria-labelledby="prompt" hidden>
+        <div class="round-info">
+          <p id="progress"></p>
+          <div id="timer" class="timer" role="timer" aria-label="剩餘時間" hidden>
+            <div class="track" aria-hidden="true"><div id="bar"></div></div>
+            <span id="seconds"></span>
+          </div>
+        </div>
+        <div class="round-heading">
+          <h2 id="prompt" tabindex="-1">哪些邊或角互相對應？</h2>
+          <p>依標示數值作答。兩張圖各自調整顯示大小。</p>
+        </div>
+        <div class="diagrams">
+          <section class="board" aria-labelledby="left-title">
+            <h3 id="left-title">△ABC</h3>
+            <div id="left" class="diagram"></div>
+          </section>
+          <section class="board" aria-labelledby="right-title">
+            <h3 id="right-title">△DEF</h3>
+            <div id="right" class="diagram"></div>
+          </section>
+        </div>
+
+        <div id="play">
+          <div class="pairing">
+            <p id="instructions" role="status"></p>
+            <div id="pairs" class="pairs" role="group" aria-label="已配對的標記"></div>
+          </div>
+          <div class="judgment">
+            <p id="rule-label">這些條件可以用哪一種判別？</p>
+            <div class="choices" role="group" aria-labelledby="rule-label">
+              <button type="button" data-rule="AA" aria-pressed="false">AA</button>
+              <button type="button" data-rule="SAS" aria-pressed="false">SAS</button>
+              <button type="button" data-rule="SSS" aria-pressed="false">SSS</button>
+              <button type="button" data-rule="insufficient" aria-pressed="false">條件不足</button>
+            </div>
+            <button id="submit" class="primary" type="button" disabled>確認作答</button>
+          </div>
+        </div>
+
+        <div id="feedback" class="feedback" hidden>
+          <h3 id="verdict" role="status" tabindex="-1"></h3>
+          <ul id="checks" class="checks" aria-label="正確配對"></ul>
+          <p id="reason"></p>
+          <p id="correspondence"></p>
+        </div>
+        <div class="round-actions">
+          <button id="leave" class="quiet" type="button">回選單</button>
+          <button id="next" class="primary" type="button" hidden>下一題 <span aria-hidden="true">→</span></button>
+        </div>
+      </section>
+
+      <section id="summary" class="summary" aria-labelledby="summary-title" hidden>
+        <h2 id="summary-title" tabindex="-1">這輪完成了</h2>
+        <p id="summary-score"></p>
+        <p id="summary-details"></p>
+        <div class="menu-actions">
+          <button id="settings" class="quiet" type="button">回選單</button>
+          <button id="again" class="primary" type="button">再玩一輪 →</button>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
