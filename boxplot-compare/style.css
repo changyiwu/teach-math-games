@@ -1,0 +1,75 @@
+.boxplot-compare {
+  --accent: #086566;
+  --tint: #dcf4ef;
+  --canvas: #edf5f4;
+  --line: #bdd3d3;
+  --board: #102e39;
+  --board-ink: #f2fbfc;
+  --first-class: #7bead6;
+  --second-class: #ffce83;
+  --measure: #f2fbfc;
+}
+
+.boxplot-compare .board .grid-line { stroke: #d3eef01d; stroke-width: 1; }
+.boxplot-compare .board .grid-line.major { stroke: #d3eef048; }
+.boxplot-compare .axis-line { stroke: #c3dce0; stroke-width: 1.7; }
+.boxplot-compare .axis-arrow { fill: #c3dce0; }
+.boxplot-compare .class-0 { --plot-color: var(--first-class); }
+.boxplot-compare .class-1 { --plot-color: var(--second-class); }
+.boxplot-compare .plot :is(.whisker, .box, .median) {
+  stroke: var(--plot-color);
+  stroke-width: 3;
+}
+.boxplot-compare .box { fill: var(--plot-color); fill-opacity: .2; }
+.boxplot-compare .plot .median { stroke-width: 4; }
+.boxplot-compare .board .class-label { fill: var(--plot-color); font-size: 24px; }
+.boxplot-compare .board .value-label { fill: var(--plot-color); font-size: 22px; font-variant-numeric: tabular-nums; }
+.boxplot-compare .board .tick-label { fill: #c4dfe3; font-size: 19px; }
+.boxplot-compare .board .axis-unit { fill: #c4dfe3; font-size: 16px; text-anchor: end; }
+.boxplot-compare .measurement {
+  fill: none;
+  stroke: var(--measure);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.boxplot-compare .equations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .5rem;
+  margin-top: .4rem;
+}
+.boxplot-compare .equations > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .05rem .6rem;
+  padding: .25rem .5rem;
+  border-radius: .42rem;
+  background: #ffffff0c;
+}
+.boxplot-compare .equations strong { color: var(--plot-color); }
+.boxplot-compare .equations span { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.boxplot-compare .options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .42rem; }
+.boxplot-compare .option-groups { grid-template-columns: minmax(0, 1fr); gap: .7rem; }
+.boxplot-compare .option-groups fieldset { margin: 0; min-width: 0; padding: 0; border: 0; }
+.boxplot-compare .option-groups legend { padding: 0; margin-bottom: .25rem; font-weight: 800; }
+.boxplot-compare .choice { padding-inline: .2rem; }
+.boxplot-compare .answer-review {
+  margin-block: .5rem;
+  padding-left: 1.35rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+.boxplot-compare .answer-review [data-correct="false"] { color: #883610; }
+.boxplot-compare .replays:empty { display: none; }
+.boxplot-compare .replays button[aria-pressed="true"] { border-color: var(--accent); background: var(--tint); }
+.boxplot-compare .study .replays { margin-bottom: .8rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .boxplot-compare .measurement { animation: reveal-measurement 240ms ease-out both; }
+}
+@keyframes reveal-measurement {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

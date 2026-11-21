@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>盒狀圖小抄 - 哪一班比較集中？</title>
+  <link rel="icon" type="image/svg+xml" href="../header-logo.svg">
+  <link rel="stylesheet" href="../assets/geometry-quiz.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../assets/geometry-quiz.js" defer></script>
+  <script src="game.js" defer></script>
+</head>
+<body class="boxplot-compare">
+  <header class="topbar"><a class="lobby-link" href="../index.html">← 回遊戲大廳</a></header>
+  <main class="page">
+    <article class="study">
+      <h1>盒狀圖小抄</h1>
+      <p class="unit">第6冊・第2章 統計與機率・第1節 資料的分析</p>
+      <h2>先認出圖上的五個數</h2>
+      <p>盒狀圖由左到右是最小值、第一四分位數（<var>Q</var><sub>1</sub>）、中位數（<var>Q</var><sub>2</sub>）、第三四分位數（<var>Q</var><sub>3</sub>）和最大值。盒子的左右邊界是 <var>Q</var><sub>1</sub> 和 <var>Q</var><sub>3</sub>，盒內的直線是中位數。</p>
+      <h2>同一刻度，兩種比較方式</h2>
+      <figure class="board">
+        <div id="study-diagram"></div>
+        <figcaption id="study-caption" aria-live="polite"></figcaption>
+      </figure>
+      <div class="replays" role="group" aria-label="選擇圖上的量法">
+        <button class="quiet" type="button" data-metric="range" aria-pressed="true">標出全距</button>
+        <button class="quiet" type="button" data-metric="iqr" aria-pressed="false">標出四分位距</button>
+      </div>
+      <ul>
+        <li><strong>全距＝最大值−最小值。</strong>甲班的全距是 60 分，乙班是 45 分。甲班的分數從最低到最高跨得比較廣。</li>
+        <li><strong>四分位距＝<var>Q</var><sub>3</sub>−<var>Q</var><sub>1</sub>。</strong>甲班的四分位距是 10 分，乙班是 30 分。甲班中間一半的分數分布範圍較窄。</li>
+      </ul>
+      <a class="text-link" href="index.html">← 回「哪一班比較集中？」</a>
+    </article>
+  </main>
+</body>
+</html>
