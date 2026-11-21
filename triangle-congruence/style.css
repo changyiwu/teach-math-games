@@ -1,0 +1,13 @@
+.triangles-svg { background: radial-gradient(ellipse at center, #32376b 0%, var(--board) 77%); }
+.divider { stroke: #acb6dc5e; stroke-width: 1; stroke-dasharray: 6 6; }
+.triangle-outline { stroke: #a4deff; stroke-width: 3; vector-effect: non-scaling-stroke; fill: #8fd8ff27; stroke-linejoin: round; }
+.right-shape .triangle-outline { stroke: #f4b5dd; fill: #f4b5dd26; }
+.edge-mark, .angle-mark { fill: none; stroke: #fff0ac; stroke-width: 3; stroke-linecap: round; }
+.vertex { font-size: 22px; }
+.shape-name { font-size: 20px; }
+.comparison-target .triangle-outline { stroke-width: 4; }
+.overlay-shape { fill: #ffaccc22; stroke: #ffbedc; stroke-dasharray: 7 5; }
+.ghost-shape { opacity: .29; }
+.right-shape.ghost-shape, .left-shape.ghost-shape { opacity: .19; }
+.ssa-construction { fill: none; stroke: #fff0ac; stroke-width: 2; stroke-dasharray: 4 3; }
+.ssa-point { fill: #fff0ac; stroke: var(--board); stroke-width: 1; }

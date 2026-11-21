@@ -1,0 +1,13 @@
+.route-svg { background: radial-gradient(ellipse at center, #21505a 0%, var(--board) 75%); }
+.road { fill: #244752; stroke: #8eaeb9; stroke-width: 17; stroke-linecap: round; stroke-linejoin: round; }
+.road-center { fill: none; stroke: #172f3b; stroke-width: 2.5; stroke-dasharray: 7 6; }
+.route-dot { fill: #f4faff; stroke: #203b46; stroke-width: 2; }
+.route-dot.is-current { fill: #ffd88a; }
+.travelled { stroke: #68ebce; stroke-width: 5; stroke-linecap: round; }
+.wrong-road { stroke: #ffc392; stroke-width: 4; stroke-dasharray: 5 5; }
+.turn-extension { stroke: #f9cc77; stroke-width: 2; stroke-dasharray: 4 4; }
+.turn-arc, .inner-arc { fill: none; stroke: #f9cc77; stroke-width: 3; stroke-linecap: round; }
+.inner-arc { stroke: #a4e4ff; }
+.car { fill: var(--board-accent); stroke: #09252d; stroke-width: 2; }
+.route-point { font-size: 22px; }
+.route-value { font-size: 33px; fill: #f9cc77 !important; }
